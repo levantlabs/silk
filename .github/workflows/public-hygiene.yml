@@ -9,9 +9,13 @@ jobs:
   hygiene:
     runs-on: ubuntu-latest
     steps:
+      # A pull request is scanned at its own head commit. The merge commit
+      # GitHub creates to test it has GitHub as its committer and is not one
+      # of the pull request's commits.
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
