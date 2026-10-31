@@ -217,6 +217,22 @@ def scan(root, patterns):
     return out
 
 
+def split_identities(raw, fields):
+    """Return the identity header lines of a commit or tag object, and the text to scan.
+
+    Identities are read only from the header, which ends at the first blank line;
+    every message line is scanned as text, whatever word it starts with.
+    """
+    header, separator, message = raw.partition('\n\n')
+    identities, clean = [], []
+    for line in header.splitlines():
+        if line.startswith(fields):
+            identities.append(line.split(' ', 1)[1].rsplit(' ', 2)[0])
+        else:
+            clean.append(line)
+    return identities, clean + ([''] if separator else []) + message.splitlines()
+
+
 def scan_history(root, patterns):
     name = os.environ.get('RELEASE_AUTHOR_NAME')
     email = os.environ.get('RELEASE_AUTHOR_EMAIL')
@@ -226,14 +242,10 @@ def scan_history(root, patterns):
     findings, seen = [], set()
     for commit in git(root, 'rev-list', '--all').decode().splitlines():
         raw = git(root, 'cat-file', 'commit', commit).decode(errors='replace')
-        clean = []
-        for line in raw.splitlines():
-            if line.startswith(('author ', 'committer ')):
-                identity = line.split(' ', 1)[1].rsplit(' ', 2)[0]
-                if identity != expected:
-                    findings.append(f'{commit[:12]}: author/committer outside allowlist')
-            else:
-                clean.append(line)
+        identities, clean = split_identities(raw, ('author ', 'committer '))
+        for identity in identities:
+            if identity != expected:
+                findings.append(f'{commit[:12]}: author/committer outside allowlist')
         findings.extend(check_text(commit[:12] + ' [commit]', '\n'.join(clean), patterns))
         for entry in git(root, 'ls-tree', '-rz', commit).split(b'\0'):
             if not entry:
@@ -253,13 +265,10 @@ def scan_history(root, patterns):
         findings.extend(check_text('[ref]', refname, patterns))
         if kind == 'tag':
             text = git(root, 'cat-file', 'tag', oid).decode(errors='replace')
-            clean = []
-            for line in text.splitlines():
-                if line.startswith('tagger '):
-                    if line.split(' ', 1)[1].rsplit(' ', 2)[0] != expected:
-                        findings.append('[tag]: author outside allowlist')
-                else:
-                    clean.append(line)
+            identities, clean = split_identities(text, ('tagger ',))
+            for identity in identities:
+                if identity != expected:
+                    findings.append('[tag]: author outside allowlist')
             findings.extend(check_text('[tag]', '\n'.join(clean), patterns))
     return findings
 

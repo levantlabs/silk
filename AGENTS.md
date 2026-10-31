@@ -128,8 +128,9 @@ a pass and a preview check is never mistaken for a support guarantee.
 
 The fast suite must also run on a bare checkout. Tests that genuinely need a
 PDK or simulator carry `needs_pdk` / `needs_ngspice` from `tests/_env.py` and
-skip with a reason when that dependency is unavailable. CI runs both the bare
-profile and a configured sky130/ngspice matrix. A failure in the bare profile
+skip with a reason when that dependency is unavailable. CI runs the bare
+profile on every supported Python and the configured sky130/ngspice suite on
+Python 3.12. A failure in the bare profile
 usually means a new external dependency was not declared; do not hide it by
 installing the dependency in that job.
 
