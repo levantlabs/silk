@@ -25,10 +25,13 @@ on:
         type: boolean
         default: false
 
+# GitHub-hosted jobs use ubuntu-24.04: its ngspice package is 42, the version
+# silk validates. Later images ship ngspice 45.2, which loads the sky130
+# library several times more slowly (docs/known_issues.md).
 jobs:
   pytest-bare:
     name: Fast suite (no PDK or simulator)
-    runs-on: ${{ vars.SILK_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ vars.SILK_RUNNER || 'ubuntu-24.04' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -64,7 +67,7 @@ jobs:
   # .[dev]; a docs test that skips without Sphinx would skip everywhere.
   docs:
     name: API reference build (-W -n)
-    runs-on: ${{ vars.SILK_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ vars.SILK_RUNNER || 'ubuntu-24.04' }}
     env:
       SILK_SETTINGS: ""
       MPLBACKEND: Agg
@@ -87,7 +90,7 @@ jobs:
         run: python scripts/api_reference.py docs-build
 
   pytest:
-    runs-on: ${{ vars.SILK_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ vars.SILK_RUNNER || 'ubuntu-24.04' }}
     # Empty disables the silk settings file (docs/settings.md): locations come
     # from this workflow's environment only, never a runner's personal file.
     env:

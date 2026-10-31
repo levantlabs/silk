@@ -10,7 +10,7 @@ import pytest
 import yaml
 
 WORKFLOW = Path(__file__).resolve().parents[1] / '.github' / 'workflows' / 'tests.yml'
-RUNNER_EXPR = "${{ vars.SILK_RUNNER || 'ubuntu-latest' }}"
+RUNNER_EXPR = "${{ vars.SILK_RUNNER || 'ubuntu-24.04' }}"
 
 
 def test_every_job_runs_on_the_silk_runner_variable():
