@@ -887,3 +887,34 @@ Choose a placement with `top.get_test(name, instance=path)` for numeric reads
 when a child has several distinct results. Shared calibration parameters cannot
 accept conflicting placement measurements; reconciliation raises before writing
 any parameter.
+
+## The netlist viewer of a selected placement shows the latest run
+
+A selected test from `top.get_test(name, instance=path)` keeps its own
+placement's probes, metrics, specs, reports and `results_file`. Its `netlist`
+attribute, however, is the module shared by every placement, so
+`selected.netlist.view()` and `selected.netlist.load_signal()` read that
+module's most recent run, which can belong to another placement. For example,
+if placement `right` runs and then placement `left` runs, `right.netlist.view()`
+shows `left`'s waveforms without a warning. View a selected placement through
+its own rawfile, and read its signals through its probes:
+
+```python
+from silk.signals.view import emit_view
+
+emit_view(right.results_file, 'right.html')
+vout = right.probe('out')
+```
+
+## Running a prepared ngspice deck in another directory
+
+A deck from `tb.prepare()` usually ends with a `.control` block: `run`, a
+`write` of the rawfile to the path silk chose, and `quit`. ngspice's `-r`
+option does not replace that path, and a relative path is relative to the
+directory the simulator runs in. If the copied deck runs from another directory
+or machine, ngspice can exit 0 without writing a rawfile; its log names the
+original path with `No such file or directory`. Before running the copy, change
+its `write` line to the rawfile path you want, then pass that file to
+`tb.evaluate(corner, rawfile=path)`. A deck prepared with
+`save_device_currents` has no `.control` block; ngspice writes its rawfile to
+the path given with `-r`.

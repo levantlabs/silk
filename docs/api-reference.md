@@ -1229,6 +1229,10 @@ deck_path = tb.prepare(corner='tt')  # includes live inherited run settings
 report = tb.evaluate('tt', rawfile='/path/to/rawfile.raw')   # no simulator launched
 ```
 
+If the deck has a `.control` block, ngspice writes the rawfile to the path in
+its `write` line, and `-r` does not replace that path. Edit the line in the
+copied deck before running it; see [known issues](known_issues.md#running-a-prepared-ngspice-deck-in-another-directory).
+
 `report` has the same metrics, verdicts and test identity as evaluation after
 `run()`, but its conditions have external origin and caller-declared (or unknown)
 PVT. Usable real metrics record `Measurement(source='spice', corner='tt')`
