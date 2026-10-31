@@ -9,7 +9,6 @@ from silk.examples.ota_5t_guide import build_5t_ota
 from silk.pdk.basepdk import BasePDK
 from silk.circuit.modules import Module
 from silk import sources
-from tests._env import needs_pdk
 
 _PDK_YAML = os.path.join(os.path.dirname(__file__), '..', 'silk', 'pdk',
                          'data', 'skywater_130_device_details.yaml')
@@ -79,9 +78,6 @@ def test_generate_analysis_commands_full_block_unchanged():
         '*** AC analysis\n.ac dec 20 1 1G\n'
         '*** Noise analysis\n.noise v(vout,0) Vvinp dec 10 1 1G 1\n'
     )
-
-
-@needs_pdk
 
 
 def test_ota_5t_subckt_golden():

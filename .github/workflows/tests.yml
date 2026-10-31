@@ -4,8 +4,9 @@
 #
 # The fast suite has two enforced contracts: it runs on a bare checkout with
 # PDK/simulator-dependent tests skipped honestly, and it runs those tests in a
-# configured environment. The small bare job catches undeclared external
-# dependencies; the configured matrix supplies sky130 and ngspice for coverage.
+# configured environment. The bare jobs, one per supported Python, catch
+# undeclared external dependencies; the configured job supplies sky130 and
+# ngspice for coverage.
 name: Tests
 
 on:
@@ -29,9 +30,18 @@ on:
 # silk validates. Later images ship ngspice 45.2, which loads the sky130
 # library several times more slowly (docs/known_issues.md).
 jobs:
+  # Every supported Python runs the fast suite without a PDK or simulator.
+  # Simulator tests skip; deck emission, the goldens and saved simulator
+  # result files still exercise silk's own code on each version.
   pytest-bare:
-    name: Fast suite (no PDK or simulator)
+    name: Fast suite (no PDK or simulator, Python ${{ matrix.python-version }})
     runs-on: ${{ vars.SILK_RUNNER || 'ubuntu-24.04' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.10 is the declared floor (requires-python) and also tests the
+        # declared numpy floor; 3.13 is the declared ceiling of the classifiers.
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
       - uses: actions/checkout@v4
@@ -42,11 +52,18 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
           cache: pip
 
       - name: Install silk
         run: pip install -e ".[dev]"
+
+      # Floor leg: downgrade to the oldest numpy the metadata claims to
+      # support. Import-only smoke tests cannot catch a numpy-floor break
+      # (np.trapezoid fails at CALL time) — the full suite on this leg can.
+      - name: Pin numpy to the declared floor
+        if: matrix.python-version == '3.10'
+        run: pip install "numpy==1.26.4"
 
       - name: Run the fast suite without external EDA dependencies
         env:
@@ -89,21 +106,15 @@ jobs:
       - name: Check every manifest row is in the build
         run: python scripts/api_reference.py docs-build
 
+  # Simulations run in ngspice, which does not depend on the Python version,
+  # so the configured suite with ngspice and sky130 runs once, on Python 3.12.
   pytest:
+    name: Suite with ngspice and sky130 (Python 3.12)
     runs-on: ${{ vars.SILK_RUNNER || 'ubuntu-24.04' }}
     # Empty disables the silk settings file (docs/settings.md): locations come
     # from this workflow's environment only, never a runner's personal file.
     env:
       SILK_SETTINGS: ""
-    strategy:
-      fail-fast: false
-      matrix:
-        # 3.10 is the declared floor (requires-python) — its leg also pins
-        # numpy to the declared floor, so BOTH minimums are tested on every
-        # run instead of only having been verified by hand once (G3).
-        # 3.13 is the declared ceiling of the classifiers — tested here so the
-        # "supports 3.13" claim stays continuously verified, not just asserted.
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
       - uses: actions/checkout@v4
@@ -113,7 +124,7 @@ jobs:
           node-version: "22"
 
       # PDK installation needs Python >=3.11, independently of silk's floor.
-      # Set it up first so the matrix interpreter remains the default below.
+      # Set it up first so the suite interpreter remains the default below.
       - uses: actions/setup-python@v5
         id: pdk-python
         with:
@@ -121,7 +132,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.12"
           cache: pip
 
       # A self-hosted runner (repo variable SILK_RUNNER, see
@@ -165,13 +176,6 @@ jobs:
       - name: Install silk
         run: pip install -e ".[dev]"
 
-      # Floor leg: downgrade to the oldest numpy the metadata claims to
-      # support. Import-only smoke tests cannot catch a numpy-floor break
-      # (np.trapezoid fails at CALL time) — the full suite on this leg can.
-      - name: Pin numpy to the declared floor
-        if: matrix.python-version == '3.10'
-        run: pip install "numpy==1.26.4"
-
       - name: Run the suite
         env:
           MPLBACKEND: Agg
@@ -184,7 +188,7 @@ jobs:
       # preview check must not become a green support claim.
       # The core profile is worth running on main, but not on every PR.
       - name: Run the core slow integration tests
-        if: inputs.run_slow || (github.ref == 'refs/heads/main' && matrix.python-version == '3.12')
+        if: inputs.run_slow || github.ref == 'refs/heads/main'
         env:
           MPLBACKEND: Agg
         run: >-
