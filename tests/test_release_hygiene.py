@@ -159,6 +159,23 @@ def test_scan_history_and_author_allowlist(repo):
     assert result.returncode == 1
     assert 'author' in result.stdout
 
+def test_history_identities_come_from_headers_and_every_message_line_is_scanned(repo):
+    # A wrapped message line that starts with "committer" or "tagger" is text, not an identity.
+    git(repo, 'commit', '--allow-empty', '-qm', 'Workflow fix\n\nThe merge commit\ncommitter is GitHub here.')
+    git(repo, 'tag', '-a', 'v-test', '-m', 'Release fixture\n\ntagger line in the message')
+    assert scan(repo, '', '--history').returncode == 0
+    # The same lines are still scanned for private names.
+    git(repo, 'commit', '--allow-empty', '-qm', 'Fixture\n\nauthor syntheticmarker wrote this.')
+    result = scan(repo, 'syntheticmarker', '--history')
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert '[commit]:6: private-name' in result.stdout
+    git(repo, 'reset', '-q', '--hard', 'HEAD~1')
+    git(repo, 'tag', '-d', 'v-test')
+    git(repo, 'tag', '-a', 'v-test', '-m', 'Release fixture\n\ntagger syntheticmarker')
+    result = scan(repo, 'syntheticmarker', '--history')
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert '[tag]:7: private-name' in result.stdout
+
 def test_link_check_angle_brackets_references_images_and_docstrings(tmp_path):
     (tmp_path / 'README.md').write_text('[bad](<docs/missing file.md>)\n![image](missing.png)\n[ref][target]\n[target]: <docs/other missing.md>\n')
     (tmp_path / 'code.py').write_text('"""See docs/absent.md."""')
