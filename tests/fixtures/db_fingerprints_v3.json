@@ -1,0 +1,101 @@
+{
+  "cases": {
+    "original": {
+      "hierarchy": [
+        {
+          "instance_name": "stage",
+          "module_type": "root",
+          "parameters": {},
+          "ports": {
+            "a": "a",
+            "b": "b",
+            "vss": "vss"
+          }
+        },
+        {
+          "instance_name": "stage.u",
+          "module_type": "leaf",
+          "parameters": {},
+          "ports": {
+            "a": "a",
+            "b": "b",
+            "vss": "vss"
+          }
+        }
+      ],
+      "module_digest": "9c154804d6ac2202975716b7385487f4dee385a6a0d2b81361c8bea8bcfaa433",
+      "module_payload": {
+        "devices": [],
+        "nets": [
+          "a",
+          "b",
+          "vss"
+        ],
+        "passives": [],
+        "submodules": {
+          "stage": {
+            "hash": "4a41407037d26bc5fbdaa208e5086185cefac7adee65ef91e2f60915e83d6957",
+            "instance_name": "stage",
+            "module_type": "root",
+            "parameters": {},
+            "ports": {
+              "a": "a",
+              "b": "b",
+              "vss": "vss"
+            }
+          }
+        }
+      },
+      "structure_digest": "8f6456692c84b1714f4d23ee65da5288208008736199ac3117c8bfd6a55bfcbe"
+    },
+    "rewired": {
+      "hierarchy": [
+        {
+          "instance_name": "stage",
+          "module_type": "root",
+          "parameters": {},
+          "ports": {
+            "a": "a",
+            "b": "b",
+            "vss": "vss"
+          }
+        },
+        {
+          "instance_name": "stage.u",
+          "module_type": "leaf",
+          "parameters": {},
+          "ports": {
+            "a": "b",
+            "b": "a",
+            "vss": "vss"
+          }
+        }
+      ],
+      "module_digest": "b2941d6604ed77dc77cef78feaf6839fb5ecbda2ab79f5dfe1860905ada9dade",
+      "module_payload": {
+        "devices": [],
+        "nets": [
+          "a",
+          "b",
+          "vss"
+        ],
+        "passives": [],
+        "submodules": {
+          "stage": {
+            "hash": "5279f5b75efdfcacbc6dc303121fe24a40e77f5d5cd715c7da6c4eccd852d459",
+            "instance_name": "stage",
+            "module_type": "root",
+            "parameters": {},
+            "ports": {
+              "a": "a",
+              "b": "b",
+              "vss": "vss"
+            }
+          }
+        }
+      },
+      "structure_digest": "718a1c9ee0c8d64ee19d85eeffb4f10e6142c2463215013df73b7a9caaddfc5f"
+    }
+  },
+  "structure_scheme": "silk.structure/v3"
+}

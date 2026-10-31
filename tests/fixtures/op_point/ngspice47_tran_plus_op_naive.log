@@ -1,0 +1,49 @@
+
+Note: No compatibility mode selected!
+
+
+Circuit: * task-330.3 probe q5: op() declared alongside transient() (both netlist-level
+
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using SPARSE 1.3 as Direct Linear Solver
+
+No. of Data Rows : 1
+
+Initial Transient Solution
+--------------------------
+
+Node                                   Voltage
+----                                   -------
+vdn                                          1
+vgn                                          1
+vdn#branch                        -6.94215e-05
+vgn#branch                                   0
+
+
+No. of Data Rows : 59
+binary raw file "ngspice47_tran_plus_op_naive.raw"
+binary raw file "ngspice47_tran_plus_op_naive.raw"
+Here are the vectors currently active:
+
+Title: * task-330.3 probe q5: op() declared alongside transient() (both netlist-level
+Name: tran1 (Transient Analysis)
+Date: Sun Sep 27 16:47:53  2026
+
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[gm]: admittance, real, 59 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[id]: current, real, 59 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[vth]: voltage, real, 59 long
+    m.xdut.xmmmn.msky130_fd_pr__nfet_01v8#body: voltage, real, 59 long
+    m.xdut.xmmmn.msky130_fd_pr__nfet_01v8#dbody: voltage, real, 59 long
+    m.xdut.xmmmn.msky130_fd_pr__nfet_01v8#sbody: voltage, real, 59 long
+    time                : time, real, 59 long [default scale]
+    vdn                 : voltage, real, 59 long
+    vdn#branch          : current, real, 59 long
+    vgn                 : voltage, real, 59 long
+    vgn#branch          : current, real, 59 long
+List of plots available:
+
+Current tran1	* task-330.3 probe q5: op() declared alongside transient() (both netlist-level (Transient Analysis)
+	op1	* task-330.3 probe q5: op() declared alongside transient() (both netlist-level (Operating Point)
+	const	Constant values (constants)
+ngspice-47 done

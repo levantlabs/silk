@@ -1,0 +1,580 @@
+{
+ "version": 1,
+ "note": "Selector semantics of silk.signals.view.select.matches_selector (TASK-530). names: the vector inventory; signals/exclude: selector lists; expect: kept names in order, or {refuses: error type}. Xyce raw hierarchy uses colon separators; bare selectors use dotted paths, blocks or leaves (TASK-531).",
+ "names": [
+  "v(d[0])",
+  "v(d<0>)",
+  "i(vbias<0>)",
+  "i(vbias<1>)",
+  "v(out)",
+  "v(xdut.out)",
+  "i(vb)",
+  "i(xdut.vb)",
+  "v(xx1<0>.xxy<1>.g[0])",
+  "v(xx1<0>.xxy<1>.g<0>)",
+  "v(xx1<1>.xxy<1>.g[0])",
+  "v(xx1<0>.xxy<1>.g[1])"
+ ],
+ "cases": [
+  {
+   "id": "block-bare",
+   "kind": "role-block",
+   "expect": [
+    "v(xx1<0>.xxy<1>.g[0])",
+    "v(xx1<0>.xxy<1>.g<0>)",
+    "v(xx1<0>.xxy<1>.g[1])"
+   ],
+   "signals": [
+    "xx1[0]"
+   ]
+  },
+  {
+   "id": "block-bare-angle",
+   "kind": "role-block",
+   "expect": [
+    "v(xx1<0>.xxy<1>.g[0])",
+    "v(xx1<0>.xxy<1>.g<0>)",
+    "v(xx1<0>.xxy<1>.g[1])"
+   ],
+   "signals": [
+    "xx1<0>"
+   ]
+  },
+  {
+   "id": "block-two",
+   "kind": "role-block",
+   "expect": [
+    "v(xx1<0>.xxy<1>.g[0])",
+    "v(xx1<0>.xxy<1>.g<0>)",
+    "v(xx1<0>.xxy<1>.g[1])"
+   ],
+   "signals": [
+    "xx1[0].xxy[1]"
+   ]
+  },
+  {
+   "id": "block-wildcard",
+   "kind": "role-block",
+   "expect": [
+    "v(xx1<0>.xxy<1>.g[0])",
+    "v(xx1<0>.xxy<1>.g<0>)",
+    "v(xx1<1>.xxy<1>.g[0])",
+    "v(xx1<0>.xxy<1>.g[1])"
+   ],
+   "signals": [
+    "xx1[*]"
+   ]
+  },
+  {
+   "id": "branch-bare",
+   "kind": "role-branch",
+   "expect": [
+    "i(vbias<0>)"
+   ],
+   "signals": [
+    "vbias[0]"
+   ]
+  },
+  {
+   "id": "branch-wildcard",
+   "kind": "role-branch",
+   "expect": [
+    "i(vbias<0>)",
+    "i(vbias<1>)"
+   ],
+   "signals": [
+    "vbias[*]"
+   ]
+  },
+  {
+   "id": "wrapped-v-full-name-only",
+   "kind": "wrapped",
+   "expect": [
+    "v(out)"
+   ],
+   "signals": [
+    "v(out)"
+   ]
+  },
+  {
+   "id": "wrapped-i-full-name-only",
+   "kind": "wrapped",
+   "expect": [
+    "i(vb)"
+   ],
+   "signals": [
+    "i(vb)"
+   ]
+  },
+  {
+   "id": "wrapped-i-array",
+   "kind": "wrapped",
+   "expect": [
+    "i(vbias<0>)"
+   ],
+   "signals": [
+    "i(vbias[0])"
+   ]
+  },
+  {
+   "id": "wrapped-v-array-path",
+   "kind": "wrapped",
+   "expect": [
+    "v(xx1<0>.xxy<1>.g[0])"
+   ],
+   "signals": [
+    "v(xx1[0].xxy[1].g[0])"
+   ]
+  },
+  {
+   "id": "bare-keeps-nesting",
+   "kind": "bare",
+   "expect": [
+    "v(out)",
+    "v(xdut.out)"
+   ],
+   "signals": [
+    "out"
+   ]
+  },
+  {
+   "id": "bare-full-path",
+   "kind": "bare",
+   "expect": [
+    "v(xx1<0>.xxy<1>.g[0])"
+   ],
+   "signals": [
+    "xx1[0].xxy[1].g[0]"
+   ]
+  },
+  {
+   "id": "union-two-readings",
+   "kind": "union",
+   "expect": [
+    "v(d[0])",
+    "i(vbias<0>)"
+   ],
+   "signals": [
+    "d[0]",
+    "vbias[0]"
+   ]
+  },
+  {
+   "id": "exclude-wrapped",
+   "kind": "exclude",
+   "expect": [
+    "v(d[0])",
+    "v(d<0>)",
+    "i(vbias<0>)",
+    "i(vbias<1>)",
+    "v(xdut.out)",
+    "i(vb)",
+    "i(xdut.vb)",
+    "v(xx1<0>.xxy<1>.g[0])",
+    "v(xx1<0>.xxy<1>.g<0>)",
+    "v(xx1<1>.xxy<1>.g[0])",
+    "v(xx1<0>.xxy<1>.g[1])"
+   ],
+   "exclude": [
+    "v(out)"
+   ]
+  },
+  {
+   "id": "exclude-both-readings",
+   "kind": "exclude",
+   "expect": [
+    "v(d[0])",
+    "v(d<0>)",
+    "i(vbias<1>)",
+    "v(out)",
+    "v(xdut.out)",
+    "i(vb)",
+    "i(xdut.vb)",
+    "v(xx1<1>.xxy<1>.g[0])"
+   ],
+   "exclude": [
+    "xx1[0]",
+    "vbias[0]"
+   ]
+  },
+  {
+   "id": "literal-leaf-d0",
+   "kind": "literal-leaf",
+   "expect": [
+    "v(d[0])"
+   ],
+   "signals": [
+    "d[0]"
+   ]
+  },
+  {
+   "id": "literal-leaf-nested",
+   "kind": "literal-leaf",
+   "expect": [
+    "v(xx1<0>.xxy<1>.g[0])",
+    "v(xx1<1>.xxy<1>.g[0])"
+   ],
+   "signals": [
+    "g[0]"
+   ]
+  },
+  {
+   "id": "literal-angle-leaf",
+   "kind": "literal-leaf",
+   "expect": [
+    "v(xx1<0>.xxy<1>.g<0>)"
+   ],
+   "signals": [
+    "g<0>"
+   ]
+  },
+  {
+   "id": "literal-leaf-wildcard",
+   "kind": "literal-leaf",
+   "expect": [
+    "v(d[0])"
+   ],
+   "signals": [
+    "d[*]"
+   ]
+  },
+  {
+   "id": "unknown-form-ampersand",
+   "kind": "unknown-form",
+   "expect": {
+    "refuses": "SelectorNotFoundError"
+   },
+   "signals": [
+    "xx1[0]&foo"
+   ]
+  },
+  {
+   "id": "unknown-form-newline",
+   "kind": "unknown-form",
+   "expect": {
+    "refuses": "SelectorNotFoundError"
+   },
+   "signals": [
+    "xx1[0]\nfoo"
+   ]
+  },
+  {
+   "id": "char-class-range",
+   "kind": "char-class",
+   "expect": {
+    "refuses": "SelectorNotFoundError"
+   },
+   "signals": [
+    "v(d[0-9])"
+   ]
+  },
+  {
+   "id": "char-class-negation",
+   "kind": "char-class",
+   "expect": {
+    "refuses": "SelectorNotFoundError"
+   },
+   "signals": [
+    "v(d[!0])"
+   ]
+  },
+  {
+   "id": "xyce-wrapped-bracket",
+   "kind": "xyce-wrapped-colon",
+   "expect": [
+    "V(XX1<0>:XXY<1>:G[0])"
+   ],
+   "signals": [
+    "v(xx1[0]:xxy[1]:g[0])"
+   ],
+   "names": [
+    "V(D[0])",
+    "V(XX1<0>:XXY<1>:G[0])",
+    "V(XX1<1>:XXY<1>:G[0])"
+   ]
+  },
+  {
+   "id": "xyce-wrapped-angle",
+   "kind": "xyce-wrapped-colon",
+   "expect": [
+    "V(XX1<0>:XXY<1>:G[0])"
+   ],
+   "signals": [
+    "v(xx1<0>:xxy<1>:g[0])"
+   ],
+   "names": [
+    "V(D[0])",
+    "V(XX1<0>:XXY<1>:G[0])",
+    "V(XX1<1>:XXY<1>:G[0])"
+   ]
+  },
+  {
+   "id": "xyce-wrapped-index-wildcard",
+   "kind": "xyce-wrapped-colon",
+   "expect": [
+    "V(XX1<0>:XXY<1>:G[0])",
+    "V(XX1<1>:XXY<1>:G[0])"
+   ],
+   "signals": [
+    "v(xx1[*]:xxy[1]:g[0])"
+   ],
+   "names": [
+    "V(D[0])",
+    "V(XX1<0>:XXY<1>:G[0])",
+    "V(XX1<1>:XXY<1>:G[0])"
+   ]
+  },
+  {
+   "id": "xyce-top-leaf",
+   "kind": "xyce-wrapped-colon",
+   "expect": [
+    "V(D[0])"
+   ],
+   "signals": [
+    "d[0]"
+   ],
+   "names": [
+    "V(D[0])",
+    "V(XX1<0>:XXY<1>:G[0])",
+    "V(XX1<1>:XXY<1>:G[0])"
+   ]
+  },
+  {
+   "id": "literal-and-converted-readings-hit-distinct-rows",
+   "kind": "union",
+   "signals": [
+    "vb[0]"
+   ],
+   "names": [
+    "i(vb<0>)",
+    "v(xdut.vb[0])",
+    "i(vb<1>)",
+    "v(xdut.vb<0>)"
+   ],
+   "expect": [
+    "i(vb<0>)",
+    "v(xdut.vb[0])"
+   ]
+  },
+  {
+   "id": "xyce-signals-xx1[0].xxy[1].g[0]",
+   "kind": "xyce-hierarchy",
+   "names": [
+    "V(XX1<0>:XXY<1>:G[0])",
+    "V(XX1<1>:XXY<1>:G[0])",
+    "V(XX1<0>:XXY<1>:G<0>)"
+   ],
+   "signals": [
+    "xx1[0].xxy[1].g[0]"
+   ],
+   "expect": [
+    "V(XX1<0>:XXY<1>:G[0])"
+   ]
+  },
+  {
+   "id": "xyce-exclude-xx1[0].xxy[1].g[0]",
+   "kind": "xyce-hierarchy",
+   "names": [
+    "V(XX1<0>:XXY<1>:G[0])",
+    "V(XX1<1>:XXY<1>:G[0])",
+    "V(XX1<0>:XXY<1>:G<0>)"
+   ],
+   "exclude": [
+    "xx1[0].xxy[1].g[0]"
+   ],
+   "expect": [
+    "V(XX1<1>:XXY<1>:G[0])",
+    "V(XX1<0>:XXY<1>:G<0>)"
+   ]
+  },
+  {
+   "id": "xyce-signals-xx1<0>.xxy<1>.g[0]",
+   "kind": "xyce-hierarchy",
+   "names": [
+    "V(XX1<0>:XXY<1>:G[0])",
+    "V(XX1<1>:XXY<1>:G[0])",
+    "V(XX1<0>:XXY<1>:G<0>)"
+   ],
+   "signals": [
+    "xx1<0>.xxy<1>.g[0]"
+   ],
+   "expect": [
+    "V(XX1<0>:XXY<1>:G[0])"
+   ]
+  },
+  {
+   "id": "xyce-exclude-xx1<0>.xxy<1>.g[0]",
+   "kind": "xyce-hierarchy",
+   "names": [
+    "V(XX1<0>:XXY<1>:G[0])",
+    "V(XX1<1>:XXY<1>:G[0])",
+    "V(XX1<0>:XXY<1>:G<0>)"
+   ],
+   "exclude": [
+    "xx1<0>.xxy<1>.g[0]"
+   ],
+   "expect": [
+    "V(XX1<1>:XXY<1>:G[0])",
+    "V(XX1<0>:XXY<1>:G<0>)"
+   ]
+  },
+  {
+   "id": "xyce-signals-xx1[0]",
+   "kind": "xyce-hierarchy",
+   "names": [
+    "V(XX1<0>:XXY<1>:G[0])",
+    "V(XX1<1>:XXY<1>:G[0])",
+    "V(XX1<0>:XXY<1>:G<0>)"
+   ],
+   "signals": [
+    "xx1[0]"
+   ],
+   "expect": [
+    "V(XX1<0>:XXY<1>:G[0])",
+    "V(XX1<0>:XXY<1>:G<0>)"
+   ]
+  },
+  {
+   "id": "xyce-exclude-xx1[0]",
+   "kind": "xyce-hierarchy",
+   "names": [
+    "V(XX1<0>:XXY<1>:G[0])",
+    "V(XX1<1>:XXY<1>:G[0])",
+    "V(XX1<0>:XXY<1>:G<0>)"
+   ],
+   "exclude": [
+    "xx1[0]"
+   ],
+   "expect": [
+    "V(XX1<1>:XXY<1>:G[0])"
+   ]
+  },
+  {
+   "id": "xyce-signals-g[0]",
+   "kind": "xyce-hierarchy",
+   "names": [
+    "V(XX1<0>:XXY<1>:G[0])",
+    "V(XX1<1>:XXY<1>:G[0])",
+    "V(XX1<0>:XXY<1>:G<0>)"
+   ],
+   "signals": [
+    "g[0]"
+   ],
+   "expect": [
+    "V(XX1<0>:XXY<1>:G[0])",
+    "V(XX1<1>:XXY<1>:G[0])"
+   ]
+  },
+  {
+   "id": "xyce-exclude-g[0]",
+   "kind": "xyce-hierarchy",
+   "names": [
+    "V(XX1<0>:XXY<1>:G[0])",
+    "V(XX1<1>:XXY<1>:G[0])",
+    "V(XX1<0>:XXY<1>:G<0>)"
+   ],
+   "exclude": [
+    "g[0]"
+   ],
+   "expect": [
+    "V(XX1<0>:XXY<1>:G<0>)"
+   ]
+  },
+  {
+   "id": "unicode-question-astral-emoji",
+   "kind": "unicode-question",
+   "names": [
+    "v(😀)",
+    "v(z)",
+    "v(anchor)"
+   ],
+   "signals": [
+    "v(?)"
+   ],
+   "expect": [
+    "v(😀)",
+    "v(z)"
+   ],
+   "match": {
+    "name": "v(😀)",
+    "selector": "v(?)",
+    "expected": true
+   },
+   "exclude_expect": [
+    "v(anchor)"
+   ]
+  },
+  {
+   "id": "unicode-question-astral-letter",
+   "kind": "unicode-question",
+   "names": [
+    "v(𝐀)",
+    "v(z)",
+    "v(anchor)"
+   ],
+   "signals": [
+    "v(?)"
+   ],
+   "expect": [
+    "v(𝐀)",
+    "v(z)"
+   ],
+   "match": {
+    "name": "v(𝐀)",
+    "selector": "v(?)",
+    "expected": true
+   },
+   "exclude_expect": [
+    "v(anchor)"
+   ]
+  },
+  {
+   "id": "unicode-question-bmp-letter",
+   "kind": "unicode-question",
+   "names": [
+    "v(é)",
+    "v(z)",
+    "v(anchor)"
+   ],
+   "signals": [
+    "v(?)"
+   ],
+   "expect": [
+    "v(é)",
+    "v(z)"
+   ],
+   "match": {
+    "name": "v(é)",
+    "selector": "v(?)",
+    "expected": true
+   },
+   "exclude_expect": [
+    "v(anchor)"
+   ]
+  },
+  {
+   "id": "unicode-question-two-characters",
+   "kind": "unicode-question",
+   "names": [
+    "v(ab)",
+    "v(z)",
+    "v(anchor)"
+   ],
+   "signals": [
+    "v(?)"
+   ],
+   "expect": [
+    "v(z)"
+   ],
+   "match": {
+    "name": "v(ab)",
+    "selector": "v(?)",
+    "expected": false
+   },
+   "exclude_expect": [
+    "v(ab)",
+    "v(anchor)"
+   ]
+  }
+ ]
+}

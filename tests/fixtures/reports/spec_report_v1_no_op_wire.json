@@ -1,0 +1,209 @@
+{
+  "test_name": "bias",
+  "module_name": "mirror",
+  "owner_path": "$/left",
+  "report_key": "$/left:mirror.bias",
+  "parameters": {
+    "ratio": 2
+  },
+  "corner": "tt",
+  "rawfile_path": "missing/runs/tt/bias.raw",
+  "metric_errors": {
+    "gain": {
+      "message": "missing signal",
+      "exception_type": "ValueError",
+      "available_signals": [
+        "time",
+        "v(out)"
+      ]
+    }
+  },
+  "behavioral_elements": [
+    "rload: ignored load"
+  ],
+  "storage": {
+    "metrics_stored": 7,
+    "specs_stored": 2,
+    "skipped": {},
+    "cached": false
+  },
+  "op_devices": null,
+  "format": "silk.spec-report",
+  "schema_version": 1,
+  "characterization_context": {
+    "owner_path": "$/left",
+    "test_name": "bias",
+    "parameters": {
+      "ratio": 2
+    },
+    "corner": "tt",
+    "temperature": 27.0,
+    "voltage": {
+      "state": "none"
+    }
+  },
+  "operating_conditions": {
+    "origin": "external",
+    "backend": "ngspice",
+    "corner": "tt",
+    "temperature_kind": "fixed",
+    "temperature_c": 27,
+    "temperature_basis": "caller-declared",
+    "temperature_sweep": null,
+    "supply_voltage_v": null,
+    "supply_basis": "caller-declared",
+    "supply_source": null,
+    "corner_kind": "fixed",
+    "corner_basis": "caller-declared",
+    "supply_kind": "none"
+  },
+  "metrics": {
+    "reference_current_A": 1e-05,
+    "gain": "Error: missing signal",
+    "first": {
+      "value": null,
+      "status": "unavailable"
+    },
+    "second": {
+      "value": null,
+      "status": "unavailable"
+    },
+    "nan": {
+      "value": null,
+      "status": "unavailable"
+    },
+    "positive": {
+      "value": null,
+      "status": "infinite",
+      "sign": "+"
+    },
+    "negative": {
+      "value": null,
+      "status": "infinite",
+      "sign": "-"
+    },
+    "complex": {
+      "status": "complex",
+      "re": -0.0,
+      "im": {
+        "value": null,
+        "status": "infinite",
+        "sign": "+"
+      }
+    },
+    "literal": {
+      "value": {
+        "status": "complex",
+        "re": 1,
+        "im": 2
+      },
+      "status": "literal"
+    }
+  },
+  "metric_types": {
+    "reference_current_A": "average",
+    "gain": null,
+    "first": "average",
+    "second": "average",
+    "nan": null,
+    "positive": null,
+    "negative": null,
+    "complex": null,
+    "literal": null
+  },
+  "metric_warnings": {
+    "first": [
+      {
+        "metric": "average",
+        "code": "unavailable",
+        "message": "first unavailable",
+        "details": {
+          "value": {
+            "value": null,
+            "status": "unavailable"
+          }
+        },
+        "suggestion": "Inspect the signal.",
+        "output": "first"
+      }
+    ],
+    "second": [
+      {
+        "metric": "average",
+        "code": "unavailable",
+        "message": "second unavailable",
+        "details": {
+          "value": {
+            "value": null,
+            "status": "unavailable"
+          }
+        },
+        "suggestion": "Inspect the signal.",
+        "output": "second"
+      }
+    ]
+  },
+  "op_unavailable_reason": "Device parameters were not captured.",
+  "provenance": {
+    "run_origin": "external-rawfile",
+    "silk_version": "0.2.0",
+    "silk_git": "fixture",
+    "python_version": "3.12.3",
+    "numpy_version": "2.5.3",
+    "simulator": "ngspice",
+    "simulator_binary": null,
+    "simulator_binary_source": null,
+    "simulator_version": null,
+    "pdk_name": "sky130",
+    "pdk_libraries": [
+      {
+        "file": "models.lib",
+        "section": "tt",
+        "file_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "section_text_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    ],
+    "corner": "tt",
+    "corner_kind": "fixed",
+    "temperature_c": 27.0,
+    "temperature_kind": "fixed",
+    "supply_voltage_v": null,
+    "supply_kind": "none",
+    "simulator_options": {
+      "reltol": 0.001
+    },
+    "save_list": {
+      "voltage": [
+        "out"
+      ]
+    },
+    "deck_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "seed": 42,
+    "seedinfo": "fixture",
+    "timestamp_utc": "2026-10-06T00:00:00Z",
+    "scheme": "silk.provenance/v2"
+  },
+  "results": [
+    {
+      "name": "current lower bound",
+      "metric_name": "reference_current_A",
+      "op": ">=",
+      "target": 1e-06,
+      "value": 1e-05,
+      "passed": true,
+      "spec_key": "current_min",
+      "owner_path": "$/left"
+    },
+    {
+      "name": "current upper bound",
+      "metric_name": "reference_current_A",
+      "op": "<",
+      "target": 1e-06,
+      "value": 1e-05,
+      "passed": false,
+      "spec_key": null,
+      "owner_path": null
+    }
+  ],
+  "passed": false
+}

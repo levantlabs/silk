@@ -1,0 +1,5 @@
+Simulation aborted due to error.  There are 0 MSG_FATAL errors and 1 MSG_ERROR
+ errors
+
+
+*** Xyce Abort ***

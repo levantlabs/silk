@@ -1,0 +1,57 @@
+{
+  "created": "2026-08-11T14:02:11Z",
+  "generator": "silk.signals.view",
+  "run": {
+    "source": "sim/rawfile.raw",
+    "state_key": "a71e0c93",
+    "title": "5T OTA — transient"
+  },
+  "silkview": 1,
+  "view": {
+    "activePlot": 1,
+    "cols": 2,
+    "filter": "",
+    "plots": {
+      "1": {
+        "cursors": [
+          1.2e-08,
+          4.5e-08
+        ],
+        "expanded": [
+          "m",
+          "m.xdut",
+          "m.xdut.xmmout"
+        ],
+        "markers": [
+          {
+            "color": "#e0575a",
+            "name": "t_settle",
+            "x": 3.1e-08
+          }
+        ],
+        "panels": [
+          {
+            "signals": [
+              "v(vout)",
+              "v(vin)"
+            ],
+            "yMode": "linear"
+          },
+          {
+            "signals": [
+              "i(vvdd)"
+            ],
+            "yMode": "log"
+          }
+        ],
+        "xLog": false,
+        "xRange": [
+          0.0,
+          1e-07
+        ]
+      }
+    },
+    "treeMode": true,
+    "v": 1
+  }
+}

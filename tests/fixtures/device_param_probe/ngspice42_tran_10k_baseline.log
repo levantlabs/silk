@@ -1,0 +1,85 @@
+Using SPARSE 1.3 as Direct Linear Solver
+
+Note: No compatibility mode selected!
+
+
+Circuit: *** circuit: top.cir
+
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+
+Initial Transient Solution
+--------------------------
+
+Node                                   Voltage
+----                                   -------
+d0                                           1
+g                                            1
+d1                                           1
+d2                                           1
+d3                                           1
+d4                                           1
+d5                                           1
+d6                                           1
+d7                                           1
+d8                                           1
+d9                                           1
+d10                                          1
+d11                                          1
+d12                                          1
+d13                                          1
+d14                                          1
+d15                                          1
+d16                                          1
+d17                                          1
+d18                                          1
+d19                                          1
+vvd19#branch                      -6.94215e-05
+vvd18#branch                      -6.94215e-05
+vvd17#branch                      -6.94215e-05
+vvd16#branch                      -6.94215e-05
+vvd15#branch                      -6.94215e-05
+vvd14#branch                      -6.94215e-05
+vvd13#branch                      -6.94215e-05
+vvd12#branch                      -6.94215e-05
+vvd11#branch                      -6.94215e-05
+vvd10#branch                      -6.94215e-05
+vvd9#branch                       -6.94215e-05
+vvd8#branch                       -6.94215e-05
+vvd7#branch                       -6.94215e-05
+vvd6#branch                       -6.94215e-05
+vvd5#branch                       -6.94215e-05
+vvd4#branch                       -6.94215e-05
+vvd3#branch                       -6.94215e-05
+vvd2#branch                       -6.94215e-05
+vvd1#branch                       -6.94215e-05
+vvd0#branch                       -6.94215e-05
+vvg#branch                                   0
+
+ Reference value :  0.00000e+00 Reference value :  6.57428e-05
+No. of Data Rows : 10008
+binary raw file "tran_10k_baseline.raw"
+ngspice-42 done
+	Command being timed: "/usr/bin/ngspice -b tran_10k_baseline.sp"
+	User time (seconds): 6.94
+	System time (seconds): 0.20
+	Percent of CPU this job got: 101%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:07.03
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 371108
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 91920
+	Voluntary context switches: 2
+	Involuntary context switches: 353
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 16136
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

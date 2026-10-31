@@ -1,0 +1,8 @@
+.subckt diff_pair VDD VSS VBIAS VIN_P VIN_M VOUT_P VOUT_N 
+*** M1.  Connections = ['d', 'g', 's', 'b'].
+XMM1 VOUT_N VIN_P tail VSS sky130_fd_pr__nfet_01v8 m=1 w=2 l=0.5
+*** M2.  Connections = ['d', 'g', 's', 'b'].
+XMM2 VOUT_P VIN_M tail VSS sky130_fd_pr__nfet_01v8 m=1 w=2 l=0.5
+*** M_tail.  Connections = ['d', 'g', 's', 'b'].
+XMM_tail tail VBIAS VSS VSS sky130_fd_pr__nfet_01v8 m=1 w=4 l=1
+.ends

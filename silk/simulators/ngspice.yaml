@@ -1,0 +1,170 @@
+---
+# ngspice simulator configuration.
+#
+# Used by silk to render simulator-specific options (.options lines, save
+# directives, etc.) into a netlist without hard-coding ngspice-isms in the
+# core netlister. Adding another simulator = adding another YAML in this
+# directory (silk/simulators/<name>.yaml).
+
+name: ngspice
+
+# How to render a dict of options into netlist lines.
+#   - `line_format`: one substitution, `{options}`.
+#   - `kv_format`:   one substitution per key/value.
+#   - `separator`:   joins consecutive kv pairs in a single line.
+#   - `option_line_formats`: optional per-key overrides of `line_format`, for a
+#     simulator that files some options under a different options package. Not
+#     needed here — ngspice has one `.options` namespace — see xyce.yaml, where
+#     TEMP must reach the DEVICE package.
+emit:
+  line_format: ".options {options}"
+  kv_format: "{key}={value}"
+  separator: " "
+
+# Literal netlist line that makes the simulator save per-device terminal
+# currents into the rawfile. Emitted by silk only when
+# Module.save_device_currents is True (spec 2026-07-03 §4). Simulators without
+# an equivalent omit this key; silk then warns and emits nothing.
+device_current_save_directive: ".options savecurrents"
+
+# How this simulator obtains per-device TERMINAL currents when
+# Module.save_device_currents is True (spec: MOS-terminal-currents backlog).
+#   savecurrents    - ngspice .options savecurrents. Cheap, but for BSIM4/sky130
+#                     devices it only populates the drain @m[id]; source/gate/
+#                     bulk read 0. Default (preserves existing behaviour).
+#   ammeter_wrapper - wrap each device in a subckt carrying 0 V series ammeters
+#                     on every terminal; terminal current = i(v.x<inst>.vamm_*).
+#                     Simulator-independent (works for any model), uniform sign,
+#                     no polarity/drain-only limitation. Set per-Module via
+#                     Module.terminal_current_method to override this default.
+terminal_current_method: savecurrents
+
+# Portable preset names. The same names should appear in every simulator's
+# YAML, mapped to whatever that simulator needs. Users express intent via
+# `preset='tight'`; each simulator's YAML translates it.
+presets:
+  default: {}
+  tight:
+    reltol: 1e-5
+    abstol: 1e-12
+    vntol: 1e-8
+    chgtol: 1e-16
+    trtol: 1
+    method: gear
+    maxord: 2
+  fast:
+    reltol: 1e-3
+    abstol: 1e-12
+    method: trap
+
+# Allowlist of option keys this simulator understands. Used to warn on
+# typos / invalid keys. Not a hard error — ngspice itself will complain
+# if a key is truly unsupported, so this is only a nudge.
+known_options:
+  - reltol
+  - abstol
+  - vntol
+  - chgtol
+  - pivtol
+  - pivrel
+  - trtol
+  - method
+  - maxord
+  - gmin
+  - temp
+  - tnom
+  - sparse
+  - itl1
+  - itl2
+  - itl3
+  - itl4
+  - itl5
+  - noinit
+  - savecurrents
+  - seed
+
+# Release tokens are strings, compared numerically by simulation._ngspice_compat.
+# since: first release with a feature; bugs use since (null = all known
+# releases) and fixed_in (null = unfixed). Sources refer to upstream release
+# NEWS or the named upstream commit, never to a distro package version.
+version_policy:
+  minimum: '42'
+  # Exact verified tokens: preserve TASK-537's refusal until TASK-545 measures
+  # and implements the later AM/SFFM forms. This is silk policy, not a feature.
+  waveforms_verified: ['42']
+  behaviours:
+    am_new_order:
+      kind: feature
+      since: '43'
+      description: 'AM order VO VMO VMA FM FC TD PHASEM PHASEC'
+      source: 'ngspice-43 NEWS: Update the AM voltage/current sources; commit 2af390f0b, src/spicelib/devices/vsrc/vsrcload.c'
+    sffm_modulator_first:
+      kind: feature
+      since: '43'
+      description: 'SFFM order VO VA FM MDI FC TD PHASEM PHASEC (superseded by sffm_carrier_first)'
+      source: 'ngspice-43 tag commit 2af390f0b, src/spicelib/devices/vsrc/vsrcload.c, SFFM case'
+    sffm_carrier_first:
+      kind: feature
+      since: '46'
+      description: 'SFFM order VO VA FC MDI FM TD PHASEM PHASEC'
+      source: 'ngspice-46 NEWS: FM and FC exchange place in the parameter sequence of SFFM v and i source'
+    save_nosub:
+      kind: feature
+      since: '43'
+      description: 'save nosub suppresses subcircuit node vectors'
+      source: "ngspice-43 NEWS: Add .save nosub to suppress storing the node vectors from inside of subcircuits"
+    osdi_v04:
+      kind: feature
+      since: '44'
+      description: 'OSDI v0.4 plugins accepted when OSDI is compiled in'
+      source: 'ngspice-44 tag commit 01a153c9a, src/osdi/osdiregistry.c, OSDI_DESCRIPTOR_SIZE check'
+    zero_resistor_clamp:
+      kind: feature
+      since: '44'
+      description: 'Zero-ohm resistance clamps to 1e-12 ohm instead of 1e-3 ohm'
+      source: 'ngspice-44 NEWS: Define 1e-12 as a minimum resistor value'
+    save_nointernals:
+      kind: feature
+      since: '45'
+      description: 'save nointernals suppresses internal device nodes'
+      source: "ngspice-45 NEWS: New command save nointernals to suppress outputting and saving of internal device nodes"
+    strict_dc_syntax:
+      kind: feature
+      since: '45'
+      description: 'Reject missing .dc arguments and zero step with Bad syntax'
+      source: 'ngspice-45 NEWS: Error checking for .dc command'
+    current_pwl_timing:
+      kind: feature
+      since: '47'
+      description: 'Current-source PWL td and r instance parameters'
+      source: 'ngspice-47 NEWS: Add instance parameters td and r to the ISRC pwl source'
+    ac_dec_subdecade_plain_steps:
+      kind: feature
+      since: '43'
+      description: 'Sub-decade DEC AC uses plain logarithmic steps instead of stretching to fstop'
+      source: 'f15a92d997b00f8e54efc5bbdb9d04c9fdf766ad (2024-06-12), src/spicelib/analysis/acan.c'
+    dec_subdecade_runaway:
+      kind: bug
+      since: '39'
+      fixed_in: '43'
+      description: 'DEC sub-decade memory runaway for sweeps shorter than one step'
+      user_message: >-
+        an AC sweep with dec spacing too short to hold one step
+        (for example .ac dec 1 1k 2k) never finishes and uses unbounded memory
+      source: 'introduced by 75c2a3 (2022-11-13); fixed by f15a92d997b00f8e54efc5bbdb9d04c9fdf766ad (2024-06-12), src/spicelib/analysis/acan.c'
+    sourcepath_duplicate_slowdown:
+      kind: bug
+      since: '45'
+      fixed_in: '47'
+      description: 'Duplicate sourcepath entries slow library parsing'
+      user_message: >-
+        loading the sky130 library is several times slower because duplicate
+        include directories accumulate in sourcepath
+      source: 'introduced by 43c4c49e1, src/frontend/inpcom.c add_to_sourcepath; fixed by 954242616, Filter duplicate entries in sourcepath'
+    ac_lin_two:
+      kind: bug
+      since: null
+      fixed_in: null
+      description: 'LIN-2 AC writes one point instead of two'
+      user_message: 'an AC sweep requesting two linearly spaced points writes only one point'
+      source: 'ngspice-47 tag commit a80f6e3e9, src/spicelib/analysis/acan.c: ACnumberSteps - 1 > 1 (also present at ngspice-42)'

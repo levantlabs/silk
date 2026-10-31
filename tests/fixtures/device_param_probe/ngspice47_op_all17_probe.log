@@ -1,0 +1,50 @@
+
+Note: No compatibility mode selected!
+
+
+Circuit: * task-330.8 ac#1 spike: op-point probing of the full 17-param
+
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using SPARSE 1.3 as Direct Linear Solver
+ Reference value :  0.00000e+00
+No. of Data Rows : 1
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using SPARSE 1.3 as Direct Linear Solver
+@m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[id] = 6.942150e-05
+@m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[vgs] = 1.000000e+00
+@m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[vds] = 1.000000e+00
+@m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[vbs] = 1.023774e-10
+@m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[vth] = 7.693913e-01
+@m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[vdsat] = 1.715072e-01
+@m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[gm] = 3.825087e-04
+@m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[gds] = 2.463217e-05
+@m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[gmbs] = 6.605824e-05
+@m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[cgg] = 7.990184e-16
+@m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[cgs] = -6.02238e-16
+@m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[cgd] = 2.346837e-19
+@m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[cgso] = 2.463135e-16
+@m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[cgdo] = 2.463135e-16
+@m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[cgbo] = 1.302418e-20
+@m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[capbd] = 1.343482e-16
+@m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[capbs] = 2.014985e-16
+@m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[id] = 1.293831e-04
+@m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[vgs] = 1.500000e+00
+@m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[vds] = 1.800000e+00
+@m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[vbs] = 2.969692e-09
+@m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[vth] = 5.100252e-01
+@m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[vdsat] = 6.956205e-01
+@m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[gm] = 2.311756e-04
+@m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[gds] = 3.107873e-05
+@m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[gmbs] = 3.857873e-05
+@m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[cgg] = 1.013161e-15
+@m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[cgs] = -7.74974e-16
+@m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[cgd] = 6.648956e-17
+@m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[cgso] = 7.403423e-17
+@m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[cgdo] = 7.040904e-17
+@m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[cgbo] = 0.000000e+00
+@m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[capbd] = 1.124862e-16
+@m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[capbs] = 1.403770e-16
+binary raw file "op_all17_probe.raw"
+ngspice-47 done

@@ -1,0 +1,36 @@
+
+Note: No compatibility mode selected!
+
+
+Circuit: * task-330.3 probe q5 follow-up: op() is the only declared analysis, but
+
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using SPARSE 1.3 as Direct Linear Solver
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using SPARSE 1.3 as Direct Linear Solver
+
+No. of Data Rows : 1
+binary raw file "ngspice42_op_only_via_sequence.raw"
+Here are the vectors currently active:
+
+Title: * task-330.3 probe q5 follow-up: op() is the only declared analysis, but
+Name: op1 (Operating Point)
+Date: Sun Sep 27 16:48:12  2026
+
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[gm]: admittance, real, 1 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[id]: current, real, 1 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[vth]: voltage, real, 1 long
+    m.xdut.xmmmn.msky130_fd_pr__nfet_01v8#body: voltage, real, 1 long
+    m.xdut.xmmmn.msky130_fd_pr__nfet_01v8#dbody: voltage, real, 1 long
+    m.xdut.xmmmn.msky130_fd_pr__nfet_01v8#sbody: voltage, real, 1 long
+    vdn                 : voltage, real, 1 long [default scale]
+    vdn#branch          : current, real, 1 long
+    vgn                 : voltage, real, 1 long
+    vgn#branch          : current, real, 1 long
+List of plots available:
+
+Current op1	* task-330.3 probe q5 follow-up: op() is the only declared analysis, but (Operating Point)
+	const	Constant values (constants)
+ngspice-42 done

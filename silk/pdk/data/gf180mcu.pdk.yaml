@@ -1,0 +1,207 @@
+# GF180MCU — GlobalFoundries 180nm bulk CMOS.
+#
+# YAML only, no Python class: BasePDK covers this PDK completely, because
+# GF180MCU ships ONE model file whose corners are `.LIB` sections — the same
+# shape as sky130, which is what silk's `.lib "<file>" <corner>` emission
+# assumes.
+#
+# The four gf180mcuA/B/C/D install variants ship a BYTE-IDENTICAL
+# sm141064.ngspice — verified by md5 — so the variant chosen here affects the
+# metal stack only, never the models. Change lib_path if you install a
+# different variant.
+name: gf180mcu
+aliases: [gf180, gf180mcu_d]
+device_details: gf180mcu_device_details.yaml
+# The unit circuit authors write in: microns, as in every silk PDK manifest,
+# so w=1 means 1 um on any PDK; silk converts to each PDK's model unit (the
+# catalog's pdk_unit). load_pdk(user_units=...) overrides it for that load.
+user_units: u
+vendor: GlobalFoundries
+library:
+  lib_path: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice"
+  default_corner: typical
+  # GF180MCU's corner sections reference global parameters and switches that
+  # live in design.ngspice; without it ngspice reports a wall of
+  # "Formula() error" and aborts. Verified that .lib-then-.include (silk's
+  # emission order) and .include-then-.lib give identical results, so silk's
+  # fixed ordering is not a constraint here.
+  extra_includes:
+    - "gf180mcuD/libs.tech/ngspice/design.ngspice"
+  # TASK-339: sm141064.ngspice relies on ngspice-only `.LIB`/`.ENDL`
+  # looseness (a bare `.ENDL` closing a named `.LIB`, and one section whose
+  # `.ENDL <name>` does not match its `.LIB <name>`) that Xyce 7.10's
+  # stricter parser rejects outright. The PDK install ships a separate,
+  # Xyce-native model set under libs.tech/xyce/ — re-authored per corner with
+  # matching `.LIB`/`.ENDL` pairs — verified to use the IDENTICAL section
+  # names as the ngspice file (diff of `.LIB` names is empty), so only the
+  # file changes below, not the section list. `xyce_lib_path` and
+  # `xyce_extra_includes` are generic manifest keys (silk/pdk/_loader.py);
+  # XyceNetlister uses them in place of `lib_path`/`extra_includes` when
+  # present, and any PDK may declare them the same way.
+  xyce_lib_path: "gf180mcuD/libs.tech/xyce/sm141064.xyce"
+  xyce_extra_includes:
+    - "gf180mcuD/libs.tech/xyce/design.xyce"
+  # EVERY DEVICE FAMILY, AT ONE CORNER.
+  #
+  # GF180MCU splits its device families across separate top-level sections of
+  # the SAME model file: `.LIB typical` pulls in the FETs (nfet/pfet 03v3 and
+  # 06v0, noise, mismatch) and nothing else; resistors, MIM caps, MOS caps,
+  # diodes and BJTs live in `res_*`, `mimcap_*`, `moscap_*`, `diode_*` and
+  # `bjt_*`. Each needs its own `.lib <file> <section>` line, which is what
+  # per-corner `includes:` provides (see docs/adding-a-pdk.md, "Several lib
+  # files for one corner").
+  #
+  # The section list below is GF's OWN, not silk's: the PDK ships a test
+  # schematic per device under libs.tech/xschem/tests, and each one includes
+  # design.ngspice plus exactly `typical` + `res_typical` + `moscap_typical`
+  # and then the section for the family under test. The typical corner here is
+  # the union of those decks.
+  #
+  # `cap_mim` is the odd one and is deliberately present: it is a plain
+  # section, not a corner, holding the generic MIM subckts (cap_mim_1f5fF, …)
+  # that GF's own symbols instantiate. No `mimcap_*` corner pulls it in — they
+  # pull the metal-stack-specific twins out of sm141064_mim.ngspice — but the
+  # generic cells read the `mim_corner_*` parameters that `mimcap_*` defines.
+  # So both lines are needed, and GF's own test_cap_mim_*.sch has both.
+  corners:
+    typical:
+      kind: process
+      desc: "typical — the section set GF's own xschem test decks use"
+      includes:
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: typical }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: res_typical }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: moscap_typical }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: mimcap_typical }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: cap_mim }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: diode_typical }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: bjt_typical }
+      # TASK-339: same section names, Xyce-native file. See `xyce_lib_path`.
+      xyce_includes:
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: typical }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: res_typical }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: moscap_typical }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: mimcap_typical }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: cap_mim }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: diode_typical }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: bjt_typical }
+    # CROSS-FAMILY PAIRING IS SILK'S CHOICE WHERE THE PDK DOES NOT STATE ONE.
+    #
+    # GF ships slow/fast sections for every family (res_ss/res_ff,
+    # mimcap_ss/_ff, moscap_ss/_ff, diode_ss/_ff, bjt_ss/_ff), but never a deck
+    # that says which of them belongs with slow MOS. Pairing slow MOS with the
+    # slow section of every other family — and fast with fast — is the
+    # conventional worst-/best-case reading, and it is what these two corners
+    # do. It is not GF's statement. Change it if your signoff says otherwise.
+    # The same convention is used for IHP SG13G2; see sg13g2.pdk.yaml.
+    ss:
+      kind: process
+      desc: "slow-n slow-p, with every family at its slow section (pairing is silk's choice)"
+      includes:
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: ss }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: res_ss }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: moscap_ss }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: mimcap_ss }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: cap_mim }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: diode_ss }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: bjt_ss }
+      xyce_includes:
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: ss }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: res_ss }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: moscap_ss }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: mimcap_ss }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: cap_mim }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: diode_ss }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: bjt_ss }
+    ff:
+      kind: process
+      desc: "fast-n fast-p, with every family at its fast section (pairing is silk's choice)"
+      includes:
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: ff }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: res_ff }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: moscap_ff }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: mimcap_ff }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: cap_mim }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: diode_ff }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: bjt_ff }
+      xyce_includes:
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: ff }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: res_ff }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: moscap_ff }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: mimcap_ff }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: cap_mim }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: diode_ff }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: bjt_ff }
+    # fs/sf are MOS-ONLY skews: GF defines `fs`/`sf` for the FETs and nothing
+    # else, so there is no res_fs or bjt_sf to reach for. Holding every other
+    # family at typical is silk's choice, and the only one that does not invent
+    # a section — the alternative would be to pick a slow or fast passive
+    # corner the PDK never associated with a mixed MOS skew.
+    fs:
+      kind: process
+      desc: "fast-n slow-p (MOS only; R/C/diode/BJT held typical — silk's choice)"
+      includes:
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: fs }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: res_typical }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: moscap_typical }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: mimcap_typical }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: cap_mim }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: diode_typical }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: bjt_typical }
+      xyce_includes:
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: fs }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: res_typical }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: moscap_typical }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: mimcap_typical }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: cap_mim }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: diode_typical }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: bjt_typical }
+    sf:
+      kind: process
+      desc: "slow-n fast-p (MOS only; R/C/diode/BJT held typical — silk's choice)"
+      includes:
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: sf }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: res_typical }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: moscap_typical }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: mimcap_typical }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: cap_mim }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: diode_typical }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: bjt_typical }
+      xyce_includes:
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: sf }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: res_typical }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: moscap_typical }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: mimcap_typical }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: cap_mim }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: diode_typical }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: bjt_typical }
+    # statistical pairs the MOS `statistical` section with each family's own
+    # statistical section where GF ships one. moscap and diode have none, so
+    # they stay typical — silk's choice, and again the one that invents
+    # nothing.
+    #
+    # CAVEAT, and it is GF's bug not silk's: res_statistical omits `rsh_rm4`,
+    # which res_typical/_ss/_ff all define. The metal-4 resistor (res_rm4)
+    # therefore has an undefined sheet resistance in THIS corner only, and
+    # ngspice aborts the run with "Formula() error" — verified: a deck holding
+    # all 61 devices binds cleanly in every corner, and in `statistical`
+    # cleanly for the other 60 but not with res_rm4 in it. Every other
+    # resistor, and res_rm4 in every other corner, is unaffected.
+    statistical:
+      kind: statistical
+      desc: "statistical / mismatch sampling (moscap + diode held typical — silk's choice)"
+      includes:
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: statistical }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: res_statistical }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: moscap_typical }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: mimcap_statistical }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: cap_mim }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: diode_typical }
+        - { file: "gf180mcuD/libs.tech/ngspice/sm141064.ngspice", section: bjt_statistical }
+      xyce_includes:
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: statistical }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: res_statistical }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: moscap_typical }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: mimcap_statistical }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: cap_mim }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: diode_typical }
+        - { file: "gf180mcuD/libs.tech/xyce/sm141064.xyce", section: bjt_statistical }

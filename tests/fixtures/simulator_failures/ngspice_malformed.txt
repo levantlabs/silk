@@ -1,0 +1,12 @@
+
+Note: No compatibility mode selected!
+
+warning, can't find model 'garbage' from line
+    r1 out 0 1k garbage
+
+Circuit: * malformed resistor
+
+Error on line 3 or its substitute:
+  r1 out 0 1k garbage
+  unknown parameter (garbage)
+    Simulation interrupted due to error!

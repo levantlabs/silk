@@ -1,0 +1,198 @@
+# Authored metadata for testbench-source schema export.
+#
+# Structural params (names + defaults) are REFLECTED from each class's
+# __init__ signature by silk/sources/schema.py, so adding a parameter in Python
+# needs no edit here and cannot drift. This file supplies only what reflection
+# cannot derive — the authored bits: schematic symbol, physical unit, pin
+# roles, and the waveform-kind → class map.
+#
+# Consumed via silk.sources.schema.export_source_schema(); see the device
+# analogue in silk/elements/analog_devices.yaml + silk/elements/schema.py.
+
+# ---------------------------------------------------------------------------
+# Per-source authored metadata. Scope (v1): the independent stimulus sources.
+# The exporter lists every SourceBase subclass; those NOT keyed here get no
+# full schema entry but are surfaced under _meta.unschematized_sources (so a
+# newly-added source class is visible, not silently dropped). Add a class here
+# to give it a full schema. A drift-guard test also fails if an existing
+# source's __init__ grows a param that isn't classified as pin / scalar_param /
+# waveform kwarg.
+# ---------------------------------------------------------------------------
+sources:
+  VoltageSource:
+    symbol: VSource
+    category: source
+    unit: V              # base unit for dc/ac and waveform amplitude params
+    pins: [positive, negative]
+    scalar_params: [dc, ac]
+    quantity: voltage    # factory: namespace name (sources.voltage.*)  [additive]
+    alias: v             # factory: flat-alias prefix (sources.v*)      [additive]
+  CurrentSource:
+    symbol: ISource
+    category: source
+    unit: A
+    pins: [positive, negative]
+    scalar_params: [dc, ac]
+    quantity: current
+    alias: i
+
+# ---------------------------------------------------------------------------
+# Dependent (controlled) sources (TASK-253). Structural — Vout/Iout is a
+# linear function of a control node-pair voltage or a controlling source's
+# branch current — not stimulus generators, so no quantity/alias key: they
+# have no dc/ac/waveform kinds and therefore no declarative factory surface
+# (silk/sources/library.py's build_source_surfaces() skips any entry here
+# that has no quantity/alias — "not factory-enabled").
+#
+# Pins are named by the constructor parameters, same as the independent
+# sources above. CCVS/CCCS additionally take `ctrl_vname`: the INSTANCE NAME
+# of the controlling source (a voltage source whose branch current is being
+# read), not a pin and not a numeric param — it is listed under the optional
+# `references:` key instead of `scalar_params:`, and silk/sources/schema.py
+# reflects it into its own `references` schema field (kind: source) rather
+# than folding it into `parameters`, so a consumer can tell a source-name
+# reference apart from a pin or a physical quantity. codegen validates the
+# name against the sources present in the same spec (silk/codegen/generator.py).
+# ---------------------------------------------------------------------------
+  VoltageControlledVoltageSource:
+    symbol: VCVS
+    category: source
+    unit: V/V             # gain — output volt per input volt (dimensionless)
+    pins: [out_pos, out_neg, ctrl_pos, ctrl_neg]
+    scalar_params: [gain]
+  VoltageControlledCurrentSource:
+    symbol: VCCS
+    category: source
+    unit: A/V             # gm — output amp per input volt (siemens)
+    pins: [out_pos, out_neg, ctrl_pos, ctrl_neg]
+    scalar_params: [gm]
+  CurrentControlledVoltageSource:
+    symbol: CCVS
+    category: source
+    unit: V/A             # transresistance — output volt per input amp (ohm)
+    pins: [out_pos, out_neg]
+    scalar_params: [transresistance]
+    references: [ctrl_vname]
+  CurrentControlledCurrentSource:
+    symbol: CCCS
+    category: source
+    unit: A/A             # gain — output amp per input amp (dimensionless)
+    pins: [out_pos, out_neg]
+    scalar_params: [gain]
+    references: [ctrl_vname]
+
+# ---------------------------------------------------------------------------
+# Behavioral sources (TASK-282.5). SPICE B element: Vout/Iout is an
+# arbitrary user expression (v(node), i(vname), math functions, time/temper/
+# hertz) — not a linear function of a control node-pair or a controlling
+# branch current like the dependent sources above, so also no dc/ac/waveform
+# kinds and no quantity/alias key (not factory-enabled, same reasoning).
+#
+# `expression` is a free-form SPICE expression STRING, passed through to
+# SPICE verbatim (silk.sources.classes.BehavioralVoltage/BehavioralCurrent)
+# — not a physical quantity (no unit to reflect, unlike scalar_params) and
+# not another source's instance name (not a references: entry — nothing
+# resolves it against other sources[] entries). It is listed under its own
+# `expressions:` key, parallel to `references:` above, and
+# silk/sources/schema.py reflects it into its own `expressions` schema field
+# (kind: expression) so a consumer can tell a raw SPICE expression apart
+# from a numeric param or a source-instance reference.
+# ---------------------------------------------------------------------------
+  BehavioralVoltage:
+    symbol: BV
+    category: source
+    unit: V               # base unit of the B V= expression's result
+    pins: [positive, negative]
+    expressions: [expression]
+  BehavioralCurrent:
+    symbol: BI
+    category: source
+    unit: A                # base unit of the B I= expression's result
+    pins: [positive, negative]
+    expressions: [expression]
+
+# ---------------------------------------------------------------------------
+# Waveform kind (dedicated source kwarg where present, else waveform=) → class
+# name in silk.sources.waveforms. The exporter reflects each class's __init__
+# for the waveform's sub-params.
+# ---------------------------------------------------------------------------
+waveforms:
+  bitpattern: BitPattern
+  prbs: PRBS
+  pulse: Pulse
+  pwl: PWL
+  sine: Sine
+  exponential: Exponential
+  sffm: SFFM
+  am: AM
+  trnoise: TransientNoise
+  trrandom: RandomSource
+
+# ---------------------------------------------------------------------------
+# Parameter unit hints, keyed by param name (SPICE waveform param names are
+# standardized, so name→unit is unambiguous). The sentinel "source" resolves to
+# the parent source's base unit (V for VoltageSource, A for CurrentSource).
+# Params absent here export unit: null (unknown) rather than a guess.
+# ---------------------------------------------------------------------------
+param_units:
+  # dependent-source scalars → parent source unit (the 'source' sentinel is
+  # what lets the same param name — e.g. 'gain' on both VCVS and CCCS —
+  # resolve to a different unit per class: each class's own `unit:` above)
+  gain: source
+  gm: source
+  transresistance: source
+  # amplitudes → parent source unit
+  dc: source
+  ac: source
+  v1: source
+  v2: source
+  voffset: source
+  vampl: source
+  vo: source
+  va: source
+  rtsam: source     # trap RTS amplitude
+  namp: source      # RTS noise amplitude
+  na: source        # white-noise amplitude
+  # times → seconds
+  ui: s
+  td: s
+  td1: s
+  td2: s
+  tr: s
+  tf: s
+  pw: s
+  per: s
+  tau1: s
+  tau2: s
+  ts: s
+  r: s              # PWL repeat time
+  nt: s             # trnoise time step
+  rtscapt: s        # trap capture time
+  rtsemt: s         # trap emission time
+  # frequencies → Hz
+  freq: Hz
+  fc: Hz
+  fs: Hz
+  mf: Hz
+  # angles → degrees
+  phase: deg
+  phasec: deg
+  phases: deg
+  # other
+  theta: "1/s"
+  mdi: ""            # modulation index — dimensionless
+
+  order: ""
+  length: ""
+  seed: ""
+  repeat: ""
+
+# Optional parameter input kinds, keyed by parameter name. Absent entries
+# omit the schema kind field. Names/defaults remain reflected from Python.
+# New waveform integrations may add structural hints here.
+param_kinds:
+  bits: bits
+  order: integer
+  length: integer
+  seed: integer
+  repeat: integer

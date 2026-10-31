@@ -1,0 +1,7 @@
+* TASK-547: measure the last frequency of a complete nondivisible noise grid
+Vin in 0 DC 1 AC 1
+Rload in out 1k
+Cload out 0 1p
+.noise V(out) Vin OCT 2 1 3
+.print noise format=csv file=noise.csv ONOISE INOISE
+.end

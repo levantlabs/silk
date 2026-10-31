@@ -1,0 +1,1210 @@
+[
+  {
+    "name": "inoise_spectrum",
+    "part": null,
+    "wrapper": null,
+    "segments": [],
+    "leaf": "inoise_spectrum"
+  },
+  {
+    "name": "v(in)",
+    "part": null,
+    "wrapper": "v",
+    "segments": [],
+    "leaf": "in"
+  },
+  {
+    "name": "V(OUT)",
+    "part": null,
+    "wrapper": "V",
+    "segments": [],
+    "leaf": "OUT"
+  },
+  {
+    "name": "v(xdut.out)",
+    "part": null,
+    "wrapper": "v",
+    "segments": [
+      "xdut"
+    ],
+    "leaf": "out"
+  },
+  {
+    "name": "onoise.m.xdut.xmm1.msky130_fd_pr__nfet_01v8",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm1"
+    ],
+    "leaf": "msky130_fd_pr__nfet_01v8"
+  },
+  {
+    "name": "onoise.m.xdut.xmm1.msky130_fd_pr__nfet_01v8.rd",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm1",
+      "msky130_fd_pr__nfet_01v8"
+    ],
+    "leaf": "rd"
+  },
+  {
+    "name": "v(m.xdut.xmmout.xmdev.msky130_fd_pr__nfet_01v8#dbody)",
+    "part": null,
+    "wrapper": "v",
+    "segments": [
+      "m",
+      "xdut",
+      "xmmout",
+      "xmdev"
+    ],
+    "leaf": "msky130_fd_pr__nfet_01v8#dbody"
+  },
+  {
+    "name": "i(@m.xdut.xmmref.xmdev.msky130_fd_pr__nfet_01v8[id])",
+    "part": null,
+    "wrapper": "i",
+    "segments": [
+      "@m",
+      "xdut",
+      "xmmref",
+      "xmdev"
+    ],
+    "leaf": "msky130_fd_pr__nfet_01v8[id]"
+  },
+  {
+    "name": "i(@r.xdut.rrload[i])",
+    "part": null,
+    "wrapper": "i",
+    "segments": [
+      "@r",
+      "xdut"
+    ],
+    "leaf": "rrload[i]"
+  },
+  {
+    "name": "v(out) (mag)",
+    "part": "mag",
+    "wrapper": "v",
+    "segments": [],
+    "leaf": "out"
+  },
+  {
+    "name": "onoise_spectrum",
+    "part": null,
+    "wrapper": null,
+    "segments": [],
+    "leaf": "onoise_spectrum"
+  },
+  {
+    "name": "onoise.m.xdut.xmm1.msky130_fd_pr__nfet_01v8.1overf",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm1",
+      "msky130_fd_pr__nfet_01v8"
+    ],
+    "leaf": "1overf"
+  },
+  {
+    "name": "onoise.m.xdut.xmm1.msky130_fd_pr__nfet_01v8.id",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm1",
+      "msky130_fd_pr__nfet_01v8"
+    ],
+    "leaf": "id"
+  },
+  {
+    "name": "onoise.m.xdut.xmm1.msky130_fd_pr__nfet_01v8.igb",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm1",
+      "msky130_fd_pr__nfet_01v8"
+    ],
+    "leaf": "igb"
+  },
+  {
+    "name": "onoise.m.xdut.xmm1.msky130_fd_pr__nfet_01v8.rbdb",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm1",
+      "msky130_fd_pr__nfet_01v8"
+    ],
+    "leaf": "rbdb"
+  },
+  {
+    "name": "onoise.m.xdut.xmm1.msky130_fd_pr__nfet_01v8.rg",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm1",
+      "msky130_fd_pr__nfet_01v8"
+    ],
+    "leaf": "rg"
+  },
+  {
+    "name": "onoise.m.xdut.xmm1.msky130_fd_pr__nfet_01v8.rs",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm1",
+      "msky130_fd_pr__nfet_01v8"
+    ],
+    "leaf": "rs"
+  },
+  {
+    "name": "v(xdut.vbias)",
+    "part": null,
+    "wrapper": "v",
+    "segments": [
+      "xdut"
+    ],
+    "leaf": "vbias"
+  },
+  {
+    "name": "v(vdd)",
+    "part": null,
+    "wrapper": "v",
+    "segments": [],
+    "leaf": "vdd"
+  },
+  {
+    "name": "v(xdut.xmmref.d_i)",
+    "part": null,
+    "wrapper": "v",
+    "segments": [
+      "xdut",
+      "xmmref"
+    ],
+    "leaf": "d_i"
+  },
+  {
+    "name": "v(xdut.xmmref.g_i)",
+    "part": null,
+    "wrapper": "v",
+    "segments": [
+      "xdut",
+      "xmmref"
+    ],
+    "leaf": "g_i"
+  },
+  {
+    "name": "v(xdut.xmmref.s_i)",
+    "part": null,
+    "wrapper": "v",
+    "segments": [
+      "xdut",
+      "xmmref"
+    ],
+    "leaf": "s_i"
+  },
+  {
+    "name": "v(xdut.xmmref.b_i)",
+    "part": null,
+    "wrapper": "v",
+    "segments": [
+      "xdut",
+      "xmmref"
+    ],
+    "leaf": "b_i"
+  },
+  {
+    "name": "v(m.xdut.xmmout.xmdev.msky130_fd_pr__nfet_01v8#body)",
+    "part": null,
+    "wrapper": "v",
+    "segments": [
+      "m",
+      "xdut",
+      "xmmout",
+      "xmdev"
+    ],
+    "leaf": "msky130_fd_pr__nfet_01v8#body"
+  },
+  {
+    "name": "v(m.xclkdel1.xmmn_inv1.msky130_fd_pr__nfet_01v8#sbody)",
+    "part": null,
+    "wrapper": "v",
+    "segments": [
+      "m",
+      "xclkdel1",
+      "xmmn_inv1"
+    ],
+    "leaf": "msky130_fd_pr__nfet_01v8#sbody"
+  },
+  {
+    "name": "i(vvdd)",
+    "part": null,
+    "wrapper": "i",
+    "segments": [],
+    "leaf": "vvdd"
+  },
+  {
+    "name": "i(v.xdut.xmmout.vamm_d)",
+    "part": null,
+    "wrapper": "i",
+    "segments": [
+      "v",
+      "xdut",
+      "xmmout"
+    ],
+    "leaf": "vamm_d"
+  },
+  {
+    "name": "i(v.xdut.xmmout.vamm_s)",
+    "part": null,
+    "wrapper": "i",
+    "segments": [
+      "v",
+      "xdut",
+      "xmmout"
+    ],
+    "leaf": "vamm_s"
+  },
+  {
+    "name": "i(@m.xdut.xmmout.xmdev.msky130_fd_pr__nfet_01v8[ib])",
+    "part": null,
+    "wrapper": "i",
+    "segments": [
+      "@m",
+      "xdut",
+      "xmmout",
+      "xmdev"
+    ],
+    "leaf": "msky130_fd_pr__nfet_01v8[ib]"
+  },
+  {
+    "name": "i(@i.xdut.iiref[current])",
+    "part": null,
+    "wrapper": "i",
+    "segments": [
+      "@i",
+      "xdut"
+    ],
+    "leaf": "iiref[current]"
+  },
+  {
+    "name": "V(IN)",
+    "part": null,
+    "wrapper": "V",
+    "segments": [],
+    "leaf": "IN"
+  },
+  {
+    "name": "TIME",
+    "part": null,
+    "wrapper": null,
+    "segments": [],
+    "leaf": "TIME"
+  },
+  {
+    "name": "FREQUENCY",
+    "part": null,
+    "wrapper": null,
+    "segments": [],
+    "leaf": "FREQUENCY"
+  },
+  {
+    "name": "sweep",
+    "part": null,
+    "wrapper": null,
+    "segments": [],
+    "leaf": "sweep"
+  },
+  {
+    "name": "false",
+    "part": null,
+    "wrapper": null,
+    "segments": [],
+    "leaf": "false"
+  },
+  {
+    "name": "boltz",
+    "part": null,
+    "wrapper": null,
+    "segments": [],
+    "leaf": "boltz"
+  },
+  {
+    "name": "echarge",
+    "part": null,
+    "wrapper": null,
+    "segments": [],
+    "leaf": "echarge"
+  },
+  {
+    "name": "yes",
+    "part": null,
+    "wrapper": null,
+    "segments": [],
+    "leaf": "yes"
+  },
+  {
+    "name": "onoise.m.xdut.xmm1.msky130_fd_pr__nfet_01v8.ibs",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm1",
+      "msky130_fd_pr__nfet_01v8"
+    ],
+    "leaf": "ibs"
+  },
+  {
+    "name": "onoise.m.xdut.xmm1.msky130_fd_pr__nfet_01v8.ibd",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm1",
+      "msky130_fd_pr__nfet_01v8"
+    ],
+    "leaf": "ibd"
+  },
+  {
+    "name": "onoise.m.xdut.xmm1.msky130_fd_pr__nfet_01v8.igs",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm1",
+      "msky130_fd_pr__nfet_01v8"
+    ],
+    "leaf": "igs"
+  },
+  {
+    "name": "onoise.m.xdut.xmm1.msky130_fd_pr__nfet_01v8.igd",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm1",
+      "msky130_fd_pr__nfet_01v8"
+    ],
+    "leaf": "igd"
+  },
+  {
+    "name": "onoise.m.xdut.xmm1.msky130_fd_pr__nfet_01v8.rbpb",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm1",
+      "msky130_fd_pr__nfet_01v8"
+    ],
+    "leaf": "rbpb"
+  },
+  {
+    "name": "onoise.m.xdut.xmm1.msky130_fd_pr__nfet_01v8.rbsb",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm1",
+      "msky130_fd_pr__nfet_01v8"
+    ],
+    "leaf": "rbsb"
+  },
+  {
+    "name": "onoise.m.xdut.xmm2.msky130_fd_pr__nfet_01v8",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm2"
+    ],
+    "leaf": "msky130_fd_pr__nfet_01v8"
+  },
+  {
+    "name": "onoise.m.xdut.xmm2.msky130_fd_pr__nfet_01v8.1overf",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm2",
+      "msky130_fd_pr__nfet_01v8"
+    ],
+    "leaf": "1overf"
+  },
+  {
+    "name": "onoise.m.xdut.xmm2.msky130_fd_pr__nfet_01v8.id",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm2",
+      "msky130_fd_pr__nfet_01v8"
+    ],
+    "leaf": "id"
+  },
+  {
+    "name": "onoise.m.xdut.xmm2.msky130_fd_pr__nfet_01v8.igb",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm2",
+      "msky130_fd_pr__nfet_01v8"
+    ],
+    "leaf": "igb"
+  },
+  {
+    "name": "onoise.m.xdut.xmm2.msky130_fd_pr__nfet_01v8.rbdb",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm2",
+      "msky130_fd_pr__nfet_01v8"
+    ],
+    "leaf": "rbdb"
+  },
+  {
+    "name": "onoise.m.xdut.xmm2.msky130_fd_pr__nfet_01v8.rd",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm2",
+      "msky130_fd_pr__nfet_01v8"
+    ],
+    "leaf": "rd"
+  },
+  {
+    "name": "onoise.m.xdut.xmm2.msky130_fd_pr__nfet_01v8.rg",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm2",
+      "msky130_fd_pr__nfet_01v8"
+    ],
+    "leaf": "rg"
+  },
+  {
+    "name": "onoise.m.xdut.xmm2.msky130_fd_pr__nfet_01v8.rs",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm2",
+      "msky130_fd_pr__nfet_01v8"
+    ],
+    "leaf": "rs"
+  },
+  {
+    "name": "onoise.m.xdut.xmm2.msky130_fd_pr__nfet_01v8.ibs",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm2",
+      "msky130_fd_pr__nfet_01v8"
+    ],
+    "leaf": "ibs"
+  },
+  {
+    "name": "onoise.m.xdut.xmm2.msky130_fd_pr__nfet_01v8.ibd",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm2",
+      "msky130_fd_pr__nfet_01v8"
+    ],
+    "leaf": "ibd"
+  },
+  {
+    "name": "onoise.m.xdut.xmm2.msky130_fd_pr__nfet_01v8.igs",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm2",
+      "msky130_fd_pr__nfet_01v8"
+    ],
+    "leaf": "igs"
+  },
+  {
+    "name": "onoise.m.xdut.xmm2.msky130_fd_pr__nfet_01v8.igd",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm2",
+      "msky130_fd_pr__nfet_01v8"
+    ],
+    "leaf": "igd"
+  },
+  {
+    "name": "onoise.m.xdut.xmm2.msky130_fd_pr__nfet_01v8.rbpb",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm2",
+      "msky130_fd_pr__nfet_01v8"
+    ],
+    "leaf": "rbpb"
+  },
+  {
+    "name": "onoise.m.xdut.xmm2.msky130_fd_pr__nfet_01v8.rbsb",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm2",
+      "msky130_fd_pr__nfet_01v8"
+    ],
+    "leaf": "rbsb"
+  },
+  {
+    "name": "onoise.m.xdut.xmm3.msky130_fd_pr__pfet_01v8",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm3"
+    ],
+    "leaf": "msky130_fd_pr__pfet_01v8"
+  },
+  {
+    "name": "onoise.m.xdut.xmm3.msky130_fd_pr__pfet_01v8.1overf",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm3",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "1overf"
+  },
+  {
+    "name": "onoise.m.xdut.xmm3.msky130_fd_pr__pfet_01v8.id",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm3",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "id"
+  },
+  {
+    "name": "onoise.m.xdut.xmm3.msky130_fd_pr__pfet_01v8.igb",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm3",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "igb"
+  },
+  {
+    "name": "onoise.m.xdut.xmm3.msky130_fd_pr__pfet_01v8.rbdb",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm3",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "rbdb"
+  },
+  {
+    "name": "onoise.m.xdut.xmm3.msky130_fd_pr__pfet_01v8.rd",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm3",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "rd"
+  },
+  {
+    "name": "onoise.m.xdut.xmm3.msky130_fd_pr__pfet_01v8.rg",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm3",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "rg"
+  },
+  {
+    "name": "onoise.m.xdut.xmm3.msky130_fd_pr__pfet_01v8.rs",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm3",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "rs"
+  },
+  {
+    "name": "onoise.m.xdut.xmm3.msky130_fd_pr__pfet_01v8.ibs",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm3",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "ibs"
+  },
+  {
+    "name": "onoise.m.xdut.xmm3.msky130_fd_pr__pfet_01v8.ibd",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm3",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "ibd"
+  },
+  {
+    "name": "onoise.m.xdut.xmm3.msky130_fd_pr__pfet_01v8.igs",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm3",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "igs"
+  },
+  {
+    "name": "onoise.m.xdut.xmm3.msky130_fd_pr__pfet_01v8.igd",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm3",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "igd"
+  },
+  {
+    "name": "onoise.m.xdut.xmm3.msky130_fd_pr__pfet_01v8.rbpb",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm3",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "rbpb"
+  },
+  {
+    "name": "onoise.m.xdut.xmm3.msky130_fd_pr__pfet_01v8.rbsb",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm3",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "rbsb"
+  },
+  {
+    "name": "onoise.m.xdut.xmm4.msky130_fd_pr__pfet_01v8",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm4"
+    ],
+    "leaf": "msky130_fd_pr__pfet_01v8"
+  },
+  {
+    "name": "onoise.m.xdut.xmm4.msky130_fd_pr__pfet_01v8.1overf",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm4",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "1overf"
+  },
+  {
+    "name": "onoise.m.xdut.xmm4.msky130_fd_pr__pfet_01v8.id",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm4",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "id"
+  },
+  {
+    "name": "onoise.m.xdut.xmm4.msky130_fd_pr__pfet_01v8.igb",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm4",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "igb"
+  },
+  {
+    "name": "onoise.m.xdut.xmm4.msky130_fd_pr__pfet_01v8.rbdb",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm4",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "rbdb"
+  },
+  {
+    "name": "onoise.m.xdut.xmm4.msky130_fd_pr__pfet_01v8.rd",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm4",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "rd"
+  },
+  {
+    "name": "onoise.m.xdut.xmm4.msky130_fd_pr__pfet_01v8.rg",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm4",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "rg"
+  },
+  {
+    "name": "onoise.m.xdut.xmm4.msky130_fd_pr__pfet_01v8.rs",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm4",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "rs"
+  },
+  {
+    "name": "onoise.m.xdut.xmm4.msky130_fd_pr__pfet_01v8.ibs",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm4",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "ibs"
+  },
+  {
+    "name": "onoise.m.xdut.xmm4.msky130_fd_pr__pfet_01v8.ibd",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm4",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "ibd"
+  },
+  {
+    "name": "onoise.m.xdut.xmm4.msky130_fd_pr__pfet_01v8.igs",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm4",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "igs"
+  },
+  {
+    "name": "onoise.m.xdut.xmm4.msky130_fd_pr__pfet_01v8.igd",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm4",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "igd"
+  },
+  {
+    "name": "onoise.m.xdut.xmm4.msky130_fd_pr__pfet_01v8.rbpb",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm4",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "rbpb"
+  },
+  {
+    "name": "onoise.m.xdut.xmm4.msky130_fd_pr__pfet_01v8.rbsb",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm4",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "rbsb"
+  },
+  {
+    "name": "onoise.m.xdut.xmm5.msky130_fd_pr__pfet_01v8",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm5"
+    ],
+    "leaf": "msky130_fd_pr__pfet_01v8"
+  },
+  {
+    "name": "onoise.m.xdut.xmm5.msky130_fd_pr__pfet_01v8.1overf",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm5",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "1overf"
+  },
+  {
+    "name": "onoise.m.xdut.xmm5.msky130_fd_pr__pfet_01v8.id",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm5",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "id"
+  },
+  {
+    "name": "onoise.m.xdut.xmm5.msky130_fd_pr__pfet_01v8.igb",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm5",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "igb"
+  },
+  {
+    "name": "onoise.m.xdut.xmm5.msky130_fd_pr__pfet_01v8.rbdb",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm5",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "rbdb"
+  },
+  {
+    "name": "onoise.m.xdut.xmm5.msky130_fd_pr__pfet_01v8.rd",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm5",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "rd"
+  },
+  {
+    "name": "onoise.m.xdut.xmm5.msky130_fd_pr__pfet_01v8.rg",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm5",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "rg"
+  },
+  {
+    "name": "onoise.m.xdut.xmm5.msky130_fd_pr__pfet_01v8.rs",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm5",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "rs"
+  },
+  {
+    "name": "onoise.m.xdut.xmm5.msky130_fd_pr__pfet_01v8.ibs",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm5",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "ibs"
+  },
+  {
+    "name": "onoise.m.xdut.xmm5.msky130_fd_pr__pfet_01v8.ibd",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm5",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "ibd"
+  },
+  {
+    "name": "onoise.m.xdut.xmm5.msky130_fd_pr__pfet_01v8.igs",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm5",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "igs"
+  },
+  {
+    "name": "onoise.m.xdut.xmm5.msky130_fd_pr__pfet_01v8.igd",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm5",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "igd"
+  },
+  {
+    "name": "onoise.m.xdut.xmm5.msky130_fd_pr__pfet_01v8.rbpb",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm5",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "rbpb"
+  },
+  {
+    "name": "onoise.m.xdut.xmm5.msky130_fd_pr__pfet_01v8.rbsb",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "onoise",
+      "m",
+      "xdut",
+      "xmm5",
+      "msky130_fd_pr__pfet_01v8"
+    ],
+    "leaf": "rbsb"
+  },
+  {
+    "name": "V(XX1<0>:XXY<1>:G[0])",
+    "part": null,
+    "wrapper": "V",
+    "segments": [
+      "XX1<0>",
+      "XXY<1>"
+    ],
+    "leaf": "G[0]"
+  },
+  {
+    "name": "I(XX1[0]:VB[1]) (phase)",
+    "part": "phase",
+    "wrapper": "I",
+    "segments": [
+      "XX1[0]"
+    ],
+    "leaf": "VB[1]"
+  },
+  {
+    "name": "v(xa:xb.g[a:b.c])",
+    "part": null,
+    "wrapper": "v",
+    "segments": [
+      "xa",
+      "xb"
+    ],
+    "leaf": "g[a:b.c]"
+  },
+  {
+    "name": ":xa::xb:.out:",
+    "part": null,
+    "wrapper": null,
+    "segments": [
+      "xa",
+      "xb"
+    ],
+    "leaf": "out"
+  }
+]

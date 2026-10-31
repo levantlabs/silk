@@ -1,0 +1,7 @@
+not convergence
+V1 1 0 1
+R1 1 0 1k
+X1 1 0 nosuchsub
+.op
+.print dc v(1)
+.end

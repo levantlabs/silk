@@ -1,0 +1,22 @@
+# Designer policy, not model parameters. Copy this file and edit one value
+# to create a customer set; select it once with SILK_REGION_THRESHOLDS.
+version: 1
+pdks:
+  # Historical/manual reports without captured PDK identity.
+  default:
+    min_current_a: 1.0e-9
+    weak_sat_margin_v: 0.05
+    subthreshold_margin_kt_q: 3.0
+  sky130:
+    min_current_a: 1.0e-9
+    weak_sat_margin_v: 0.05
+    subthreshold_margin_kt_q: 3.0
+  # Preview policies preserve prior behavior, not independent validation.
+  gf180mcu:
+    min_current_a: 1.0e-9
+    weak_sat_margin_v: 0.05
+    subthreshold_margin_kt_q: 3.0
+  sg13g2:
+    min_current_a: 1.0e-9
+    weak_sat_margin_v: 0.05
+    subthreshold_margin_kt_q: 3.0

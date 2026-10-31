@@ -1,0 +1,10 @@
+
+Note: No compatibility mode selected!
+
+
+Circuit: not convergence
+
+Error: unknown subckt: x1 1 0 nosuchsub
+    in line no. 4 from file decks/unknown_subckt.cir
+    Simulation interrupted due to error!
+

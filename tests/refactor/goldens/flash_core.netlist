@@ -1,0 +1,30 @@
+
+*** subckt definition for comparator
+.subckt comparator vdd vss vbias vinp vinn vout 
+*** M1.  Connections = ['d', 'g', 's', 'b'].
+XMM1 nd1 vinp tail vss sky130_fd_pr__nfet_01v8 m=1 w=2 l=0.5
+*** M2.  Connections = ['d', 'g', 's', 'b'].
+XMM2 vout vinn tail vss sky130_fd_pr__nfet_01v8 m=1 w=2 l=0.5
+*** M3.  Connections = ['d', 'g', 's', 'b'].
+XMM3 nd1 nd1 vdd vdd sky130_fd_pr__pfet_01v8 m=1 w=4 l=0.5
+*** M4.  Connections = ['d', 'g', 's', 'b'].
+XMM4 vout nd1 vdd vdd sky130_fd_pr__pfet_01v8 m=1 w=4 l=0.5
+*** M5.  Connections = ['d', 'g', 's', 'b'].
+XMM5 tail vbias vss vss sky130_fd_pr__nfet_01v8 m=1 w=4 l=1
+.ends
+.subckt flash_core vin vref vbias vdd vss out0 out1 out2 
+*** Rlad0.  Connections = ['p', 'n'].
+RRlad0 vref t1 1k
+*** Rlad1.  Connections = ['p', 'n'].
+RRlad1 t1 t2 1k
+*** Rlad2.  Connections = ['p', 'n'].
+RRlad2 t2 t3 1k
+*** Rlad3.  Connections = ['p', 'n'].
+RRlad3 t3 vss 1k
+*** comp0.  Connections = ['vdd', 'vss', 'vbias', 'vinp', 'vinn', 'vout'].
+xcomp0 vdd vss vbias vin t1 out0 comparator
+*** comp1.  Connections = ['vdd', 'vss', 'vbias', 'vinp', 'vinn', 'vout'].
+xcomp1 vdd vss vbias vin t2 out1 comparator
+*** comp2.  Connections = ['vdd', 'vss', 'vbias', 'vinp', 'vinn', 'vout'].
+xcomp2 vdd vss vbias vin t3 out2 comparator
+.ends

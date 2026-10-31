@@ -1,0 +1,57 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+*.db
+*.raw
+*.out
+publish.sh
+~$*
+*.xlsx
+debug/
+.worktrees/
+
+# Transient artifacts from running silk/examples/ scripts. Since TASK-243
+# the examples write to ./silk-output under the working directory (or
+# $SILK_EXAMPLES_OUT); silk/examples/output/ stays ignored so an older
+# checkout's leftovers do not suddenly show up as untracked.
+silk-output/
+silk/examples/output/
+
+# Per-example JSON written by scripts/metric_coverage.py --run; the
+# committed artifact is the ledger it generates, not the raw trace.
+metric-coverage/
+
+# ...and stray byproducts if a script is ever pointed at the examples dir
+# itself instead of the output/ convention above
+silk/examples/*.cir
+silk/examples/output.log
+silk/examples/rawfile.raw
+
+# Editor / IDE backup files
+*.py~
+*~
+
+# Claude Code local working dirs
+.claude/
+
+# Nutmeg rawfile fixtures for the reader conformance suite ARE committed:
+# they are the ground truth for tests/test_rawfile_reader.py (real ngspice-42
+# and Xyce 7.10 output, small by construction).
+!tests/fixtures/rawfiles/*.raw
+silk/signals/view/assets/samples/sample_tran_big.js
+.venv
+
+# Default --out of scripts/run_examples.py (run logs, not source).
+examples-run/
+docs/reference/api/
+_build/
+docs-build/
+
+# Local release policy and identity; never included in a public snapshot.
+.release-remote

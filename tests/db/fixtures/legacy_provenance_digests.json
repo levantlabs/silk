@@ -1,0 +1,63 @@
+{
+  "base": "f83d966d",
+  "records": [
+    {
+      "record": {
+        "scheme": "silk.provenance/v1",
+        "run_origin": "silk-launch",
+        "silk_version": "0.2.0",
+        "silk_git": null,
+        "python_version": null,
+        "numpy_version": null,
+        "simulator": "ngspice",
+        "simulator_binary": null,
+        "simulator_binary_source": null,
+        "simulator_version": null,
+        "pdk_name": null,
+        "pdk_libraries": null,
+        "corner": "tt",
+        "corner_kind": "pdk",
+        "temperature_c": null,
+        "temperature_kind": null,
+        "supply_voltage_v": null,
+        "supply_kind": null,
+        "simulator_options": null,
+        "save_list": null,
+        "deck_sha256": "abababababababababababababababababababababababababababababababab",
+        "seed": null,
+        "seedinfo": null,
+        "timestamp_utc": "2026-10-01T00:00:00Z"
+      },
+      "digest": "40b2011bac3e457e001aacc8e61a0109aadf70891ef658a1d0840b752a06c8a8"
+    },
+    {
+      "record": {
+        "scheme": "silk.provenance/v2",
+        "run_origin": "silk-launch",
+        "silk_version": "0.2.0",
+        "silk_git": null,
+        "python_version": null,
+        "numpy_version": null,
+        "simulator": "ngspice",
+        "simulator_binary": null,
+        "simulator_binary_source": null,
+        "simulator_version": null,
+        "pdk_name": null,
+        "pdk_libraries": null,
+        "corner": "tt",
+        "corner_kind": "pdk",
+        "temperature_c": null,
+        "temperature_kind": null,
+        "supply_voltage_v": null,
+        "supply_kind": null,
+        "simulator_options": null,
+        "save_list": null,
+        "deck_sha256": "abababababababababababababababababababababababababababababababab",
+        "seed": null,
+        "seedinfo": null,
+        "timestamp_utc": "2026-10-01T00:00:00Z"
+      },
+      "digest": "ad78934b0566b16429c1d9b719372bbe29f47f1828386998a424334966ffe601"
+    }
+  ]
+}

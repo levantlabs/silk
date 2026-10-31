@@ -1,0 +1,189 @@
+# Runs the test suite. Nothing did before this: the only workflow was
+# publish.yml, which builds and uploads to PyPI without ever invoking pytest —
+# so a push with a broken suite would still publish.
+#
+# The fast suite has two enforced contracts: it runs on a bare checkout with
+# PDK/simulator-dependent tests skipped honestly, and it runs those tests in a
+# configured environment. The small bare job catches undeclared external
+# dependencies; the configured matrix supplies sky130 and ngspice for coverage.
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:        # lets publish.yml gate a release on this
+    inputs:
+      # A workflow invoked via workflow_call inherits the CALLER's event
+      # context — it does not re-evaluate its own `on:` — so during a tag-
+      # triggered release github.ref is refs/tags/vX.Y.Z and any
+      # `ref == refs/heads/main` condition is silently false. That is how the
+      # wheel-completeness test (@slow), the one purpose-built to catch the
+      # 0.1.x broken-wheel release, never ran on the one path where it
+      # mattered. Intent is now an explicit input, not an inference.
+      run_slow:
+        type: boolean
+        default: false
+
+jobs:
+  pytest-bare:
+    name: Fast suite (no PDK or simulator)
+    runs-on: ${{ vars.SILK_RUNNER || 'ubuntu-latest' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install silk
+        run: pip install -e ".[dev]"
+
+      - name: Run the fast suite without external EDA dependencies
+        env:
+          HOME: ${{ runner.temp }}/silk-bare-home
+          PDK_ROOT: ${{ runner.temp }}/silk-no-pdk
+          SILK_NGSPICE_BIN: ${{ runner.temp }}/silk-no-ngspice
+          # Empty disables the silk settings file (docs/settings.md), so a
+          # runner machine's personal ~/.config/silk/silk.env is never read.
+          SILK_SETTINGS: ""
+          MPLBACKEND: Agg
+        run: |
+          mkdir -p "$HOME"
+          python -m pytest -q
+
+  # The generated API reference (docs/reference/) must build with warnings as
+  # errors and nitpicky cross-references, and contain every row of
+  # scripts/api_surface.yaml. Its own job because the other jobs install only
+  # .[dev]; a docs test that skips without Sphinx would skip everywhere.
+  docs:
+    name: API reference build (-W -n)
+    runs-on: ${{ vars.SILK_RUNNER || 'ubuntu-latest' }}
+    env:
+      SILK_SETTINGS: ""
+      MPLBACKEND: Agg
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install silk and the docs extra
+        run: pip install -e ".[docs]"
+
+      - name: Build the reference
+        run: python -m sphinx -E -n -W --keep-going -b html docs/reference docs-build
+
+      - name: Check every manifest row is in the build
+        run: python scripts/api_reference.py docs-build
+
+  pytest:
+    runs-on: ${{ vars.SILK_RUNNER || 'ubuntu-latest' }}
+    # Empty disables the silk settings file (docs/settings.md): locations come
+    # from this workflow's environment only, never a runner's personal file.
+    env:
+      SILK_SETTINGS: ""
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.10 is the declared floor (requires-python) — its leg also pins
+        # numpy to the declared floor, so BOTH minimums are tested on every
+        # run instead of only having been verified by hand once (G3).
+        # 3.13 is the declared ceiling of the classifiers — tested here so the
+        # "supports 3.13" claim stays continuously verified, not just asserted.
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # PDK installation needs Python >=3.11, independently of silk's floor.
+      # Set it up first so the matrix interpreter remains the default below.
+      - uses: actions/setup-python@v5
+        id: pdk-python
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      # A self-hosted runner (repo variable SILK_RUNNER, see
+      # docs/release-gating.md) already carries ngspice and the PDK; install
+      # only what is missing, and never reach for sudo when nothing is needed.
+      - name: Install ngspice
+        run: |
+          if ! command -v ngspice >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends ngspice
+          fi
+          ngspice --version | grep -E 'ngspice-[0-9]'
+
+      - name: Locate the sky130 PDK
+        id: pdk-present
+        run: |
+          echo "PDK_ROOT=$HOME/pdk" >> "$GITHUB_ENV"
+          if [ -f "$HOME/pdk/sky130A/libs.tech/ngspice/sky130.lib.spice" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # The PDK is ~GB and does not change between runs; restoring it is the
+      # difference between a 1-minute job and a 10-minute one.
+      - name: Restore the sky130 PDK from cache
+        id: pdk-cache
+        if: steps.pdk-present.outputs.present != 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/pdk
+          key: sky130-pdk-v1
+
+      - name: Install the sky130 PDK
+        if: steps.pdk-present.outputs.present != 'true' && steps.pdk-cache.outputs.cache-hit != 'true'
+        run: |
+          "${{ steps.pdk-python.outputs.python-path }}" -m venv "$RUNNER_TEMP/pdksetup"
+          "$RUNNER_TEMP/pdksetup/bin/python" -m pip install "git+https://github.com/levantlabs/pdksetup"
+          PATH="$RUNNER_TEMP/pdksetup/bin:$PATH" "$RUNNER_TEMP/pdksetup/bin/pdk" install sky130 --pdk-root "$HOME/pdk"
+
+      - name: Install silk
+        run: pip install -e ".[dev]"
+
+      # Floor leg: downgrade to the oldest numpy the metadata claims to
+      # support. Import-only smoke tests cannot catch a numpy-floor break
+      # (np.trapezoid fails at CALL time) — the full suite on this leg can.
+      - name: Pin numpy to the declared floor
+        if: matrix.python-version == '3.10'
+        run: pip install "numpy==1.26.4"
+
+      - name: Run the suite
+        env:
+          MPLBACKEND: Agg
+        run: pytest -q
+
+      # The core slow profile drives ngspice and validates the built wheel.
+      # Capability-marked Xyce tests are separate optional profiles.
+      # GF180MCU and SG13G2 are preview/catalog integrations for 0.2.0; neither
+      # is a release-gating simulation target. An unavailable dependency or a
+      # preview check must not become a green support claim.
+      # The core profile is worth running on main, but not on every PR.
+      - name: Run the core slow integration tests
+        if: inputs.run_slow || (github.ref == 'refs/heads/main' && matrix.python-version == '3.12')
+        env:
+          MPLBACKEND: Agg
+        run: >-
+          pytest -q -m
+          "slow and not requires_xyce and not requires_gf180 and not requires_sg13g2"

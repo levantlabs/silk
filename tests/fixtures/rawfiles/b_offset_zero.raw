@@ -1,0 +1,15 @@
+Title: b offset zero
+Date: Mon Jul 20 00:00:00 2026
+Plotname: Transient Analysis
+Flags: real
+No. Variables: 2
+No. Points: 2
+Offset: 0.000000000000000e+00
+Variables:
+	0	time	time
+	1	v(1)	voltage
+Values:
+ 0	1.000000000000000e-09
+	1.000000000000000e+00
+ 1	2.000000000000000e-09
+	2.000000000000000e+00

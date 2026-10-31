@@ -1,0 +1,12 @@
+.subckt ota_5t vdd vss vbias vinp vinn vout 
+*** M1.  Connections = ['d', 'g', 's', 'b'].
+XMM1 nd1 vinp tail vss sky130_fd_pr__nfet_01v8 m=1 w=2 l=0.5
+*** M2.  Connections = ['d', 'g', 's', 'b'].
+XMM2 vout vinn tail vss sky130_fd_pr__nfet_01v8 m=1 w=2 l=0.5
+*** M3.  Connections = ['d', 'g', 's', 'b'].
+XMM3 nd1 nd1 vdd vdd sky130_fd_pr__pfet_01v8 m=1 w=4 l=0.5
+*** M4.  Connections = ['d', 'g', 's', 'b'].
+XMM4 vout nd1 vdd vdd sky130_fd_pr__pfet_01v8 m=1 w=4 l=0.5
+*** M5.  Connections = ['d', 'g', 's', 'b'].
+XMM5 tail vbias vss vss sky130_fd_pr__nfet_01v8 m=1 w=4 l=1
+.ends

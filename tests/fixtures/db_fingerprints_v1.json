@@ -1,0 +1,85 @@
+{
+  "structure_scheme": "silk.structure/v1",
+  "module": {
+    "input": {
+      "devices": [
+        {
+          "name": "m1",
+          "model": "nfet"
+        }
+      ],
+      "nets": [
+        "out",
+        "0"
+      ],
+      "submodules": {},
+      "passives": []
+    },
+    "digest": "035af7acc7e100d9b09cc4a640898507e219780ecdc83f7a93d1b5b3a7d9486a"
+  },
+  "structure": {
+    "input": {
+      "transistors": [
+        {
+          "name": "m1",
+          "model": "nfet"
+        }
+      ],
+      "nets": [
+        {
+          "name": "out",
+          "type": "signal"
+        },
+        {
+          "name": "0",
+          "type": "ground"
+        }
+      ],
+      "hierarchy": [],
+      "parameters": [
+        {
+          "module": "ignored",
+          "name": "x",
+          "value": 1
+        }
+      ],
+      "passives": [],
+      "modules": {
+        "$": {
+          "hash": "035af7acc7e100d9b09cc4a640898507e219780ecdc83f7a93d1b5b3a7d9486a"
+        }
+      }
+    },
+    "digest": "b67c4704e02e0c24c5e4da7ac7ece2f21e87c4154ddb4d092f8113c1f26b5c37",
+    "module_digests": {
+      "$": "035af7acc7e100d9b09cc4a640898507e219780ecdc83f7a93d1b5b3a7d9486a"
+    }
+  },
+  "spec": {
+    "definition": {
+      "payload": {
+        "owner_path": "$/amp~1top~0rev",
+        "key": "gain/μ",
+        "metric": "dc_gain",
+        "op": ">=",
+        "target": "0x1.e000000000000p+5",
+        "units": "dB",
+        "parent": null
+      },
+      "canonical_json": "{\"key\":\"gain/μ\",\"metric\":\"dc_gain\",\"op\":\">=\",\"owner_path\":\"$/amp~1top~0rev\",\"parent\":null,\"target\":\"0x1.e000000000000p+5\",\"units\":\"dB\"}",
+      "digest": "36d3cb0a91a9a349deb6c4bf1725a9e63d28736d4aa326d1f8948a0a1dd71316"
+    },
+    "set": {
+      "payload": [
+        {
+          "owner_path": "$/amp~1top~0rev",
+          "key": "gain/μ",
+          "definition_hash": "36d3cb0a91a9a349deb6c4bf1725a9e63d28736d4aa326d1f8948a0a1dd71316"
+        }
+      ],
+      "canonical_json": "[{\"definition_hash\":\"36d3cb0a91a9a349deb6c4bf1725a9e63d28736d4aa326d1f8948a0a1dd71316\",\"key\":\"gain/μ\",\"owner_path\":\"$/amp~1top~0rev\"}]",
+      "digest": "7c7148a9be36504097d29354abe9e02bf11d50da667cd63611d606383048d3a8"
+    },
+    "empty_set_digest": "fa8829046c5e4c01929182f550e6445502dc868b21d0fe28076b8b9094fb61b3"
+  }
+}

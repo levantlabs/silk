@@ -1,0 +1,183 @@
+# The public API surface of silk, for the docstring audit (scripts/docstring_audit.py)
+# and, in TASK-305 Phase 2, for the generated API reference. One list, so the
+# audit scores exactly what the reference will render.
+#
+# Collection rules (implemented by docstring_audit.collect):
+# * Each package's own docstring is a module row, and every name in its
+#   __all__ is on the surface. A package listed
+#   here must define __all__. Packages are scored in the order listed, most
+#   specific first: a name exported by several packages is scored once, under
+#   the first one that lists it.
+# * A module found in an __all__ is recursed into (after the current package)
+#   when it is a silk module with an __all__, unless excluded below.
+# * The same object exported under a second NAME is an alias row (not scored
+#   again); the same name re-exported is skipped.
+# * For every silk class on the surface: its public methods and properties
+#   (including those defined on silk mixins and silk base classes), its data
+#   fields (dataclass, pydantic, NamedTuple), and the instance attributes
+#   listed under `attributes`. Members inherited from outside silk (object,
+#   Enum, Exception, pydantic) are not silk's to document. Enum members are
+#   documented by their enum's docstring and are not separate rows.
+# * `include` names, by dotted path, symbols no __all__ exports (see below).
+# * `factories` are surfaces built at run time (device classes generated from
+#   catalogs); each entry names how to obtain the object whose public
+#   class-valued attributes are the surface.
+
+# Imported before collection. silk.constraints is a side-effect import: it
+# attaches Module.add_constraint / Module.list_constraints.
+imports:
+  - silk.constraints
+
+packages:
+  - silk.metrics
+  - silk.pdk
+  - silk.db
+  - silk.faults
+  - silk.optimize
+  - silk.layout
+  - silk.sources
+  - silk.specs
+  - silk.signals
+  - silk.simulation
+  - silk.elements
+  - silk.constraints
+  - silk.codegen
+  - silk.lint
+  - silk.lint_markers
+  - silk.exceptions
+  - silk.spice_names
+  # Includes validate_instance_name and validate_net_name via __all__.
+  - silk.circuit
+  - silk
+
+# Symbols that docs/api-reference.md documents but no package lists in its
+# __all__, by dotted path. They are collected like an exported name (a class
+# brings its members), under the longest package prefix; adding a row here
+# changes the audit and the generated reference, never the public API.
+include:
+  - silk.utils.require_python_identifier
+  - silk.simulation.behavioral.BehavioralEngine
+  - silk.circuit.report_diff.LayoutDiff
+  - silk.circuit.report_diff.LayoutNetDelta
+  - silk.simulation.backend.SimulatorBackend
+  - silk.codegen.generator.SourceSpec
+  - silk.lint.stress_coverage.StressCoverage
+  - silk.circuit.modules.SubcircuitInstance
+  - silk.circuit.placement_reference.PlacementReference
+  - silk.circuit.placement_reference.BenchBusReference
+  - silk.circuit.placement_reference.BenchBitReference
+  - silk.circuit.device_view.PlacementDeviceView
+  - silk.circuit.placement_reference.PlacementArray
+  - silk.circuit.module_placement.ModuleInstance
+  - silk.circuit.modules_testbench.TestEntry
+  - silk.circuit.monte_carlo.derive_sample_seed
+  - silk.circuit.monte_carlo.wilson_interval
+  - silk.simulation.backend.SpiceBackend
+  - silk.simulation.backend.DEVICE_OP_PARAMS
+  - silk.metrics.diagnostics.MetricWarning
+  - silk.faults.report.CampaignReport
+  - silk.circuit.port_roles.RoleRulesetError
+  - silk.circuit.modules.ModulePin
+  - silk.codegen.testbench_generator.TestbenchSpec
+  - silk.circuit.junction_check.junction_stress_coverage
+  - silk.db.circuit_db
+  - silk.signals.view.emit.emit_view
+  - silk.signals.view.emit.emit_view_data
+  - silk.signals.view.emit.pick_default_plot
+  - silk.signals.view.emit.ViewOutput
+  - silk.signals.view.node_context.ViewNodeContext
+  - silk.signals.rawfile.RawfileError
+  - silk.specs.reconciler.reconcile
+  - silk.specs.resolver.resolve_metric
+  # The signal-kind annotations metric signatures are written with. Documented
+  # under their defining name so the signatures' cross-references resolve.
+  - silk.signals.schema.AnySignal
+  - silk.signals.schema.Transient
+  - silk.signals.schema.FrequencyResponse
+  - silk.signals.schema.NoiseDensity
+  - silk.signals.schema.CodeTransitions
+  - silk.signals.schema.PowerSweep
+  - silk.signals.schema.ReferenceWaveform
+  - silk.signals.schema.ComplexPoints
+  # Types that documented signatures, return annotations and fields name. A
+  # reference to a class is only checked if the class is documented, so these
+  # are rows (documented under their defining module's name).
+  - silk.db.context.CharacterizationContext
+  - silk.pdk.basepdk.FaultParams
+  - silk.pdk.basepdk.JunctionRatingsProvenance
+  - silk.simulation.provenance.RunProvenance
+  - silk.simulation.variation.Resolved
+  - silk.circuit.modules_results.CurrentAnnotationReport
+  - silk.circuit.modules_results.PreflightResult
+  - silk.circuit.report.MetricWarningSection
+  - silk.circuit.report.OpTableSection
+  - silk.circuit.report.SimulationSummary
+  - silk.circuit.report.TopologySummary
+  - silk.circuit.op_table.OpTable
+  - silk.circuit.op_table.RegionThresholds
+  - silk.circuit.port_roles.InferReport
+  - silk.circuit.spec_report.WorstCase
+  - silk.circuit.spec_report.CornerRunError
+  - silk.circuit.monte_carlo.MonteCarloSettings
+  - silk.circuit.monte_carlo.SampleWorstCase
+  - silk.circuit.report_diff.AnnotationDiff
+  - silk.circuit.report_diff.KindMismatch
+  - silk.circuit.report_diff.MagnitudeDiff
+  - silk.circuit.report_diff.ProvenanceDiff
+  - silk.circuit.report_diff.SignalDiff
+  - silk.circuit.report_diff.TopologyDiff
+  - silk.circuit.report_diff.ViolationDiff
+  - silk.codegen.generator.VariableSpec
+  - silk.lint.reports.coverage_report.CoverageDiff
+  - silk.lint.stress_coverage.DeviceStressCoverage
+  - silk.signals.rawfile.RawFile
+  - silk.signals.rawfile.RawPlot
+  - silk.signals.schema.DuplicateMetricError
+  - silk.signals.schema.NonScalarMetricError
+  - silk.signals.schema.UnsupportedParamTypeError
+  - silk.signals.view.template.ViewError
+  - silk.signals.view.template.SelectionError
+  - silk.signals.view.template.SelectorNotFoundError
+  - silk.signals.view.template.AmbiguousSelectorError
+  - silk.signals.view.template.EmptySelectionError
+  - silk.simulation.backend.EmitContext
+  - silk.simulation.backend.RawResult
+  - silk.simulation.run_files.RunFiles
+  - silk.specs.resolver.ResolveResult
+  - silk.constraints.envelope.Source
+  - silk.pdk.basepdk.ValidationError
+  - silk.circuit.op_table.OpRow
+  - silk.circuit.report.InstanceSummary
+  - silk.circuit.report.MagnitudeStats
+  - silk.circuit.report.SignalStats
+  - silk.circuit.report_diff.MagnitudeDelta
+  - silk.circuit.report_diff.SignalDelta
+  - silk.pdk.basepdk.FaultDimSchema
+
+# These classes' members get a group of their own: they are the bulk of what a
+# user calls. Members of other classes are grouped as "<package> (members)".
+member_groups:
+  - Module
+  - ModuleTestbench
+  - Signal
+  - Spec
+
+# Documented instance attributes that are assigned in __init__ and so are
+# invisible on the class, listed by hand because docs/api-reference.md or a
+# class docstring promises them (internal instance state is not crawled).
+# Keyed by class name as exported.
+attributes:
+  Module: [results_file]
+  Signal: [x, y, name, type, xlabel, ylabel]
+
+factories:
+  - group: sky130 device factories
+    label: "load_pdk('sky130')"
+    call: silk.pdk.load_pdk
+    args: [sky130]
+  - group: ElementLibrary elements
+    label: elements
+    object: silk.elements.elements
+
+# Dotted names never collected, with the reason.
+exclude:

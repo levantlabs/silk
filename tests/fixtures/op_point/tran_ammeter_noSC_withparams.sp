@@ -1,0 +1,36 @@
+* Ammeter wrapper present (.xmdev segment), NO .options savecurrents,
+* device-param '@' saves via the uniform post-run sequence.
+
+.lib "$PDK_ROOT/sky130A/libs.tech/ngspice/sky130.lib.spice" tt
+
+.subckt amm_sky130_fd_pr__nfet_01v8 d g s b m=1 w=1 l=0.15
+Vamm_d d d_i 0
+Vamm_g g g_i 0
+Vamm_s s s_i 0
+Vamm_b b b_i 0
+XMdev d_i g_i s_i b_i sky130_fd_pr__nfet_01v8 m={m} w={w} l={l}
+.ends
+
+.subckt dut d g s b
+XMmm1 d g s b amm_sky130_fd_pr__nfet_01v8 m=1 w=1 l=0.15
+.ends
+
+xdut vd vg vs vs dut
+
+Vvd vd 0 DC 1
+Vvg vg 0 DC 1
+Vvs vs 0 DC 0
+
+.tran 1n 10n
+
+.control
+save all
+run
+save @m.xdut.xmmm1.xmdev.msky130_fd_pr__nfet_01v8[id]
+save @m.xdut.xmmm1.xmdev.msky130_fd_pr__nfet_01v8[gm]
+save @m.xdut.xmmm1.xmdev.msky130_fd_pr__nfet_01v8[vth]
+op
+write tran_ammeter_noSC_withparams.raw tran1.all op1.all
+exit
+.endc
+.end

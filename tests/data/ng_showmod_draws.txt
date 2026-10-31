@@ -1,0 +1,12 @@
+# ** ngspice-42 : Circuit level simulation program
+# command: ngspice -b ng_showmod_draws.sp
+Circuit: * can ngspice report each instance's drawn model parameters?
+v(g1)-v(g2) = 3.588095e-03
+      model xm1:sky130_fd_pr__nfe
+       vth0              0.524649
+       toxe           4.15519e-09
+       voff            -0.0876686
+      model xm2:sky130_fd_pr__nfe
+       vth0              0.522452
+       toxe           4.14214e-09
+       voff            -0.0848793

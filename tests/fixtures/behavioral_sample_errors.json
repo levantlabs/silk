@@ -1,0 +1,74 @@
+{
+  "alias-rewrite": [
+    "RewriteError",
+    "Model 'errors' assigned 'out' more than once at the same sample. Compute in a local value and assign it to the port once."
+  ],
+  "bit-range": [
+    "CircuitError",
+    "Index 0 is absent; declared indices: (8,)."
+  ],
+  "bit-type": [
+    "TypeError",
+    "bus 'code' bit subscript must be a declared bit number, got True"
+  ],
+  "bus-index": [
+    "IndexError",
+    "index 7 is out of bounds for axis 0 with size 1"
+  ],
+  "bus-shape": [
+    "ValueError",
+    "bus 'code' has 1 bit(s): assign an array of shape (1,) (one row per bit, in declared order), got shape (2,)"
+  ],
+  "conflict": [
+    "ConflictError",
+    "Voltage on net 'in' is written by both models 'drive' and 'errors'."
+  ],
+  "delay-dc": [
+    "SimulationError",
+    "Model 'errors', port 'vout': previous_value is unavailable at a DC point, which has no previous time point. Branch on silk.analysis() and use the delay only in transient."
+  ],
+  "dictionary": [
+    "SimulationError",
+    "Model 'errors': ports are electrical pins, not a dictionary. Read ports.vin.v; publish by assigning ports.VOUT.v (or ports.VOUT.i) and return None instead of a dictionary."
+  ],
+  "dictionary-set": [
+    "SimulationError",
+    "Model 'errors': ports are electrical pins, not a dictionary. Read ports.vin.v; publish by assigning ports.VOUT.v (or ports.VOUT.i) and return None instead of a dictionary."
+  ],
+  "kcl": [
+    "KCLError",
+    "Net 'out' needs a second unknown pin current: 'errors.vout' and 'errors.alias'. Assign the other pin currents before reading; KCL can fill only one unknown current per net and sample."
+  ],
+  "non-numeric": [
+    "ValueError",
+    "could not convert string to float: 'invalid'"
+  ],
+  "rewrite-i": [
+    "RewriteError",
+    "Model 'errors' assigned 'errors.vout current' more than once at the same sample. Compute in a local value and assign it to the port once."
+  ],
+  "rewrite-v": [
+    "RewriteError",
+    "Model 'errors' assigned 'out' more than once at the same sample. Compute in a local value and assign it to the port once."
+  ],
+  "scalar-length-one": [
+    "ValueError",
+    "cannot broadcast a non-scalar to a scalar array"
+  ],
+  "scalar-length-two": [
+    "ValueError",
+    "cannot broadcast a non-scalar to a scalar array"
+  ],
+  "scalar-read": [
+    "IndexError",
+    "too many indices for array: array is 0-dimensional, but 1 were indexed"
+  ],
+  "scalar-write": [
+    "IndexError",
+    "a sample-mode port value is a scalar"
+  ],
+  "unknown": [
+    "AttributeError",
+    "Model 'errors' has no declared port 'missing'"
+  ]
+}

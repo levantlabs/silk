@@ -1,0 +1,83 @@
+# Ideal analog elements for use in PyNetlist schematics.
+# These are process-independent SPICE primitives — not PDK-specific.
+# Format follows the same conventions as skywater_130_device_details.yaml
+# except there is no PDKDevice field (no model name needed).
+
+# pinAliases/paramAliases below are metadata for the element factory only
+# (silk/elements/factory.py) — they let a caller spell a pin or parameter by
+# an alternate, historical name (matching silk.elements.passives'
+# constructor signatures) and are resolved to the canonical name before
+# construction. They are NOT part of the device's pins/parameters and are
+# deliberately excluded from export_schema() (silk/elements/schema.py reads
+# only pinList/paramConstraints) — the palette/parameter editor indexes
+# export_schema() output directly and must never see phantom fields.
+
+resistor:
+  spice_prefix: R
+  symbol: Resistor
+  category: passive
+  pinList: [p, n]
+  pinAliases:
+    pos: p
+    neg: n
+  paramConstraints:
+    - name: value
+      default: 1000
+      unit: "Ohm"
+  paramAliases:
+    resistance: value
+    res: value
+
+capacitor:
+  spice_prefix: C
+  symbol: Capacitor
+  category: passive
+  pinList: [p, n]
+  pinAliases:
+    pos: p
+    neg: n
+  paramConstraints:
+    - name: value
+      default: 1.0e-12
+      unit: F
+  paramAliases:
+    capacitance: value
+    cap: value
+
+inductor:
+  spice_prefix: L
+  symbol: Inductor
+  category: passive
+  pinList: [p, n]
+  pinAliases:
+    pos: p
+    neg: n
+  paramConstraints:
+    - name: value
+      default: 1.0e-9
+      unit: H
+  paramAliases:
+    inductance: value
+    ind: value
+
+vsource:
+  spice_prefix: V
+  symbol: VSource
+  category: source
+  source_class: VoltageSource
+  pinList: [p, n]
+  paramConstraints:
+    - name: dc
+      default: 0
+      unit: V
+
+isource:
+  spice_prefix: I
+  symbol: ISource
+  category: source
+  source_class: CurrentSource
+  pinList: [p, n]
+  paramConstraints:
+    - name: dc
+      default: 0
+      unit: A

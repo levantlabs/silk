@@ -1,0 +1,7 @@
+* TASK-547: measure the last frequency of a complete nondivisible AC grid
+Vin in 0 DC 1 AC 1
+Rload in out 1k
+Cload out 0 1p
+.ac dec 2 1 9
+.print ac format=raw file=rawfile.raw V(out)
+.end

@@ -1,0 +1,63 @@
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - "v*"          # triggers on v0.1.0, v0.2.0, etc.
+
+jobs:
+  # The tag IS the version claim — make divergence a hard failure, not a
+  # convention. Both tests and build depend on this.
+  verify-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tag matches pyproject version
+        run: |
+          python3 - <<'EOF'
+          import os, sys, tomllib
+          tag = os.environ['GITHUB_REF_NAME'].removeprefix('v')
+          ver = tomllib.load(open('pyproject.toml', 'rb'))['project']['version']
+          sys.exit(f'tag v{tag} != pyproject version {ver}' if tag != ver else 0)
+          EOF
+
+  # A release must not go out on a red suite. publish.yml used to build and
+  # upload without ever running pytest. run_slow: the wheel-completeness test
+  # is @slow, and the release is exactly where it must run.
+  tests:
+    needs: verify-tag
+    uses: ./.github/workflows/tests.yml
+    with:
+      run_slow: true
+
+  build:
+    needs: [verify-tag, tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build tools
+        run: pip install build twine
+
+      - name: Build distributions
+        run: python -m build
+
+      - name: Check distributions
+        run: twine check --strict dist/*
+
+      - name: Upload to TestPyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }}
+        run: twine upload --repository testpypi dist/*
+
+      - name: Upload to PyPI
+        if: ${{ !contains(github.ref, 'rc') && !contains(github.ref, 'alpha') && !contains(github.ref, 'beta') }}
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        run: twine upload dist/*

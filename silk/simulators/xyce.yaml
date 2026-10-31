@@ -1,0 +1,61 @@
+---
+# Xyce simulator configuration (see ngspice.yaml for the schema).
+#
+# Xyce groups options into packages (.options TIMEINT ..., .options DEVICE
+# ..., .options NONLIN ...). Every knob silk's portable presets touch is a
+# time-integrator tolerance, so the default emit line targets the TIMEINT
+# package. Options belonging to another package are routed by name through
+# `option_line_formats` below.
+
+name: xyce
+
+emit:
+  line_format: ".options timeint {options}"
+  kv_format: "{key}={value}"
+  separator: " "
+  # Per-key overrides of `line_format`, for options Xyce files under another
+  # package. Each listed key is emitted on its own `.options <package>` line;
+  # everything else stays on the TIMEINT line above.
+  #
+  # TEMP is the circuit's ambient operating temperature and belongs to the
+  # DEVICE package (Xyce Reference Guide 7.10, §2.1.25.1 / Table 2-3). Routing
+  # matters: verified on Xyce 7.10.0, `.options timeint temp=85` is accepted
+  # with only a "No options parameter temp found, parameter will be ignored"
+  # netlist warning and the circuit then solves at the default 27 C, while
+  # `.options device temp=85` is accepted silently and actually applied.
+  # ngspice's `.temp 85` card is NOT portable here ("Unrecognized dot line").
+  option_line_formats:
+    temp: ".options device {options}"
+
+# Xyce has no ngspice-style `.options savecurrents`; omitting the directive
+# makes silk warn and emit nothing when Module.save_device_currents is set.
+# Terminal currents on Xyce need the ammeter_wrapper method.
+
+# Portable preset names (same names as ngspice.yaml, translated to Xyce's
+# TIMEINT vocabulary). ngspice's trtol/chgtol/vntol/maxord knobs have no
+# TIMEINT equivalent and are intentionally not carried over.
+presets:
+  default: {}
+  tight:
+    reltol: 1e-5
+    abstol: 1e-12
+    method: gear
+  fast:
+    reltol: 1e-3
+    abstol: 1e-10
+    method: trap
+
+# Option keys silk will pass through without a typo warning. TIMEINT keys,
+# plus any key routed to another package by `option_line_formats`. Listing a
+# key here only silences the typo warning — it is `option_line_formats` that
+# puts TEMP in the package Xyce actually reads.
+known_options:
+  - temp
+  - reltol
+  - abstol
+  - method
+  - newlte
+  - newbpstepping
+  - delmax
+  - minord
+  - maxord

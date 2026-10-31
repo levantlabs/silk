@@ -1,0 +1,6 @@
+voltage source loop
+V1 1 0 1
+V2 1 0 2
+R1 1 0 1k
+.op
+.end

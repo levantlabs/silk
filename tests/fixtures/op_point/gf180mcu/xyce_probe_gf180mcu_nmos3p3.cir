@@ -1,0 +1,20 @@
+*** TASK-330.5 gf180mcu-on-Xyce probe (ruling C). Real Xyce 7.10 run testing
+*** whether N(<path>:PARAM)/ID(<path>) resolve for gf180mcu's nfet_03v3
+*** model using op_internal_name 'm0' as the leaf (per TASK-330.3's ngspice
+*** finding: the internal instance is literally 'm0', not 'm'+model_name).
+*** Flat instance (no dut wrapper) mirroring
+*** tests/fixtures/op_point/gf180mcu/nmos3p3_op_params.sp's device/bias
+*** setup, adapted to Xyce's single-analysis .print dc form (matching
+*** tests/fixtures/op_point/xyce_probe_available.cir's sky130 pattern).
+
+.lib "$PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice" typical
+
+XMM1 vd vg 0 0 nfet_03v3 m=1 w=10u l=0.28u
+
+Vvd vd 0 DC 1.5
+Vvg vg 0 DC 1.5
+
+.dc vvd 1.5 1.5 1
+
+.print dc format=raw file=xyce_probe_gf180mcu_nmos3p3.raw v(vd) v(vg) N(XMM1:M0:GM) N(XMM1:M0:GDS) N(XMM1:M0:VTH) N(XMM1:M0:VDSAT) N(XMM1:M0:VGS) N(XMM1:M0:VDS) N(XMM1:M0:VBS) ID(XMM1:M0)
+.end

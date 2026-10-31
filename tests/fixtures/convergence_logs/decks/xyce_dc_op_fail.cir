@@ -1,0 +1,7 @@
+dc nonconv
+V1 1 0 1
+R1 1 2 1
+B1 2 0 I={1/(v(2)-0.5)}
+.op
+.print dc v(2)
+.end

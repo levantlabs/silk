@@ -1,0 +1,296 @@
+{
+  "a_ac_ascii.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "AC Analysis"
+    ]
+  },
+  "a_ac_bin.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "AC Analysis"
+    ]
+  },
+  "a_tran_ascii.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "Transient Analysis"
+    ]
+  },
+  "a_tran_bin.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "Transient Analysis"
+    ]
+  },
+  "b_ac_complex.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "AC Analysis"
+    ]
+  },
+  "b_attrs_trailing.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "Transient Analysis"
+    ]
+  },
+  "b_flags_complex_padded.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "AC Analysis"
+    ]
+  },
+  "b_flags_complex_unpadded.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "AC Analysis"
+    ]
+  },
+  "b_flags_real_padded.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "Transient Analysis"
+    ]
+  },
+  "b_flags_real_unpadded.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "Transient Analysis"
+    ]
+  },
+  "b_lowercase_keywords.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "Transient Analysis"
+    ]
+  },
+  "b_offset_ascii.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "Transient Analysis"
+    ]
+  },
+  "b_offset_ascii_baseline.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "Transient Analysis"
+    ]
+  },
+  "b_offset_nontime_scale.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "AC Analysis"
+    ]
+  },
+  "b_offset_zero.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "Transient Analysis"
+    ]
+  },
+  "b_tran_bin_offset.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "Transient Analysis"
+    ]
+  },
+  "b_tran_bin_real.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "Transient Analysis"
+    ]
+  },
+  "b_tran_real.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "Transient Analysis"
+    ]
+  },
+  "b_zero_points.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "Transient Analysis"
+    ]
+  },
+  "c_ac_bin.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "AC Analysis"
+    ]
+  },
+  "c_dc_sweep_bin.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "DC transfer characteristic"
+    ]
+  },
+  "c_tran_ascii_cli.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "Transient Analysis"
+    ]
+  },
+  "c_tran_bin.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "Transient Analysis"
+    ]
+  },
+  "d_constants_only.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "constants"
+    ]
+  },
+  "d_constants_only_ascii.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "constants"
+    ]
+  },
+  "d_healthy_transient.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "Transient Analysis"
+    ]
+  },
+  "d_multiplot_ac_tran.raw": {
+    "default_plot": 1,
+    "plot_names": [
+      "AC Analysis",
+      "Transient Analysis"
+    ]
+  },
+  "d_multiplot_ac_tran_ascii.raw": {
+    "default_plot": 1,
+    "plot_names": [
+      "AC Analysis",
+      "Transient Analysis"
+    ]
+  },
+  "d_multiplot_constants_first.raw": {
+    "default_plot": 1,
+    "plot_names": [
+      "constants",
+      "Transient Analysis"
+    ]
+  },
+  "d_multiplot_constants_last.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "Transient Analysis",
+      "constants"
+    ]
+  },
+  "d_multiplot_nvars_differ.raw": {
+    "default_plot": 1,
+    "plot_names": [
+      "AC Analysis",
+      "Transient Analysis"
+    ]
+  },
+  "d_multiplot_order_reversed.raw": {
+    "default_plot": 1,
+    "plot_names": [
+      "Transient Analysis",
+      "AC Analysis"
+    ]
+  },
+  "e_bus_array_bh.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "Transient Analysis"
+    ]
+  },
+  "e_bus_array_ng.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "Transient Analysis"
+    ]
+  },
+  "e_bus_array_xy.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "Transient Analysis"
+    ]
+  },
+  "e_ng_ac.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "AC Analysis"
+    ]
+  },
+  "e_ng_dc.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "DC transfer characteristic"
+    ]
+  },
+  "e_ng_noise.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "Noise Spectral Density Curves"
+    ]
+  },
+  "e_ng_op.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "Operating Point"
+    ]
+  },
+  "e_ng_ramp.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "Transient Analysis"
+    ]
+  },
+  "e_ng_tran.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "Transient Analysis"
+    ]
+  },
+  "e_xy_ac.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "AC Analysis"
+    ]
+  },
+  "e_xy_dc.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "DC transfer characteristic"
+    ]
+  },
+  "e_xy_op.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "DC transfer characteristic"
+    ]
+  },
+  "e_xy_ramp.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "Transient Analysis"
+    ]
+  },
+  "e_xy_tran.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "Transient Analysis"
+    ]
+  },
+  "f_nonascii_title.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "Transient Analysis"
+    ]
+  },
+  "g_dims0_zero_length.raw": {
+    "default_plot": 0,
+    "plot_names": [
+      "Operating Point"
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+HEADER
+	0	          vg
+	1	          vd
+	2	  vvg_branch
+	3	  vvd_branch
+	4	m:xdut:xmmm1:sky130_fd_pr__nfet_01v8_bodyprime
+	5	m:xdut:xmmm1:sky130_fd_pr__nfet_01v8_sourcebody
+	6	m:xdut:xmmm1:sky130_fd_pr__nfet_01v8_drainbody
+	7	          vs
+	8	  vvs_branch

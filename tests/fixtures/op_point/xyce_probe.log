@@ -1,0 +1,87 @@
+
+*****
+***** Welcome to the Xyce(TM) Parallel Electronic Simulator
+*****
+***** This is version Xyce Release 7.10.0-opensource
+***** Date: Sun Sep 27 14:14:25 CDT 2026
+
+
+***** Executing netlist xyce_probe.cir
+
+***** Reading and parsing netlist...
+Netlist warning in file xyce_probe.cir at or near line 32
+ SCALE:  duplicate PARSER parameter.  Using the first value found = 1.0u
+ 
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XDUT:XMMM1:SKY130_FD_PR__NFET_01V8__MODEL.62: Model card
+ specifies BSIM4 version 4.5 which is older than the oldest version supported
+ in Xyce (4.6.1).  Using oldest version available.
+ 
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XDUT:XMMM1:SKY130_FD_PR__NFET_01V8__MODEL.62: Given pbswgd is
+ less than 0.1. Pbswgd is set to 0.1
+***** Setting up topology...
+
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XDUT:XMMM1:MSKY130_FD_PR__NFET_01V8: Source conductance reset
+ to 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XDUT:XMMM1:MSKY130_FD_PR__NFET_01V8: Drain conductance reset
+ to 1.0e3 mho
+***** Device Count Summary ...
+       M level 14 (BSIM4)                     1
+       V level 1 (Independent Voltage Source) 3
+       ----------------------------------------
+       Total Devices                          4
+***** Setting up matrix structure...
+***** Number of Unknowns = 9
+***** Initializing...
+
+
+***** Solution Summary *****
+	Number Successful Steps Taken:		1
+	Number Failed Steps Attempted:		0
+	Number Jacobians Evaluated:		3
+	Number Linear Solves:			3
+	Number Failed Linear Solves:		0
+	Number Residual Evaluations:		5
+	Number Nonlinear Convergence Failures:	0
+	Total Residual Load Time:		0.000228882 seconds
+	Total Jacobian Load Time:		1.19209e-05 seconds
+	Total Linear Solution Time:		0.000293016 seconds
+
+
+***** Total Simulation Solvers Run Time: 0.00651002 seconds
+***** Total Elapsed Run Time:            0.329471 seconds
+*****
+***** End of Xyce(TM) Simulation
+*****
+
+Timing summary of 1 processor
+                 Stats                   Count       CPU Time              Wall Time
+---------------------------------------- ----- --------------------- ---------------------
+Xyce                                         1        0.374 (100.0%)        0.331 (100.0%)
+  Analysis                                   1        0.002 ( 0.61%)        0.006 ( 1.96%)
+    DC Sweep                                 1        0.002 ( 0.61%)        0.006 ( 1.96%)
+      Solve                                  1        0.001 ( 0.24%)        0.005 ( 1.52%)
+        Residual                             5        0.000 ( 0.02%)        0.000 ( 0.07%)
+        Jacobian                             3        0.000 (<0.01%)        0.000 (<0.01%)
+        Linear Solve                         3        0.000 ( 0.03%)        0.000 ( 0.09%)
+      Successful Step                        1        0.001 ( 0.35%)        0.001 ( 0.42%)
+  Netlist Import                             1        0.341 (91.10%)        0.302 (91.41%)
+    Parse Context                            1        0.322 (86.12%)        0.266 (80.58%)
+    Distribute Devices                       1        0.006 ( 1.66%)        0.007 ( 2.20%)
+    Verify Devices                           1        0.000 (<0.01%)        0.000 (<0.01%)
+    Instantiate                              1        0.000 ( 0.03%)        0.000 ( 0.03%)
+  Late Initialization                        1        0.002 ( 0.64%)        0.007 ( 2.06%)
+    Global Indices                           1        0.000 ( 0.01%)        0.000 ( 0.01%)
+  Setup Matrix Structure                     1        0.000 ( 0.12%)        0.002 ( 0.71%)
+

@@ -1,0 +1,21 @@
+
+*****
+***** Welcome to the Xyce(TM) Parallel Electronic Simulator
+*****
+***** This is version Xyce Release 7.10.0-opensource
+***** Date: Mon Oct 12 17:02:20 CDT 2026
+
+
+***** Executing netlist /tmp/codex552-rereview-boUCa0/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa error-cases bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb cccccccccccccccccccccccccccccccccccccccc dddddddddddddddddddddddddddddddddddddddd/failure.cir
+
+***** Reading and parsing netlist...
+Netlist warning: No print specified
+Netlist error in file
+ /tmp/codex552-rereview-boUCa0/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+ error-cases bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+ cccccccccccccccccccccccccccccccccccccccc
+ dddddddddddddddddddddddddddddddddddddddd/failure.cir at or near line 5
+ Duplicate device XDUT:R1
+Simulation aborted due to error.  There are 0 MSG_FATAL errors and 1 MSG_ERROR
+ errors
+*** Xyce Abort ***

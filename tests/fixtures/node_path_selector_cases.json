@@ -1,0 +1,691 @@
+[
+  {
+    "name": "designer",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(xdut.mid)",
+            "selectable": true
+          },
+          {
+            "name": "v(other)",
+            "selectable": true
+          }
+        ],
+        "node_paths": {
+          "version": 1,
+          "vectors": [
+            {
+              "name": "time",
+              "selectable": false
+            },
+            {
+              "name": "v(xdut.mid)",
+              "selectable": true
+            },
+            {
+              "name": "v(other)",
+              "selectable": true
+            }
+          ],
+          "paths": [
+            {
+              "name": "dut.mid",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    1
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.unsaved",
+              "targets": [
+                {
+                  "id": 1,
+                  "rows": []
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "options": {
+      "signals": [
+        "dut.mid"
+      ]
+    },
+    "expected": {
+      "masks": [
+        [
+          false,
+          true,
+          false
+        ]
+      ],
+      "diagnostics": []
+    }
+  },
+  {
+    "name": "exclude full inventory",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(xdut.mid)",
+            "selectable": true
+          },
+          {
+            "name": "v(other)",
+            "selectable": true
+          }
+        ],
+        "node_paths": {
+          "version": 1,
+          "vectors": [
+            {
+              "name": "time",
+              "selectable": false
+            },
+            {
+              "name": "v(xdut.mid)",
+              "selectable": true
+            },
+            {
+              "name": "v(other)",
+              "selectable": true
+            }
+          ],
+          "paths": [
+            {
+              "name": "dut.mid",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    1
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.unsaved",
+              "targets": [
+                {
+                  "id": 1,
+                  "rows": []
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "options": {
+      "signals": [
+        "dut.mid"
+      ],
+      "exclude": [
+        "other"
+      ]
+    },
+    "expected": {
+      "masks": [
+        [
+          false,
+          true,
+          false
+        ]
+      ],
+      "diagnostics": []
+    }
+  },
+  {
+    "name": "unmatched",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(xdut.mid)",
+            "selectable": true
+          },
+          {
+            "name": "v(other)",
+            "selectable": true
+          }
+        ],
+        "node_paths": {
+          "version": 1,
+          "vectors": [
+            {
+              "name": "time",
+              "selectable": false
+            },
+            {
+              "name": "v(xdut.mid)",
+              "selectable": true
+            },
+            {
+              "name": "v(other)",
+              "selectable": true
+            }
+          ],
+          "paths": [
+            {
+              "name": "dut.mid",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    1
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.unsaved",
+              "targets": [
+                {
+                  "id": 1,
+                  "rows": []
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "options": {
+      "signals": [
+        "dut.missing"
+      ]
+    },
+    "expected": {
+      "error": true
+    }
+  },
+  {
+    "name": "raw only",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(xdut.mid)",
+            "selectable": true
+          },
+          {
+            "name": "v(other)",
+            "selectable": true
+          }
+        ]
+      }
+    ],
+    "options": {
+      "signals": [
+        "xdut"
+      ]
+    },
+    "expected": {
+      "masks": [
+        [
+          false,
+          true,
+          false
+        ]
+      ],
+      "diagnostics": []
+    }
+  },
+  {
+    "name": "unsaved ambiguity",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(xdut.mid)",
+            "selectable": true
+          },
+          {
+            "name": "v(other)",
+            "selectable": true
+          }
+        ],
+        "node_paths": {
+          "version": 1,
+          "vectors": [
+            {
+              "name": "time",
+              "selectable": false
+            },
+            {
+              "name": "v(xdut.mid)",
+              "selectable": true
+            },
+            {
+              "name": "v(other)",
+              "selectable": true
+            }
+          ],
+          "paths": [
+            {
+              "name": "dut.mid",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    1
+                  ]
+                },
+                {
+                  "id": 2,
+                  "rows": []
+                }
+              ]
+            },
+            {
+              "name": "dut.unsaved",
+              "targets": [
+                {
+                  "id": 1,
+                  "rows": []
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "options": {
+      "signals": [
+        "dut.mid"
+      ]
+    },
+    "expected": {
+      "error": true
+    }
+  },
+  {
+    "name": "glob includes ambiguous set",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(xdut.mid)",
+            "selectable": true
+          },
+          {
+            "name": "v(other)",
+            "selectable": true
+          }
+        ],
+        "node_paths": {
+          "version": 1,
+          "vectors": [
+            {
+              "name": "time",
+              "selectable": false
+            },
+            {
+              "name": "v(xdut.mid)",
+              "selectable": true
+            },
+            {
+              "name": "v(other)",
+              "selectable": true
+            }
+          ],
+          "paths": [
+            {
+              "name": "dut.mid",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    1
+                  ]
+                },
+                {
+                  "id": 2,
+                  "rows": []
+                }
+              ]
+            },
+            {
+              "name": "dut.unsaved",
+              "targets": [
+                {
+                  "id": 1,
+                  "rows": []
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "options": {
+      "signals": [
+        "dut.*"
+      ]
+    },
+    "expected": {
+      "masks": [
+        [
+          false,
+          true,
+          false
+        ]
+      ],
+      "diagnostics": []
+    }
+  },
+  {
+    "name": "emitted wins",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(xdut.mid)",
+            "selectable": true
+          },
+          {
+            "name": "v(dut.mid)",
+            "selectable": true
+          }
+        ],
+        "node_paths": {
+          "version": 1,
+          "vectors": [
+            {
+              "name": "time",
+              "selectable": false
+            },
+            {
+              "name": "v(xdut.mid)",
+              "selectable": true
+            },
+            {
+              "name": "v(dut.mid)",
+              "selectable": true
+            }
+          ],
+          "paths": [
+            {
+              "name": "dut.mid",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    1
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.unsaved",
+              "targets": [
+                {
+                  "id": 1,
+                  "rows": []
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "options": {
+      "signals": [
+        "dut.mid"
+      ]
+    },
+    "expected": {
+      "masks": [
+        [
+          false,
+          false,
+          true
+        ]
+      ],
+      "diagnostics": [
+        {
+          "kind": "emitted-precedence",
+          "selector": "dut.mid",
+          "keyword": "signals"
+        }
+      ]
+    }
+  },
+  {
+    "name": "case folded ambiguity DUT.MID",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(xdut.mid)",
+            "selectable": true
+          },
+          {
+            "name": "v(other)",
+            "selectable": true
+          }
+        ],
+        "node_paths": {
+          "version": 1,
+          "vectors": [
+            {
+              "name": "time",
+              "selectable": false
+            },
+            {
+              "name": "v(xdut.mid)",
+              "selectable": true
+            },
+            {
+              "name": "v(other)",
+              "selectable": true
+            }
+          ],
+          "paths": [
+            {
+              "name": "dut.Mid",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    1
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "DUT.MID",
+              "targets": [
+                {
+                  "id": 2,
+                  "rows": []
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "options": {
+      "signals": [
+        "dut.Mid"
+      ]
+    },
+    "expected": {
+      "error": true
+    }
+  },
+  {
+    "name": "case folded ambiguity dut.ß",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(xdut.mid)",
+            "selectable": true
+          },
+          {
+            "name": "v(other)",
+            "selectable": true
+          }
+        ],
+        "node_paths": {
+          "version": 1,
+          "vectors": [
+            {
+              "name": "time",
+              "selectable": false
+            },
+            {
+              "name": "v(xdut.mid)",
+              "selectable": true
+            },
+            {
+              "name": "v(other)",
+              "selectable": true
+            }
+          ],
+          "paths": [
+            {
+              "name": "dut.ss",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    1
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.ß",
+              "targets": [
+                {
+                  "id": 2,
+                  "rows": []
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "options": {
+      "signals": [
+        "dut.ss"
+      ]
+    },
+    "expected": {
+      "error": true
+    }
+  },
+  {
+    "name": "malformed target row",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(xdut.mid)",
+            "selectable": true
+          },
+          {
+            "name": "v(other)",
+            "selectable": true
+          }
+        ],
+        "node_paths": {
+          "version": 1,
+          "vectors": [
+            {
+              "name": "time",
+              "selectable": false
+            },
+            {
+              "name": "v(xdut.mid)",
+              "selectable": true
+            },
+            {
+              "name": "v(other)",
+              "selectable": true
+            }
+          ],
+          "paths": [
+            {
+              "name": "dut.mid",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    99
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.unsaved",
+              "targets": [
+                {
+                  "id": 1,
+                  "rows": []
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "options": {},
+    "expected": {
+      "error": true
+    }
+  }
+]

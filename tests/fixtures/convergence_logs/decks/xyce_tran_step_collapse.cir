@@ -1,0 +1,7 @@
+tran late
+V1 1 0 PULSE(0 2 1u 1p 1p 1 2)
+R1 1 2 1
+B1 2 0 I={1/(v(1)-1)}
+.tran 1n 3u
+.print tran v(2)
+.end

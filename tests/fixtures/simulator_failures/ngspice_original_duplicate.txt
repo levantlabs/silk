@@ -1,0 +1,10 @@
+
+Note: No compatibility mode selected!
+
+
+Circuit: *** circuit: test_twin_div.cir
+
+Error on line:
+  r.xdut.rr1 out 0 1k
+device already exists, bail out
+    Simulation interrupted due to error!

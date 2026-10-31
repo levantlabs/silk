@@ -1,0 +1,14 @@
+TITLE: b lowercase/mixed-case keywords
+date: Mon Jul 20 00:00:00 2026
+PlotName: Transient Analysis
+FLAGS: real
+No. VARIABLES: 2
+no. points: 2
+VARIABLES:
+	0	time	time
+	1	v(1)	voltage
+values:
+ 0	0.000000000000000e+00
+	1.000000000000000e+00
+ 1	1.000000000000000e-09
+	2.000000000000000e+00

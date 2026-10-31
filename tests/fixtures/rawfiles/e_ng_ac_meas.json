@@ -1,0 +1,16 @@
+{
+  "generated_by": "gen_e_meas.py (TASK-303.2)",
+  "ngspice_form": {
+    "bandwidth_3db_out": "WHEN vdb(out)=56.989700043360187",
+    "phase_margin_find_out": "FIND vp(out) WHEN vdb(out)=0",
+    "unity_gain_freq_out": "WHEN vm(out)=1"
+  },
+  "ngspice_version": "ngspice-42 : Circuit level simulation program",
+  "note": "phase_margin_find_out is ngspice's raw .measure result for vp(), which comes back in RADIANS -- see module docstring. No gain_margin/phase-crossover entry: ngspice's vp() is wrapped to (-pi, pi] per sample, not unwrapped across the sweep, so a literal WHEN/FIND vp(out)=-180 recipe cannot find a crossover that passes through the wrap boundary -- verified live while building this generator, see module docstring and docs/metrics-ngspice-measure-catalog.md.",
+  "phase_margin_find_out_unit": "rad",
+  "values": {
+    "bandwidth_3db_out": 9999.89,
+    "phase_margin_find_out": -2.769414,
+    "unity_gain_freq_out": 5043000.0
+  }
+}

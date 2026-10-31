@@ -1,0 +1,65 @@
+
+Note: No compatibility mode selected!
+
+
+Circuit: * task-330.3 probe: post-run '@' save (all 17 params) + explicit op, tran bench.
+
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using SPARSE 1.3 as Direct Linear Solver
+
+Initial Transient Solution
+--------------------------
+
+Node                                   Voltage
+----                                   -------
+vdn                                          1
+vgn                                          1
+vdn#branch                        -6.94215e-05
+vgn#branch                                   0
+
+
+No. of Data Rows : 59
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using SPARSE 1.3 as Direct Linear Solver
+
+No. of Data Rows : 1
+binary raw file "ngspice42_tran_op_after17.raw"
+binary raw file "ngspice42_tran_op_after17.raw"
+Here are the vectors currently active:
+
+Title: * task-330.3 probe: post-run '@' save (all 17 params) + explicit op, tran bench.
+Name: op1 (Operating Point)
+Date: Sun Sep 27 16:46:12  2026
+
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[capbd]: capacitance, real, 1 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[capbs]: capacitance, real, 1 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[cgbo]: capacitance, real, 0 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[cgd]: capacitance, real, 1 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[cgdo]: capacitance, real, 0 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[cgg]: capacitance, real, 1 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[cgs]: capacitance, real, 1 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[cgso]: capacitance, real, 0 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[gds]: admittance, real, 1 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[gm]: admittance, real, 1 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[gmbs]: admittance, real, 1 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[id]: current, real, 1 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[vbs]: voltage, real, 1 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[vds]: voltage, real, 1 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[vdsat]: voltage, real, 1 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[vgs]: voltage, real, 1 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[vth]: voltage, real, 1 long
+    m.xdut.xmmmn.msky130_fd_pr__nfet_01v8#body: voltage, real, 1 long
+    m.xdut.xmmmn.msky130_fd_pr__nfet_01v8#dbody: voltage, real, 1 long
+    m.xdut.xmmmn.msky130_fd_pr__nfet_01v8#sbody: voltage, real, 1 long
+    vdn                 : voltage, real, 1 long [default scale]
+    vdn#branch          : current, real, 1 long
+    vgn                 : voltage, real, 1 long
+    vgn#branch          : current, real, 1 long
+List of plots available:
+
+Current op1	* task-330.3 probe: post-run '@' save (all 17 params) + explicit op, tran bench. (Operating Point)
+	tran1	* task-330.3 probe: post-run '@' save (all 17 params) + explicit op, tran bench. (Transient Analysis)
+	const	Constant values (constants)
+ngspice-42 done

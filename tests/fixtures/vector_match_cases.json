@@ -1,0 +1,49 @@
+{
+ "version": 1,
+ "note": "Shared Python/JS cases for silk.vector_match / waveform-core vector matching (TASK-530). plot: plotname, real, npoints, vectors (row 0 is the independent axis except on operating-point plots). first_row: the reader's first candidate row. candidates: indices the reader's matcher returns for (name, type). address: the proven bracket address of a row, or null.",
+ "plots": {
+  "tran_bare_vs_wrapped": {"plotname": "Transient Analysis", "real": true, "npoints": 4, "vectors": ["time", "v(xx1<0>.mid)", "xx1[0].mid"]},
+  "tran_colon_vs_dot": {"plotname": "Transient Analysis", "real": true, "npoints": 4, "vectors": ["TIME", "V(XX1<0>:MID)", "v(xx1[0].mid)"]},
+  "tran_case": {"plotname": "Transient Analysis", "real": true, "npoints": 4, "vectors": ["time", "v(XX1<0>.MID)"]},
+  "tran_duplicate_rows": {"plotname": "Transient Analysis", "real": true, "npoints": 4, "vectors": ["time", "v(a<0>.x)", "v(a<0>.x)"]},
+  "tran_current": {"plotname": "Transient Analysis", "real": true, "npoints": 4, "vectors": ["time", "i(vbias<0>)", "v(vbias<0>)"]},
+  "ac": {"plotname": "AC Analysis", "real": false, "npoints": 4, "vectors": ["frequency", "v(xx1<0>.a)"]},
+  "op_ngspice": {"plotname": "Operating Point", "real": true, "npoints": 1, "vectors": ["v(in)", "v(xx1<0>.a)"]},
+  "op_xyce_one_point": {"plotname": "DC transfer characteristic", "real": true, "npoints": 1, "vectors": ["sweep", "V(XX1<0>:A)"]},
+  "dc_sweep": {"plotname": "DC transfer characteristic", "real": true, "npoints": 5, "vectors": ["v(v-sweep)", "v(xx1<0>.a)"]}
+ },
+ "first_row": [
+  {"plot": "tran_bare_vs_wrapped", "expect": 1}, {"plot": "ac", "expect": 1},
+  {"plot": "op_ngspice", "expect": 0}, {"plot": "op_xyce_one_point", "expect": 0},
+  {"plot": "dc_sweep", "expect": 1}
+ ],
+ "candidates": [
+  {"plot": "tran_bare_vs_wrapped", "name": "xx1[0].mid", "type": "V", "expect": [1, 2]},
+  {"plot": "tran_bare_vs_wrapped", "name": "xx1<0>.mid", "type": "V", "expect": [1]},
+  {"plot": "tran_colon_vs_dot", "name": "xx1[0]:mid", "type": "V", "expect": [1, 2]},
+  {"plot": "tran_case", "name": "xx1[0].mid", "type": "V", "expect": [1]},
+  {"plot": "tran_duplicate_rows", "name": "a[0].x", "type": "V", "expect": [1, 2]},
+  {"plot": "tran_current", "name": "vbias[0]", "type": "I", "expect": [1]},
+  {"plot": "tran_current", "name": "vbias[0]", "type": "V", "expect": []},
+  {"plot": "tran_bare_vs_wrapped", "name": "time", "type": "V", "expect": []},
+  {"plot": "op_ngspice", "name": "in", "type": "V", "expect": [0]},
+  {"plot": "op_xyce_one_point", "name": "sweep", "type": "V", "expect": [0]},
+  {"plot": "op_xyce_one_point", "name": "xx1[0]:a", "type": "V", "expect": [1]},
+  {"plot": "dc_sweep", "name": "v-sweep", "type": "V", "expect": []}
+ ],
+ "address": [
+  {"plot": "tran_bare_vs_wrapped", "row": 1, "expect": null},
+  {"plot": "tran_bare_vs_wrapped", "row": 2, "expect": null},
+  {"plot": "tran_colon_vs_dot", "row": 1, "expect": null},
+  {"plot": "tran_case", "row": 1, "expect": "v(XX1[0].MID)"},
+  {"plot": "tran_duplicate_rows", "row": 1, "expect": null},
+  {"plot": "tran_duplicate_rows", "row": 2, "expect": null},
+  {"plot": "tran_current", "row": 1, "expect": "i(vbias[0])"},
+  {"plot": "tran_current", "row": 2, "expect": null},
+  {"plot": "ac", "row": 1, "expect": "v(xx1[0].a)"},
+  {"plot": "op_ngspice", "row": 0, "expect": null},
+  {"plot": "op_ngspice", "row": 1, "expect": "v(xx1[0].a)"},
+  {"plot": "op_xyce_one_point", "row": 1, "expect": "V(XX1[0]:A)"},
+  {"plot": "dc_sweep", "row": 1, "expect": "v(xx1[0].a)"}
+ ]
+}

@@ -1,0 +1,5 @@
+* malformed resistor
+v1 out 0 1
+r1 out 0 1k garbage
+.tran 1n 10n
+.end

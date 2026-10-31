@@ -1,0 +1,55 @@
+*****
+***** Welcome to the Xyce(TM) Parallel Electronic Simulator
+*****
+***** This is version Xyce Release 7.10.0-opensource
+***** Date: Mon Sep 28 22:49:16 CDT 2026
+***** Executing netlist decks/xyce_tran_dcop_fail.cir
+***** Reading and parsing netlist...
+***** Setting up topology...
+***** Device Count Summary ...
+       B level 1 (Expression Based Voltage or Current Source) 1
+       R level 1 (Resistor)                                   1
+       V level 1 (Independent Voltage Source)                 1
+       --------------------------------------------------------
+       Total Devices                                          3
+***** Setting up matrix structure...
+***** Number of Unknowns = 3
+***** Initializing...
+***** Beginning DC Operating Point Calculation...
+	Step size reached minimum step size bound
+DC Operating Point Failed.  Exiting transient loop
+***** Solution Summary *****
+	Number Successful Steps Taken:		0
+	Number Failed Steps Attempted:		1
+	Number Jacobians Evaluated:		5036
+	Number Linear Solves:			5036
+	Number Failed Linear Solves:		0
+	Number Residual Evaluations:		5113
+	Number Nonlinear Convergence Failures:	1
+	Total Residual Load Time:		0.00411081 seconds
+	Total Jacobian Load Time:		0.00135303 seconds
+	Total Linear Solution Time:		0.00674939 seconds
+***** Total Simulation Solvers Run Time: 0.0674698 seconds
+***** Total Elapsed Run Time:            0.069102 seconds
+*****
+***** End of Xyce(TM) Simulation
+*****
+Timing summary of 1 processor
+                 Stats                   Count       CPU Time              Wall Time
+---------------------------------------- ----- --------------------- ---------------------
+Xyce                                         1        0.158 (100.0%)        0.070 (100.0%)
+  Analysis                                   1        0.151 (95.54%)        0.067 (96.73%)
+    Transient                                1        0.151 (95.54%)        0.067 (96.73%)
+      Nonlinear Solve                        1        0.151 (95.52%)        0.067 (96.68%)
+        Residual                          5113        0.014 ( 8.78%)        0.006 ( 8.75%)
+        Jacobian                          5036        0.007 ( 4.59%)        0.003 ( 4.65%)
+        Linear Solve                      5036        0.019 (12.12%)        0.009 (12.52%)
+      Failed DCOP Steps                      1        0.000 (<0.01%)        0.000 (<0.01%)
+  Netlist Import                             1        0.003 ( 2.16%)        0.001 ( 1.07%)
+    Parse Context                            1        0.000 ( 0.29%)        0.000 ( 0.11%)
+    Distribute Devices                       1        0.001 ( 0.56%)        0.000 ( 0.33%)
+    Verify Devices                           1        0.000 ( 0.00%)        0.000 (<0.01%)
+    Instantiate                              1        0.000 ( 0.00%)        0.000 ( 0.08%)
+  Late Initialization                        1        0.000 ( 0.00%)        0.000 ( 0.56%)
+    Global Indices                           1        0.000 ( 0.00%)        0.000 ( 0.03%)
+  Setup Matrix Structure                     1        0.000 ( 0.00%)        0.000 ( 0.17%)

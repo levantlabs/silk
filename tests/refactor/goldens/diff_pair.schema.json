@@ -1,0 +1,44 @@
+{
+  "category": "module",
+  "code_template": "from silk.circuit.circuit_elements import PortDir\nmod = Module(..., module_name='diff_pair')\nmod.define_module_ports({'VDD': PortDir.IN, 'VSS': PortDir.IN, 'VBIAS': PortDir.IN, 'VIN_P': PortDir.IN, 'VIN_M': PortDir.IN, 'VOUT_P': PortDir.OUT, 'VOUT_N': PortDir.OUT})",
+  "devices": [
+    "M1",
+    "M2",
+    "M_tail"
+  ],
+  "is_pdk_device": false,
+  "name": "diff_pair",
+  "pdk_model": null,
+  "pins": [
+    {
+      "direction": "input",
+      "name": "VDD"
+    },
+    {
+      "direction": "input",
+      "name": "VSS"
+    },
+    {
+      "direction": "input",
+      "name": "VBIAS"
+    },
+    {
+      "direction": "input",
+      "name": "VIN_P"
+    },
+    {
+      "direction": "input",
+      "name": "VIN_M"
+    },
+    {
+      "direction": "output",
+      "name": "VOUT_P"
+    },
+    {
+      "direction": "output",
+      "name": "VOUT_N"
+    }
+  ],
+  "spice_prefix": "X",
+  "type": "module"
+}

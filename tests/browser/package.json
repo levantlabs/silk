@@ -1,0 +1,11 @@
+{
+  "name": "silk-view-e2e",
+  "private": true,
+  "type": "module",
+  "description": "Headless-browser interaction tests for the silk waveform explorer. Opt-in; run via tests/test_view_e2e.py or directly with `node view_e2e.mjs <view.html> <chrome>`.",
+  "devDependencies": {
+    "pixelmatch": "^5.3.0",
+    "pngjs": "^7.0.0",
+    "puppeteer-core": "^23.0.0"
+  }
+}

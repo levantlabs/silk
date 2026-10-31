@@ -1,0 +1,91 @@
+# IHP SG13G2: 130 nm BiCMOS with SiGe HBTs. Manifest only, no Python class.
+# Each corner loads one .lib section per device family (low- and high-voltage
+# MOS, resistors, capacitors, diodes, HBTs). The section names differ between
+# files, and the two MOS files share theirs, so corners list (file, section)
+# pairs.
+name: sg13g2
+aliases: [ihp_sg13g2, sg13]
+device_details: sg13g2_device_details.yaml
+# The unit circuit authors write in: microns, as in every silk PDK manifest,
+# so w=1 means 1 um on any PDK; silk converts to each PDK's model unit (the
+# catalog's pdk_unit). load_pdk(user_units=...) overrides it for that load.
+user_units: u
+vendor: IHP
+library:
+  # The "primary" file: what library_location points at, and what the PDK-
+  # present check stats. Emission comes from the per-corner includes below.
+  lib_path: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerMOSlv.lib"
+  # Compiled Verilog-A plugins the device models require. The MOSFETs are PSP
+  # 103 — ngspice runs them only as OSDI plugins, loaded via `pre_osdi` lines
+  # silk emits at the top of the .control block. These are the four models the
+  # PDK's own libs.tech/ngspice/install.py compiles (it needs openvaf-r on
+  # PATH; silk never compiles them — that is environment setup, like
+  # installing ngspice). Until they are compiled, a simulation stops with
+  # instructions (generating the deck does not need them), and
+  # `python -m silk.doctor` reports this PDK as not runnable.
+  osdi:
+    - "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/osdi/psp103.osdi"
+    - "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/osdi/psp103_nqs.osdi"
+    - "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/osdi/r3_cmc.osdi"
+    - "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/osdi/mosvar.osdi"
+  default_corner: typical
+  corners:
+    # CROSS-FAMILY PAIRING IS AN AUTHOR DECISION, NOT THE PDK'S.
+    #
+    # IHP's own xschem templates only ever pair TYPICAL sections
+    # (cornerHBT/hbt_typ, cornerCAP/cap_typ, cornerRES/res_typ with
+    # cornerMOShv/mos_tt) — they ship no slow/fast cross-family set. So the
+    # 'typical' corner below is IHP's; 'ss' and 'ff' pair slow/fast MOS with
+    # the worst-/best-case sheet corners for R and C, which is the
+    # conventional reading but is silk's choice. Change it if your signoff
+    # says otherwise.
+    typical:
+      kind: process
+      desc: "typical — the pairing IHP's own templates use"
+      includes:
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerMOSlv.lib", section: mos_tt }
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerMOShv.lib", section: mos_tt }
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerRES.lib",   section: res_typ }
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerCAP.lib",   section: cap_typ }
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerDIO.lib",   section: dio_tt }
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerHBT.lib",   section: hbt_typ }
+    ss:
+      kind: process
+      desc: "slow-n slow-p, worst-case sheet R and C (pairing is silk's choice)"
+      includes:
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerMOSlv.lib", section: mos_ss }
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerMOShv.lib", section: mos_ss }
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerRES.lib",   section: res_wcs }
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerCAP.lib",   section: cap_wcs }
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerDIO.lib",   section: dio_ss }
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerHBT.lib",   section: hbt_wcs }
+    ff:
+      kind: process
+      desc: "fast-n fast-p, best-case sheet R and C (pairing is silk's choice)"
+      includes:
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerMOSlv.lib", section: mos_ff }
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerMOShv.lib", section: mos_ff }
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerRES.lib",   section: res_bcs }
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerCAP.lib",   section: cap_bcs }
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerDIO.lib",   section: dio_ff }
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerHBT.lib",   section: hbt_bcs }
+    sf:
+      kind: process
+      desc: "slow-n fast-p (MOS only differs; R/C/DIO/HBT held typical)"
+      includes:
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerMOSlv.lib", section: mos_sf }
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerMOShv.lib", section: mos_sf }
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerRES.lib",   section: res_typ }
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerCAP.lib",   section: cap_typ }
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerDIO.lib",   section: dio_tt }
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerHBT.lib",   section: hbt_typ }
+    fs:
+      kind: process
+      desc: "fast-n slow-p (MOS only differs; R/C/DIO/HBT held typical)"
+      includes:
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerMOSlv.lib", section: mos_fs }
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerMOShv.lib", section: mos_fs }
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerRES.lib",   section: res_typ }
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerCAP.lib",   section: cap_typ }
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerDIO.lib",   section: dio_tt }
+        - { file: "ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/cornerHBT.lib",   section: hbt_typ }

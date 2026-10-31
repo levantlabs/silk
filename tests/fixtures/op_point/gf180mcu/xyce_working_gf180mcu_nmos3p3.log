@@ -1,0 +1,94 @@
+
+*****
+***** Welcome to the Xyce(TM) Parallel Electronic Simulator
+*****
+***** This is version Xyce Release 7.10.0-opensource
+***** Date: Mon Sep 28 09:38:57 CDT 2026
+
+
+***** Executing netlist xyce_working_gf180mcu_nmos3p3.cir
+
+***** Reading and parsing netlist...
+Netlist warning in file
+ $PDK_ROOT/gf180mcuD/libs.tech/xyce/sm141064.xyce at or near line 18
+ MODEL_BINNING:  duplicate PARSER parameter.  Using the first value found = true
+ 
+Netlist warning in file
+ $PDK_ROOT/gf180mcuD/libs.tech/xyce/sm141064.xyce at or near line 18
+ MODEL_BINNING:  duplicate PARSER parameter.  Using the first value found = true
+ 
+Netlist warning in file
+ $PDK_ROOT/gf180mcuD/libs.tech/xyce/sm141064.xyce at or near line 18
+ MODEL_BINNING:  duplicate PARSER parameter.  Using the first value found = true
+ 
+Netlist warning in file
+ $PDK_ROOT/gf180mcuD/libs.tech/xyce/sm141064.xyce at or near line 18
+ MODEL_BINNING:  duplicate PARSER parameter.  Using the first value found = true
+ 
+Netlist warning in file
+ $PDK_ROOT/gf180mcuD/libs.tech/xyce/sm141064.xyce at or near line 18
+ MODEL_BINNING:  duplicate PARSER parameter.  Using the first value found = true
+ 
+Netlist warning in file
+ $PDK_ROOT/gf180mcuD/libs.tech/xyce/sm141064.xyce at or near line 18
+ MODEL_BINNING:  duplicate PARSER parameter.  Using the first value found = true
+ 
+Netlist warning in file
+ $PDK_ROOT/gf180mcuD/libs.tech/xyce/sm141064.xyce at or near line 18
+ MODEL_BINNING:  duplicate PARSER parameter.  Using the first value found = true
+ 
+Netlist warning in file
+ $PDK_ROOT/gf180mcuD/libs.tech/xyce/sm141064.xyce at or near line 1078
+ Device model NFET_03V3.12: Given pbswgd is less than 0.1. Pbswgd is set to
+ 0.1
+***** Setting up topology...
+
+***** Device Count Summary ...
+       M level 14 (BSIM4)                     1
+       V level 1 (Independent Voltage Source) 2
+       ----------------------------------------
+       Total Devices                          3
+***** Setting up matrix structure...
+***** Number of Unknowns = 4
+***** Initializing...
+
+
+***** Solution Summary *****
+	Number Successful Steps Taken:		1
+	Number Failed Steps Attempted:		0
+	Number Jacobians Evaluated:		4
+	Number Linear Solves:			4
+	Number Failed Linear Solves:		0
+	Number Residual Evaluations:		6
+	Number Nonlinear Convergence Failures:	0
+	Total Residual Load Time:		3.38554e-05 seconds
+	Total Jacobian Load Time:		1.00136e-05 seconds
+	Total Linear Solution Time:		8.60691e-05 seconds
+
+
+***** Total Simulation Solvers Run Time: 0.00051713 seconds
+***** Total Elapsed Run Time:            0.145554 seconds
+*****
+***** End of Xyce(TM) Simulation
+*****
+
+Timing summary of 1 processor
+                 Stats                   Count       CPU Time              Wall Time
+---------------------------------------- ----- --------------------- ---------------------
+Xyce                                         1        0.211 (100.0%)        0.146 (100.0%)
+  Analysis                                   1        0.000 ( 0.24%)        0.000 ( 0.34%)
+    DC Sweep                                 1        0.000 ( 0.24%)        0.000 ( 0.34%)
+      Solve                                  1        0.000 ( 0.18%)        0.000 ( 0.26%)
+        Residual                             6        0.000 ( 0.02%)        0.000 ( 0.02%)
+        Jacobian                             4        0.000 (<0.01%)        0.000 (<0.01%)
+        Linear Solve                         4        0.000 ( 0.04%)        0.000 ( 0.06%)
+      Successful Step                        1        0.000 ( 0.04%)        0.000 ( 0.06%)
+  Netlist Import                             1        0.207 (98.40%)        0.144 (98.39%)
+    Parse Context                            1        0.180 (85.62%)        0.116 (79.48%)
+    Distribute Devices                       1        0.027 (12.66%)        0.027 (18.43%)
+    Verify Devices                           1        0.000 (<0.01%)        0.000 (<0.01%)
+    Instantiate                              1        0.000 ( 0.01%)        0.000 ( 0.05%)
+  Late Initialization                        1        0.000 ( 0.09%)        0.000 ( 0.32%)
+    Global Indices                           1        0.000 (<0.01%)        0.000 ( 0.01%)
+  Setup Matrix Structure                     1        0.000 ( 0.03%)        0.000 ( 0.10%)
+

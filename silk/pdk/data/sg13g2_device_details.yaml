@@ -1,0 +1,223 @@
+# IHP SG13G2 device catalog for silk — GENERATED from the installed PDK.
+#
+# Source: $PDK_ROOT/ihp_sg13g2/ihp-sg13g2/libs.tech/ngspice/models/
+#           sg13g2_moslv_mod.lib, sg13g2_moshv_mod.lib
+#
+# Device names, pin names AND PIN ORDER, and every `default:` are read out of
+# those files' .subckt lines. Nothing is invented.
+#
+# UNITS: metres, as with GF180MCU and for the same reason — SG13G2's .subckt
+# lines declare `w=0.35u l=0.34u`, so the models expect metres. Every W/L
+# therefore carries `pdk_unit: base` (silk's name for the unprefixed SI unit;
+# `u` would claim µm). The `default:` values are metres too and never scale.
+# Circuit AUTHORS write microns — the manifest (sg13g2.pdk.yaml) sets
+# `user_units: u` and silk converts caller-supplied values to metres on
+# emission; `load_pdk('sg13g2', user_units='si')` lets you write metres.
+# Both emission paths and silk.layout (via basepdk.device_geometry_um) read
+# these tags through BasePDK; nothing assumes a unit for an untagged length.
+#
+# RATINGS: `junction_ratings:` is NOT generated. It is hand-authored from the
+# process specification shipped in the PDK tree (libs.doc/doc/
+# SG13G2_os_process_spec.pdf) and the `junction_ratings_provenance:` block
+# beside each one cites the statement, or states the rule a value was derived
+# by where IHP publishes none for that pair. Convention: docs/adding-a-pdk.md
+# ("Junction ratings"); enforced by `python -m silk.pdk.validate --pdk sg13g2`
+# (TASK-48).
+#
+# LIMITS: `-1` means silk declares no limit, not that none exists. The .subckt
+# lines do carry `wmin=0.15e-6`, but that parameter feeds the model's own
+# internal RF/geometry handling and is not stated to be the drawn-W design
+# rule, so it is NOT copied into minval here. Fill these from IHP's design-rule
+# document before relying on range checking.
+#
+# SCOPE: MOSFETs only for now. The resistors (rsil/rhigh/rppd), MIM caps
+# (cap_cmim), diodes and SiGe HBTs are present in the PDK and reachable now
+# that per-corner includes pull their corner files in — they need catalog
+# entries adding, with pin semantics checked (e.g. the resistors' third `bn`
+# pin).
+
+nmos_lv:
+  PDKDevice: sg13_lv_nmos
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    w:
+      minval: -1
+      maxval: -1
+      default: 3.5e-07
+      pdk_unit: base
+    l:
+      minval: -1
+      maxval: -1
+      default: 3.4e-07
+      pdk_unit: base
+    ng:
+      minval: 1
+      maxval: -1
+      resolution: 1
+  pinList:
+    d: drain
+    g: gate
+    s: source
+    b: bulk
+  junction_ratings:
+    Vgs_max: 1.65
+    Vds_max: 1.65
+    Vgd_max: 1.65
+    Vbs_max: 1.65
+    Vbd_max: 1.65
+  junction_ratings_provenance:
+    source: >-
+      $PDK_ROOT/ihp_sg13g2/ihp-sg13g2/libs.doc/doc/SG13G2_os_process_spec.pdf
+      (IHP, Rev. 1.2, 2023-12-20) section 2.1 NMOS / 2.2 PMOS header: "VGS <=
+      1,65 V @ 125°C" -> Vgs_max. The spec publishes no Vds/Vbs operating
+      maximum (BVDSS >= 2.0 V is breakdown, not a rating). The model SOA
+      parameters in sg13g2_moslv_parm.lib (VGS_MAX = VGD_MAX = VDS_MAX =
+      VDB_MAX = VSB_MAX = 1.6 V) are simulator warnings, off by default (SWSOA
+      = 0), and are not adopted as ratings.
+    heuristic:
+      Vds_max: >-
+        = Vgs_max; the spec states one operating maximum per device, the gate
+        voltage, and no separate Vds limit (see source).
+      Vgd_max: >-
+        = Vgs_max; the spec states one operating maximum per device, the gate
+        voltage, and no separate Vgd limit (see source).
+      Vbs_max: >-
+        = Vgs_max; the spec states one operating maximum per device, the gate
+        voltage, and no separate Vbs limit (see source).
+      Vbd_max: >-
+        = Vgs_max; the spec states one operating maximum per device, the gate
+        voltage, and no separate Vbd limit (see source).
+  schemdraw:
+    element: NFet
+    category: transistor
+    terminalMap: { d: drain, g: gate, s: source, b: bulk }
+
+pmos_lv:
+  PDKDevice: sg13_lv_pmos
+  paramList:
+    m: { minval: 1, maxval: -1, resolution: 1 }
+    w: { minval: -1, maxval: -1, default: 3.5e-07 , pdk_unit: base }
+    l: { minval: -1, maxval: -1, default: 2.8e-07 , pdk_unit: base }
+    ng: { minval: 1, maxval: -1, resolution: 1 }
+  pinList: { d: drain, g: gate, s: source, b: bulk }
+  junction_ratings:
+    Vgs_max: 1.65
+    Vds_max: 1.65
+    Vgd_max: 1.65
+    Vbs_max: 1.65
+    Vbd_max: 1.65
+  junction_ratings_provenance:
+    source: >-
+      $PDK_ROOT/ihp_sg13g2/ihp-sg13g2/libs.doc/doc/SG13G2_os_process_spec.pdf
+      (IHP, Rev. 1.2, 2023-12-20) section 2.1 NMOS / 2.2 PMOS header: "VGS <=
+      1,65 V @ 125°C" -> Vgs_max. The spec publishes no Vds/Vbs operating
+      maximum (BVDSS >= 2.0 V is breakdown, not a rating). The model SOA
+      parameters in sg13g2_moslv_parm.lib (VGS_MAX = VGD_MAX = VDS_MAX =
+      VDB_MAX = VSB_MAX = 1.6 V) are simulator warnings, off by default (SWSOA
+      = 0), and are not adopted as ratings.
+    heuristic:
+      Vds_max: >-
+        = Vgs_max; the spec states one operating maximum per device, the gate
+        voltage, and no separate Vds limit (see source).
+      Vgd_max: >-
+        = Vgs_max; the spec states one operating maximum per device, the gate
+        voltage, and no separate Vgd limit (see source).
+      Vbs_max: >-
+        = Vgs_max; the spec states one operating maximum per device, the gate
+        voltage, and no separate Vbs limit (see source).
+      Vbd_max: >-
+        = Vgs_max; the spec states one operating maximum per device, the gate
+        voltage, and no separate Vbd limit (see source).
+  schemdraw:
+    element: PFet
+    category: transistor
+    terminalMap: { d: drain, g: gate, s: source, b: bulk }
+
+nmos_hv:
+  PDKDevice: sg13_hv_nmos
+  paramList:
+    m: { minval: 1, maxval: -1, resolution: 1 }
+    w: { minval: -1, maxval: -1, default: 3.5e-07 , pdk_unit: base }
+    l: { minval: -1, maxval: -1, default: 3.4e-07 , pdk_unit: base }
+    ng: { minval: 1, maxval: -1, resolution: 1 }
+  pinList: { d: drain, g: gate, s: source, b: bulk }
+  junction_ratings:
+    Vgs_max: 3.3   # TASK-48: was 3.63 (1.1 x 3.3 V nominal, unsourced)
+    Vds_max: 3.3   # TASK-48: was 3.63 (1.1 x 3.3 V nominal, unsourced)
+    Vgd_max: 3.3   # TASK-48: was 3.63 (1.1 x 3.3 V nominal, unsourced)
+    Vbs_max: 3.3   # TASK-48: was 3.63 (1.1 x 3.3 V nominal, unsourced)
+    Vbd_max: 3.3   # TASK-48: was 3.63 (1.1 x 3.3 V nominal, unsourced)
+  junction_ratings_provenance:
+    source: >-
+      $PDK_ROOT/ihp_sg13g2/ihp-sg13g2/libs.doc/doc/SG13G2_os_process_spec.pdf
+      (IHP, Rev. 1.2, 2023-12-20) section 2.4 HV-NMOS / 2.5 HV-PMOS header:
+      "VGS <= 3,3V (Maximum) @ 27°C" -> Vgs_max. The spec publishes no Vds/Vbs
+      operating maximum (BVDSS >= 5.3 V is breakdown, not a rating). The model
+      SOA parameters in sg13g2_moshv_parm.lib (VGS_MAX = VGD_MAX = VDS_MAX =
+      3.0 V, VDB_MAX = VSB_MAX = 1.6 V) are simulator warnings, off by default
+      (SWSOA = 0), and are not adopted: 3.0 V and 1.6 V both sit below the 3.3
+      V supply the sg13g2_io libraries are characterized at, so they would
+      flag every HV device in normal operation.
+    heuristic:
+      Vds_max: >-
+        = Vgs_max; the spec states one operating maximum per device, the gate
+        voltage, and no separate Vds limit (see source).
+      Vgd_max: >-
+        = Vgs_max; the spec states one operating maximum per device, the gate
+        voltage, and no separate Vgd limit (see source).
+      Vbs_max: >-
+        = Vgs_max; the spec states one operating maximum per device, the gate
+        voltage, and no separate Vbs limit (see source).
+      Vbd_max: >-
+        = Vgs_max; the spec states one operating maximum per device, the gate
+        voltage, and no separate Vbd limit (see source).
+  schemdraw:
+    element: NFet
+    category: transistor
+    terminalMap: { d: drain, g: gate, s: source, b: bulk }
+
+pmos_hv:
+  PDKDevice: sg13_hv_pmos
+  paramList:
+    m: { minval: 1, maxval: -1, resolution: 1 }
+    w: { minval: -1, maxval: -1, default: 3.5e-07 , pdk_unit: base }
+    l: { minval: -1, maxval: -1, default: 2.8e-07 , pdk_unit: base }
+    ng: { minval: 1, maxval: -1, resolution: 1 }
+  pinList: { d: drain, g: gate, s: source, b: bulk }
+  junction_ratings:
+    Vgs_max: 3.3   # TASK-48: was 3.63 (1.1 x 3.3 V nominal, unsourced)
+    Vds_max: 3.3   # TASK-48: was 3.63 (1.1 x 3.3 V nominal, unsourced)
+    Vgd_max: 3.3   # TASK-48: was 3.63 (1.1 x 3.3 V nominal, unsourced)
+    Vbs_max: 3.3   # TASK-48: was 3.63 (1.1 x 3.3 V nominal, unsourced)
+    Vbd_max: 3.3   # TASK-48: was 3.63 (1.1 x 3.3 V nominal, unsourced)
+  junction_ratings_provenance:
+    source: >-
+      $PDK_ROOT/ihp_sg13g2/ihp-sg13g2/libs.doc/doc/SG13G2_os_process_spec.pdf
+      (IHP, Rev. 1.2, 2023-12-20) section 2.4 HV-NMOS / 2.5 HV-PMOS header:
+      "VGS <= 3,3V (Maximum) @ 27°C" -> Vgs_max. The spec publishes no Vds/Vbs
+      operating maximum (BVDSS >= 5.3 V is breakdown, not a rating). The model
+      SOA parameters in sg13g2_moshv_parm.lib (VGS_MAX = VGD_MAX = VDS_MAX =
+      3.0 V, VDB_MAX = VSB_MAX = 1.6 V) are simulator warnings, off by default
+      (SWSOA = 0), and are not adopted: 3.0 V and 1.6 V both sit below the 3.3
+      V supply the sg13g2_io libraries are characterized at, so they would
+      flag every HV device in normal operation.
+    heuristic:
+      Vds_max: >-
+        = Vgs_max; the spec states one operating maximum per device, the gate
+        voltage, and no separate Vds limit (see source).
+      Vgd_max: >-
+        = Vgs_max; the spec states one operating maximum per device, the gate
+        voltage, and no separate Vgd limit (see source).
+      Vbs_max: >-
+        = Vgs_max; the spec states one operating maximum per device, the gate
+        voltage, and no separate Vbs limit (see source).
+      Vbd_max: >-
+        = Vgs_max; the spec states one operating maximum per device, the gate
+        voltage, and no separate Vbd limit (see source).
+  schemdraw:
+    element: PFet
+    category: transistor
+    terminalMap: { d: drain, g: gate, s: source, b: bulk }

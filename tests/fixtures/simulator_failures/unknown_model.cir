@@ -1,0 +1,5 @@
+* unknown model
+v1 out 0 1
+d1 out 0 missing_model
+.tran 1n 10n
+.end

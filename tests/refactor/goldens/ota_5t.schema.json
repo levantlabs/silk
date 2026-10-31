@@ -1,0 +1,42 @@
+{
+  "category": "module",
+  "code_template": "from silk.circuit.circuit_elements import PortDir\nmod = Module(..., module_name='ota_5t')\nmod.define_module_ports({'vdd': PortDir.IN, 'vss': PortDir.IN, 'vbias': PortDir.IN, 'vinp': PortDir.IN, 'vinn': PortDir.IN, 'vout': PortDir.OUT})",
+  "devices": [
+    "M1",
+    "M2",
+    "M3",
+    "M4",
+    "M5"
+  ],
+  "is_pdk_device": false,
+  "name": "ota_5t",
+  "pdk_model": null,
+  "pins": [
+    {
+      "direction": "input",
+      "name": "vdd"
+    },
+    {
+      "direction": "input",
+      "name": "vss"
+    },
+    {
+      "direction": "input",
+      "name": "vbias"
+    },
+    {
+      "direction": "input",
+      "name": "vinp"
+    },
+    {
+      "direction": "input",
+      "name": "vinn"
+    },
+    {
+      "direction": "output",
+      "name": "vout"
+    }
+  ],
+  "spice_prefix": "X",
+  "type": "module"
+}

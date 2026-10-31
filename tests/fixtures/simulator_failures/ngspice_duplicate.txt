@@ -1,0 +1,10 @@
+
+Note: No compatibility mode selected!
+
+
+Circuit: * duplicate device
+
+Error on line:
+  r.xdut.r1 out 0 1k
+device already exists, bail out
+    Simulation interrupted due to error!

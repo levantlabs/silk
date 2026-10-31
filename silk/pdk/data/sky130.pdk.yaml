@@ -1,0 +1,110 @@
+name: sky130
+aliases: [skywater130, skywater_130]
+device_details: skywater_130_device_details.yaml
+# The unit circuit authors write in: microns, as in every silk PDK manifest,
+# so w=1 means 1 um on any PDK; silk converts to each PDK's model unit (the
+# catalog's pdk_unit). load_pdk(user_units=...) overrides it for that load.
+user_units: u
+vendor: SkyWater
+# Metal-stack numbers for silk.layout's wire-sizing and parasitic estimates
+# (RoutingModel.from_pdk). Units: sheet_resistance ohm/square, cap_per_um2
+# fF/um^2 (bottom-plate area only), j_max A/um, widths and thickness um
+# (thickness defaults to 0.36 um). The met1 values are illustrative, not
+# sign-off numbers. met2-met5 are not declared yet:
+# RoutingModel.from_pdk(pdk, layer='met2') raises until sourced values are added.
+routing:
+  default_layer: met1
+  layers:
+    met1:
+      sheet_resistance: 0.125   # ohms/square
+      cap_per_um2: 0.04         # fF/um^2 (bottom-plate only, Phase 1)
+      j_max: 0.78e-3            # A/um
+      min_width: 0.14           # um
+      max_width: 10.0           # um
+library:
+  lib_path: "sky130A/libs.tech/ngspice/sky130.lib.spice"
+  default_corner: tt
+  extra_includes:
+    - "sky130A/libs.ref/sky130_fd_pr/spice/sky130_fd_pr__cap_vpp_11p5x11p7_m1m2_noshield.model.spice"
+  # Monte Carlo facts (silk.pdk.statistical). Section names are the sky130
+  # library's own; a library without them (older open_pdks) is refused before
+  # any simulator starts. `record` is keyed by device name in the device-details
+  # YAML and lists ONLY the parameters the installed models draw, measured as
+  # the MC_MM_SWITCH expressions in sky130A/libs.ref/sky130_fd_pr/spice/
+  # <model>.pm3.spice (tests/test_pdk_statistical.py re-checks them). The 20v
+  # families have no mismatch corner files and the esd devices draw nothing, so
+  # they are left out and reported as skipped types.
+  statistical:
+    min_open_pdks: "1.0.306"   # first release with the mc and *_mm sections
+    mismatch:
+      sections: { tt: tt_mm, ss: ss_mm, ff: ff_mm, sf: sf_mm, fs: fs_mm }
+      switch: mc_mm_switch
+      record:
+        nmos1p8: [vth0, toxe, voff, nfactor]
+        nmos1p8_lvt: [vth0, toxe, voff, nfactor]
+        nmos3p3_native: [vth0, toxe, voff, nfactor]
+        nmos5v: [vth0, toxe, voff, nfactor]
+        nmos5v_native: [vth0, toxe, voff, nfactor]
+        pmos1p8: [vth0, toxe, voff, nfactor]
+        pmos1p8_lvt: [vth0, toxe, voff, nfactor]
+        pmos1p8_hvt: [vth0, toxe, voff, nfactor]
+        pmos5v: [vth0, toxe, voff, nfactor]
+    process:
+      section: mc
+      corners: [tt]
+      switch: mc_pr_switch
+      includes:
+        - "sky130A/libs.tech/ngspice/parameters/critical.spice"
+        - "sky130A/libs.tech/ngspice/parameters/montecarlo.spice"
+  corners:
+    ff: { kind: process, desc: "fast-n fast-p" }
+    ff_hh: { kind: composed, desc: "fast-n fast-p, high R, high C" }
+    ff_hh_mm: { kind: composed, desc: "fast-n fast-p, high R, high C, mismatch" }
+    ff_hl: { kind: composed, desc: "fast-n fast-p, high R, low C" }
+    ff_hl_mm: { kind: composed, desc: "fast-n fast-p, high R, low C, mismatch" }
+    ff_lh: { kind: composed, desc: "fast-n fast-p, low R, high C" }
+    ff_lh_mm: { kind: composed, desc: "fast-n fast-p, low R, high C, mismatch" }
+    ff_ll: { kind: composed, desc: "fast-n fast-p, low R, low C" }
+    ff_ll_mm: { kind: composed, desc: "fast-n fast-p, low R, low C, mismatch" }
+    ff_mm: { kind: composed, desc: "fast-n fast-p, mismatch" }
+    fs: { kind: process, desc: "fast-n slow-p" }
+    fs_hh: { kind: composed, desc: "fast-n slow-p, high R, high C" }
+    fs_hh_mm: { kind: composed, desc: "fast-n slow-p, high R, high C, mismatch" }
+    fs_hl: { kind: composed, desc: "fast-n slow-p, high R, low C" }
+    fs_hl_mm: { kind: composed, desc: "fast-n slow-p, high R, low C, mismatch" }
+    fs_lh: { kind: composed, desc: "fast-n slow-p, low R, high C" }
+    fs_lh_mm: { kind: composed, desc: "fast-n slow-p, low R, high C, mismatch" }
+    fs_ll: { kind: composed, desc: "fast-n slow-p, low R, low C" }
+    fs_ll_mm: { kind: composed, desc: "fast-n slow-p, low R, low C, mismatch" }
+    fs_mm: { kind: composed, desc: "fast-n slow-p, mismatch" }
+    hh: { kind: rc, desc: "high R, high C" }
+    hh_mm: { kind: composed, desc: "high R, high C, mismatch" }
+    hl: { kind: rc, desc: "high R, low C" }
+    hl_mm: { kind: composed, desc: "high R, low C, mismatch" }
+    lh: { kind: rc, desc: "low R, high C" }
+    lh_mm: { kind: composed, desc: "low R, high C, mismatch" }
+    ll: { kind: rc, desc: "low R, low C" }
+    ll_mm: { kind: composed, desc: "low R, low C, mismatch" }
+    mc: { kind: statistical, desc: "Monte Carlo sampling (one random draw per run)" }
+    sf: { kind: process, desc: "slow-n fast-p" }
+    sf_hh: { kind: composed, desc: "slow-n fast-p, high R, high C" }
+    sf_hh_mm: { kind: composed, desc: "slow-n fast-p, high R, high C, mismatch" }
+    sf_hl: { kind: composed, desc: "slow-n fast-p, high R, low C" }
+    sf_hl_mm: { kind: composed, desc: "slow-n fast-p, high R, low C, mismatch" }
+    sf_lh: { kind: composed, desc: "slow-n fast-p, low R, high C" }
+    sf_lh_mm: { kind: composed, desc: "slow-n fast-p, low R, high C, mismatch" }
+    sf_ll: { kind: composed, desc: "slow-n fast-p, low R, low C" }
+    sf_ll_mm: { kind: composed, desc: "slow-n fast-p, low R, low C, mismatch" }
+    sf_mm: { kind: composed, desc: "slow-n fast-p, mismatch" }
+    ss: { kind: process, desc: "slow-n slow-p" }
+    ss_hh: { kind: composed, desc: "slow-n slow-p, high R, high C" }
+    ss_hh_mm: { kind: composed, desc: "slow-n slow-p, high R, high C, mismatch" }
+    ss_hl: { kind: composed, desc: "slow-n slow-p, high R, low C" }
+    ss_hl_mm: { kind: composed, desc: "slow-n slow-p, high R, low C, mismatch" }
+    ss_lh: { kind: composed, desc: "slow-n slow-p, low R, high C" }
+    ss_lh_mm: { kind: composed, desc: "slow-n slow-p, low R, high C, mismatch" }
+    ss_ll: { kind: composed, desc: "slow-n slow-p, low R, low C" }
+    ss_ll_mm: { kind: composed, desc: "slow-n slow-p, low R, low C, mismatch" }
+    ss_mm: { kind: composed, desc: "slow-n slow-p, mismatch" }
+    tt: { kind: process, desc: "typical" }
+    tt_mm: { kind: composed, desc: "typical, mismatch" }

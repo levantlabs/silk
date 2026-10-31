@@ -1,0 +1,1562 @@
+nmos1p8:
+  PDKDevice: sky130_fd_pr__nfet_01v8
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+    w:
+      maxval: -1
+      minval: 0.42
+      default: 1.0
+      pdk_unit: u
+      resolution: 0.005
+    l:
+      maxval: -1
+      minval: 0.15
+      default: 0.15
+      pdk_unit: u
+      resolution: 0.005
+  fault_params:
+    w:
+      kind: continuous
+      min: 0.42
+      max: 100.0
+    l:
+      kind: continuous
+      min: 0.15
+      max: 100.0
+  pinList:
+    d: drain
+    g: gate
+    s: source
+    b: bulk
+  junction_ratings:
+    Vgs_max: 1.95   # TASK-48: was 1.98 (1.1 x 1.8 V nominal, unsourced)
+    Vds_max: 1.95   # TASK-48: was 1.98 (1.1 x 1.8 V nominal, unsourced)
+    Vgd_max: 1.95   # TASK-48: was 1.98 (1.1 x 1.8 V nominal, unsourced)
+    # TASK-91: was the magnitude 1.95 (TASK-48: was 1.98), which let a body
+    # forward-biased by up to 1.95 V pass; the page's range is +0.3 to -1.95 V.
+    Vbs_max: {min: -1.95, max: 0.3}
+    Vbd_max: 1.95   # TASK-48: was 1.98 (1.1 x 1.8 V nominal, unsourced)
+  junction_ratings_provenance:
+    source: >-
+      $PDK_ROOT/skywater-pdk/docs/rules/device-details/nfet_01v8/index.rst
+      ("Operating Voltages where SPICE models are valid"; public copy
+      https://skywater-pdk.readthedocs.io/en/main/rules/device-details.html):
+      VDS 0 to 1.95 V, VGS 0 to 1.95 V, VBS +0.3 to -1.95 V. Vbs_max is the
+      signed range {min: -1.95, max: 0.3} (Vbs = V(b) - V(s)): the body may
+      sit at most 0.3 V above the source (forward) and 1.95 V below it.
+    heuristic:
+      Vgd_max: >-
+        = Vds_max; no separate Vgd operating limit is published. Vgd equals
+        Vds with the gate at source potential, the normal off-state, and the
+        page gives no direction-specific Vgd limit, so the symmetric Vds
+        range is taken for the gate above and below the drain alike (STR-001
+        scores the signed pair; there is simply no published asymmetry to
+        store here).
+      Vbd_max: >-
+        = Vds_max; no separate Vbd operating limit is published. Vbd equals
+        Vds with the body at source potential (the source-tied body every
+        shipped example uses).
+  # TASK-330.3 (save_device_params): verified by real ngspice 42/47 runs
+  # (tests/fixtures/op_point/, TASK-330.1's op_probe.sp and TASK-330.3's
+  # tran_op_after17.sp) -- 14 of 17 names resolve without aborting 'write'.
+  # cgso/cgdo/cgbo are DELIBERATELY EXCLUDED (TASK-330.4 gate finding,
+  # 2026-09-27): BSIM4 only fills these overlap caps after a transient has
+  # run in the same ngspice session -- an Op()-only, AC-only or one-point
+  # DC bench reports them as a SILENT 0 (not a zero-length vector, which
+  # op_table() would correctly read as nan/unavailable) even though every
+  # other declared column is identical across all four analyses. Declaring
+  # them would put a real number on the table that is not actually a
+  # measurement, indistinguishable from a genuine near-zero overlap cap --
+  # the same "never a silent zero" rule that dropped them from gf180mcu's
+  # own declaration (measured unavailable there for a different reason,
+  # zero-length, but the outcome -- undeclared -- is the same).
+  # op_internal_name is sky130's OWN model-instance line's literal name
+  # (a fact about how this model is authored, not a general rule -- see
+  # modules_results.device_op_save_lines's docstring). Other sky130 MOS
+  # families are declared separately only after real-run verification;
+  # TASK-491 extends this to the MOS families below (not varactors).
+  op_params:
+    [id, vgs, vds, vbs, vth, vdsat, gm, gds, gmbs,
+     cgg, cgs, cgd, capbd, capbs]
+  op_internal_name: msky130_fd_pr__nfet_01v8
+  # TASK-330.4 (op_table): channel polarity, a third per-device PDK
+  # declaration -- there is no general rule from the model name alone.
+  polarity: n
+  # TASK-330.5: which simulator backends this device's op-point addressing
+  # has been VERIFIED on by a real run -- a fourth per-device declaration
+  # (see PDKDevice.op_backends). ngspice: the runs cited above. xyce:
+  # TASK-330.1's spike (N(XDUT:XMMM1:MSKY130_FD_PR__NFET_01V8:GM) etc.,
+  # tests/fixtures/op_point/xyce_probe_available.raw) plus TASK-330.5's own
+  # real Op()-only Xyce end-to-end run against a silk-generated deck.
+  op_backends: [ngspice, xyce]
+  schemdraw:
+    element: NFet
+    category: transistor
+    terminalMap:
+      d: drain
+      g: gate
+      s: source
+      b: bulk
+nmos1p8_lvt:
+  PDKDevice: sky130_fd_pr__nfet_01v8_lvt
+  # TASK-491: Op-only real runs; see tests/test_op_table.py.
+  op_params: [id, vgs, vds, vbs, vth, vdsat, gm, gds, gmbs, cgg, cgs, cgd, capbd, capbs]
+  op_internal_name: msky130_fd_pr__nfet_01v8_lvt
+  op_backends: [ngspice, xyce]
+  polarity: n
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+    w:
+      maxval: -1
+      minval: 0.42
+      pdk_unit: u
+      resolution: 0.005
+    l:
+      maxval: -1
+      minval: 0.15
+      pdk_unit: u
+      resolution: 0.005
+  pinList:
+    d: drain
+    g: gate
+    s: source
+    b: bulk
+  junction_ratings:
+    Vgs_max: 1.95   # TASK-48: was 1.98 (1.1 x 1.8 V nominal, unsourced)
+    Vds_max: 1.95   # TASK-48: was 1.98 (1.1 x 1.8 V nominal, unsourced)
+    Vgd_max: 1.95   # TASK-48: was 1.98 (1.1 x 1.8 V nominal, unsourced)
+    # TASK-91: was the magnitude 1.95 (TASK-48: was 1.98), which let a body
+    # forward-biased by up to 1.95 V pass; the page's range is +0.3 to -1.95 V.
+    Vbs_max: {min: -1.95, max: 0.3}
+    Vbd_max: 1.95   # TASK-48: was 1.98 (1.1 x 1.8 V nominal, unsourced)
+  junction_ratings_provenance:
+    source: >-
+      $PDK_ROOT/skywater-pdk/docs/rules/device-details/nfet_01v8_lvt/index.rst
+      ("Operating Voltages where SPICE models are valid"; public copy
+      https://skywater-pdk.readthedocs.io/en/main/rules/device-details.html):
+      VDS 0 to 1.95 V, VGS 0 to 1.95 V, VBS +0.3 to -1.95 V. Vbs_max is the
+      signed range {min: -1.95, max: 0.3} (Vbs = V(b) - V(s)): the body may
+      sit at most 0.3 V above the source (forward) and 1.95 V below it.
+    heuristic:
+      Vgd_max: >-
+        = Vds_max; no separate Vgd operating limit is published. Vgd equals
+        Vds with the gate at source potential, the normal off-state, and the
+        page gives no direction-specific Vgd limit, so the symmetric Vds
+        range is taken for the gate above and below the drain alike (STR-001
+        scores the signed pair; there is simply no published asymmetry to
+        store here).
+      Vbd_max: >-
+        = Vds_max; no separate Vbd operating limit is published. Vbd equals
+        Vds with the body at source potential (the source-tied body every
+        shipped example uses).
+  schemdraw:
+    element: NFet
+    category: transistor
+    terminalMap:
+      d: drain
+      g: gate
+      s: source
+      b: bulk
+nmos3p3_native:
+  PDKDevice: sky130_fd_pr__nfet_03v3_nvt
+  op_params: [id, vgs, vds, vbs, vth, vdsat, gm, gds, gmbs, cgg, cgs, cgd, capbd, capbs]
+  op_internal_name: msky130_fd_pr__nfet_03v3_nvt
+  op_backends: [ngspice, xyce]
+  polarity: n
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+    w:
+      maxval: -1
+      minval: 0.42
+      pdk_unit: u
+      resolution: 0.005
+    l:
+      maxval: -1
+      minval: 0.5
+      pdk_unit: u
+      resolution: 0.005
+  pinList:
+    d: drain
+    g: gate
+    s: source
+    b: bulk
+  junction_ratings:
+    Vgs_max: 3.3   # TASK-48: was 3.63 (1.1 x 3.3 V nominal, unsourced)
+    Vds_max: 3.3   # TASK-48: was 3.63 (1.1 x 3.3 V nominal, unsourced)
+    Vgd_max: 3.3   # TASK-48: was 3.63 (1.1 x 3.3 V nominal, unsourced)
+    Vbs_max: 3.3   # TASK-48: was 3.63 (1.1 x 3.3 V nominal, unsourced)
+    Vbd_max: 3.3   # TASK-48: was 3.63 (1.1 x 3.3 V nominal, unsourced)
+  junction_ratings_provenance:
+    source: >-
+      $PDK_ROOT/skywater-pdk/docs/rules/device-details/nfet_03v3_nvt/index.rst
+      ("Operating Voltages where SPICE models are valid"; public copy
+      https://skywater-pdk.readthedocs.io/en/main/rules/device-details.html):
+      VDS 0 to 3.3 V, VGS 0 to 3.3 V, VBS 0 to -3.3 V (no margin above nominal
+      is published for this device)
+    heuristic:
+      Vgd_max: >-
+        = Vds_max; no separate Vgd operating limit is published. Vgd equals
+        Vds with the gate at source potential, the normal off-state, and the
+        page gives no direction-specific Vgd limit, so the symmetric Vds
+        range is taken for the gate above and below the drain alike (STR-001
+        scores the signed pair; there is simply no published asymmetry to
+        store here).
+      Vbd_max: >-
+        = Vds_max; no separate Vbd operating limit is published. Vbd equals
+        Vds with the body at source potential (the source-tied body every
+        shipped example uses).
+  schemdraw:
+    element: NFet
+    category: transistor
+    terminalMap:
+      d: drain
+      g: gate
+      s: source
+      b: bulk
+nmos5v:
+  PDKDevice: sky130_fd_pr__nfet_g5v0d10v5
+  op_params: [id, vgs, vds, vbs, vth, vdsat, gm, gds, gmbs, cgg, cgs, cgd, capbd, capbs]
+  op_internal_name: msky130_fd_pr__nfet_g5v0d10v5
+  op_backends: [ngspice, xyce]
+  polarity: n
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+    w:
+      maxval: -1
+      minval: 0.42
+      pdk_unit: u
+      resolution: 0.005
+    l:
+      maxval: -1
+      minval: 0.5
+      pdk_unit: u
+      resolution: 0.005
+  pinList:
+    d: drain
+    g: gate
+    s: source
+    b: bulk
+  junction_ratings:
+    Vgs_max: 5.5   # TASK-48: was 6.0 (1.2 x 5 V nominal, unsourced)
+    Vds_max: 11.0   # TASK-48: was 10.5 (the 10v5 in the cell name, unsourced)
+    Vgd_max: 11.0   # TASK-48: was 10.5 (the 10v5 in the cell name, unsourced)
+    Vbs_max: 5.5   # TASK-48: was 10.5 (the 10v5 in the cell name, unsourced)
+    Vbd_max: 11.0   # TASK-48: was 10.5 (the 10v5 in the cell name, unsourced)
+  junction_ratings_provenance:
+    source: >-
+      $PDK_ROOT/skywater-pdk/docs/rules/device-details/nfet_g5v0d10v5/index.rst
+      ("Operating Voltages where SPICE models are valid"; public copy
+      https://skywater-pdk.readthedocs.io/en/main/rules/device-details.html):
+      VDS 0 to 11.0 V, VGS 0 to 5.5 V, VBS 0 to -5.5 V
+    heuristic:
+      Vgd_max: >-
+        = Vds_max; no separate Vgd operating limit is published. Vgd equals
+        Vds with the gate at source potential, the normal off-state, and the
+        page gives no direction-specific Vgd limit, so the symmetric Vds
+        range is taken for the gate above and below the drain alike (STR-001
+        scores the signed pair; there is simply no published asymmetry to
+        store here).
+      Vbd_max: >-
+        = Vds_max; no separate Vbd operating limit is published. Vbd equals
+        Vds with the body at source potential (the source-tied body every
+        shipped example uses).
+  schemdraw:
+    element: NFet
+    category: transistor
+    terminalMap:
+      d: drain
+      g: gate
+      s: source
+      b: bulk
+nmos5v_native:
+  PDKDevice: sky130_fd_pr__nfet_05v0_nvt
+  op_params: [id, vgs, vds, vbs, vth, vdsat, gm, gds, gmbs, cgg, cgs, cgd, capbd, capbs]
+  op_internal_name: msky130_fd_pr__nfet_05v0_nvt
+  op_backends: [ngspice, xyce]
+  polarity: n
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+    w:
+      maxval: -1
+      minval: 0.42
+      pdk_unit: u
+      resolution: 0.005
+    l:
+      maxval: -1
+      minval: 0.9
+      pdk_unit: u
+      resolution: 0.005
+  pinList:
+    d: drain
+    g: gate
+    s: source
+    b: bulk
+  junction_ratings:
+    Vgs_max: 5.5   # TASK-48: was 6.0 (1.2 x 5 V nominal, unsourced)
+    Vds_max: 5.5   # TASK-48: was 10.5 (the 10v5 in the cell name, unsourced)
+    Vgd_max: 5.5   # TASK-48: was 10.5 (the 10v5 in the cell name, unsourced)
+    # TASK-107: was the magnitude 5.5 (TASK-48: was 10.5), which let a body
+    # forward-biased by up to 5.5 V pass; the page's range is +0.3 to -5.5 V.
+    Vbs_max: {min: -5.5, max: 0.3}
+    Vbd_max: 5.5   # TASK-48: was 10.5 (the 10v5 in the cell name, unsourced)
+  junction_ratings_provenance:
+    source: >-
+      $PDK_ROOT/skywater-pdk/docs/rules/device-details/nfet_05v0_nvt/index.rst
+      ("Operating Voltages where SPICE models are valid"; public copy
+      https://skywater-pdk.readthedocs.io/en/main/rules/device-details.html):
+      VDS 0 to 5.5 V, VGS 0 to 5.5 V, VBS +0.3 to -5.5 V (line 14; restated
+      for this model on device-details/esd_nfet/index.rst line 14). This is
+      NOT a 10.5 V-drain device: the page states the only differences from
+      nfet_03v3_nvt are gate length and the VDS requirement. Vbs_max is the
+      signed range {min: -5.5, max: 0.3} (Vbs = V(b) - V(s)): the body may
+      sit at most 0.3 V above the source (forward) and 5.5 V below it.
+    heuristic:
+      Vgd_max: >-
+        = Vds_max; no separate Vgd operating limit is published. Vgd equals
+        Vds with the gate at source potential, the normal off-state, and the
+        page gives no direction-specific Vgd limit, so the symmetric Vds
+        range is taken for the gate above and below the drain alike (STR-001
+        scores the signed pair; there is simply no published asymmetry to
+        store here).
+      Vbd_max: >-
+        = Vds_max; no separate Vbd operating limit is published. Vbd equals
+        Vds with the body at source potential (the source-tied body every
+        shipped example uses).
+  schemdraw:
+    element: NFet
+    category: transistor
+    terminalMap:
+      d: drain
+      g: gate
+      s: source
+      b: bulk
+nmos20v:
+  PDKDevice: sky130_fd_pr__nfet_20v0
+  # TASK-491: internal MOS behind drift circuitry; Xyce model lookup fails.
+  op_params: [id, vgs, vds, vbs, vth, vdsat, gm, gds, gmbs, cgg, cgs, cgd, capbd, capbs]
+  op_internal_name: m1
+  op_backends: [ngspice]
+  polarity: n
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+    w:
+      maxval: -1
+      minval: 0.36
+      pdk_unit: u
+      resolution: 0.005
+    l:
+      maxval: -1
+      minval: 0.5
+      pdk_unit: u
+      resolution: 0.005
+  pinList:
+    d: drain
+    g: gate
+    s: source
+    b: bulk
+  junction_ratings:
+    Vgs_max: 5.5   # TASK-48: was 22.0 (1.1 x 20 V nominal, unsourced)
+    Vds_max: 22.0
+    Vgd_max: 22.0
+    Vbs_max: 2.0   # TASK-48: was 22.0 (1.1 x 20 V nominal, unsourced)
+    Vbd_max: 22.0
+  junction_ratings_provenance:
+    source: >-
+      $PDK_ROOT/skywater-pdk/docs/rules/device-details/nfet_20v0/index.rst
+      ("Operating Voltages where SPICE models are valid"; public copy
+      https://skywater-pdk.readthedocs.io/en/main/rules/device-details.html):
+      VDS 0 to +22 V, VGS 0 to 5.5 V, VBS 0 to -2.0 V, "subject to SOA
+      limitations". The gate oxide is the 5 V one (rules/hv.rst: VHV
+      gate-to-channel limit 5.5 V), so the gate is NOT a 20 V terminal
+    heuristic:
+      Vgd_max: >-
+        = Vds_max; no separate Vgd operating limit is published. Vgd equals
+        Vds with the gate at source potential, the normal off-state, and the
+        page gives no direction-specific Vgd limit, so the symmetric Vds
+        range is taken for the gate above and below the drain alike (STR-001
+        scores the signed pair; there is simply no published asymmetry to
+        store here).
+      Vbd_max: >-
+        = Vds_max; no separate Vbd operating limit is published. Vbd equals
+        Vds with the body at source potential (the source-tied body every
+        shipped example uses).
+  schemdraw:
+    element: NFet
+    category: transistor
+    terminalMap:
+      d: drain
+      g: gate
+      s: source
+      b: bulk
+nmos20v_native:
+  PDKDevice: sky130_fd_pr__nfet_20v0_nvt
+  # Internal m1 only. capbd excluded: Op-only runs returned only zero.
+  op_params: [id, vgs, vds, vbs, vth, vdsat, gm, gds, gmbs, cgg, cgs, cgd, capbs]
+  op_internal_name: m1
+  op_backends: [ngspice]
+  polarity: n
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+    w:
+      maxval: -1
+      minval: 3.0
+      pdk_unit: u
+      resolution: 0.005
+    l:
+      maxval: -1
+      minval: 1.0
+      pdk_unit: u
+      resolution: 0.005
+  pinList:
+    d: drain
+    g: gate
+    s: source
+    b: bulk
+  junction_ratings:
+    Vgs_max: 5.5   # TASK-48: was 22.0 (1.1 x 20 V nominal, unsourced)
+    Vds_max: 22.0
+    Vgd_max: 22.0
+    Vbs_max: 2.0   # TASK-48: was 22.0 (1.1 x 20 V nominal, unsourced)
+    Vbd_max: 22.0
+  junction_ratings_provenance:
+    source: >-
+      $PDK_ROOT/skywater-pdk/docs/rules/device-details/nfet_20v0_nvt/index.rst
+      ("Operating Voltages where SPICE models are valid"; public copy
+      https://skywater-pdk.readthedocs.io/en/main/rules/device-details.html):
+      VDS 0 to +22 V, VGS 0 to 5.5 V, VBS 0 to -2.0 V, "subject to SOA
+      limitations". The gate oxide is the 5 V one (rules/hv.rst: VHV
+      gate-to-channel limit 5.5 V), so the gate is NOT a 20 V terminal
+    heuristic:
+      Vgd_max: >-
+        = Vds_max; no separate Vgd operating limit is published. Vgd equals
+        Vds with the gate at source potential, the normal off-state, and the
+        page gives no direction-specific Vgd limit, so the symmetric Vds
+        range is taken for the gate above and below the drain alike (STR-001
+        scores the signed pair; there is simply no published asymmetry to
+        store here).
+      Vbd_max: >-
+        = Vds_max; no separate Vbd operating limit is published. Vbd equals
+        Vds with the body at source potential (the source-tied body every
+        shipped example uses).
+  schemdraw:
+    element: NFet
+    category: transistor
+    terminalMap:
+      d: drain
+      g: gate
+      s: source
+      b: bulk
+nmos20v_zvt:
+  PDKDevice: sky130_fd_pr__nfet_20v0_zvt
+  # Internal m1 only. capbd excluded: Op-only runs returned only zero.
+  op_params: [id, vgs, vds, vbs, vth, vdsat, gm, gds, gmbs, cgg, cgs, cgd, capbs]
+  op_internal_name: m1
+  op_backends: [ngspice]
+  polarity: n
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+    w:
+      maxval: -1
+      minval: 3.0
+      pdk_unit: u
+      resolution: 0.005
+    l:
+      maxval: -1
+      minval: 4.0
+      pdk_unit: u
+      resolution: 0.005
+  pinList:
+    d: drain
+    g: gate
+    s: source
+    b: bulk
+  junction_ratings:
+    Vgs_max: 5.5   # TASK-48: was 22.0 (1.1 x 20 V nominal, unsourced)
+    Vds_max: 22.0
+    Vgd_max: 22.0
+    Vbs_max: 2.0   # TASK-48: was 22.0 (1.1 x 20 V nominal, unsourced)
+    Vbd_max: 22.0
+  junction_ratings_provenance:
+    source: >-
+      $PDK_ROOT/skywater-pdk/docs/rules/device-details/nfet_20v0_zvt/index.rst
+      ("Operating Voltages where SPICE models are valid"; public copy
+      https://skywater-pdk.readthedocs.io/en/main/rules/device-details.html):
+      VDS 0 to +22 V, VGS 0 to 5.5 V, VBS 0 to -2.0 V, "subject to SOA
+      limitations". The gate oxide is the 5 V one (rules/hv.rst: VHV
+      gate-to-channel limit 5.5 V), so the gate is NOT a 20 V terminal
+    heuristic:
+      Vgd_max: >-
+        = Vds_max; no separate Vgd operating limit is published. Vgd equals
+        Vds with the gate at source potential, the normal off-state, and the
+        page gives no direction-specific Vgd limit, so the symmetric Vds
+        range is taken for the gate above and below the drain alike (STR-001
+        scores the signed pair; there is simply no published asymmetry to
+        store here).
+      Vbd_max: >-
+        = Vds_max; no separate Vbd operating limit is published. Vbd equals
+        Vds with the body at source potential (the source-tied body every
+        shipped example uses).
+  schemdraw:
+    element: NFet
+    category: transistor
+    terminalMap:
+      d: drain
+      g: gate
+      s: source
+      b: bulk
+nmos20v_iso:
+  PDKDevice: sky130_fd_pr__nfet_20v0_iso
+  op_params: [id, vgs, vds, vbs, vth, vdsat, gm, gds, gmbs, cgg, cgs, cgd, capbd, capbs]
+  op_internal_name: m1
+  op_backends: [ngspice]
+  polarity: n
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+    w:
+      maxval: -1
+      minval: 0.36
+      pdk_unit: u
+      resolution: 0.005
+    l:
+      maxval: -1
+      minval: 1.5
+      pdk_unit: u
+      resolution: 0.005
+  pinList:
+    d: drain
+    g: gate
+    s: source
+    b: bulk
+    sub: sub
+  junction_ratings:
+    Vgs_max: 5.5   # TASK-48: was 22.0 (1.1 x 20 V nominal, unsourced)
+    Vds_max: 22.0
+    Vgd_max: 22.0
+    Vbs_max: 2.0   # TASK-48: was 22.0 (1.1 x 20 V nominal, unsourced)
+    Vbd_max: 22.0
+  junction_ratings_provenance:
+    source: >-
+      $PDK_ROOT/skywater-pdk/docs/rules/device-details/nfet_20v0_iso/index.rst
+      ("Operating Voltages where SPICE models are valid"; public copy
+      https://skywater-pdk.readthedocs.io/en/main/rules/device-details.html):
+      VDS 0 to +22 V, VGS 0 to 5.5 V, VBS 0 to -2.0 V, "subject to SOA
+      limitations". The gate oxide is the 5 V one (rules/hv.rst: VHV
+      gate-to-channel limit 5.5 V), so the gate is NOT a 20 V terminal
+    heuristic:
+      Vgd_max: >-
+        = Vds_max; no separate Vgd operating limit is published. Vgd equals
+        Vds with the gate at source potential, the normal off-state, and the
+        page gives no direction-specific Vgd limit, so the symmetric Vds
+        range is taken for the gate above and below the drain alike (STR-001
+        scores the signed pair; there is simply no published asymmetry to
+        store here).
+      Vbd_max: >-
+        = Vds_max; no separate Vbd operating limit is published. Vbd equals
+        Vds with the body at source potential (the source-tied body every
+        shipped example uses).
+  schemdraw:
+    element: NFet
+    category: transistor
+    terminalMap:
+      d: drain
+      g: gate
+      s: source
+      b: bulk
+nmos_esd:
+  PDKDevice: sky130_fd_pr__esd_nfet_g5v0d10v5
+  op_params: [id, vgs, vds, vbs, vth, vdsat, gm, gds, gmbs, cgg, cgs, cgd, capbd, capbs]
+  op_internal_name: msky130_fd_pr__esd_nfet_g5v0d10v5
+  op_backends: [ngspice, xyce]
+  polarity: n
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+    w:
+      maxval: 51.0
+      minval: 17.5
+      pdk_unit: u
+      resolution: 0.005
+    l:
+      maxval: 0.55
+      minval: 0.55
+      pdk_unit: u
+      resolution: 0.005
+  pinList:
+    d: drain
+    g: gate
+    s: source
+    b: bulk
+  junction_ratings:
+    Vgs_max: 5.0   # TASK-48: was 6.0 (1.2 x 5 V nominal, unsourced)
+    Vds_max: 11.0   # TASK-48: was 10.5 (the 10v5 in the cell name, unsourced)
+    Vgd_max: 11.0   # TASK-48: was 10.5 (the 10v5 in the cell name, unsourced)
+    Vbs_max: 5.5   # TASK-48: was 10.5 (the 10v5 in the cell name, unsourced)
+    Vbd_max: 11.0   # TASK-48: was 10.5 (the 10v5 in the cell name, unsourced)
+  junction_ratings_provenance:
+    source: >-
+      $PDK_ROOT/skywater-pdk/docs/rules/device-details/esd_nfet/index.rst
+      ("Operating Voltages where SPICE models are valid"; public copy
+      https://skywater-pdk.readthedocs.io/en/main/rules/device-details.html):
+      for the sky130_fd_pr__esd_nfet_g5v0d10v5 model: VDS 0 to 11.0 V, VGS 0
+      to 5.0 V (the ESD variant is documented at 5.0 V, not the 5.5 V of the
+      plain g5v0d10v5), VBS 0 to -5.5 V
+    heuristic:
+      Vgd_max: >-
+        = Vds_max; no separate Vgd operating limit is published. Vgd equals
+        Vds with the gate at source potential, the normal off-state, and the
+        page gives no direction-specific Vgd limit, so the symmetric Vds
+        range is taken for the gate above and below the drain alike (STR-001
+        scores the signed pair; there is simply no published asymmetry to
+        store here).
+      Vbd_max: >-
+        = Vds_max; no separate Vbd operating limit is published. Vbd equals
+        Vds with the body at source potential (the source-tied body every
+        shipped example uses).
+  schemdraw:
+    element: NFet
+    category: transistor
+    terminalMap:
+      d: drain
+      g: gate
+      s: source
+      b: bulk
+pmos1p8:
+  PDKDevice: sky130_fd_pr__pfet_01v8
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+    w:
+      maxval: -1
+      minval: 0.42
+      pdk_unit: u
+      resolution: 0.005
+    l:
+      maxval: -1
+      minval: 0.15
+      pdk_unit: u
+      resolution: 0.005
+  fault_params:
+    w:
+      kind: continuous
+      min: 0.42
+      max: 100.0
+    l:
+      kind: continuous
+      min: 0.15
+      max: 100.0
+  pinList:
+    d: drain
+    g: gate
+    s: source
+    b: bulk
+  junction_ratings:
+    Vgs_max: 1.95   # TASK-48: was 1.98 (1.1 x 1.8 V nominal, unsourced)
+    Vds_max: 1.95   # TASK-48: was 1.98 (1.1 x 1.8 V nominal, unsourced)
+    Vgd_max: 1.95   # TASK-48: was 1.98 (1.1 x 1.8 V nominal, unsourced)
+    # TASK-107: was the magnitude 1.95 (TASK-48: was 1.98), which let a body
+    # forward-biased (n-well pulled below the source) by up to 1.95 V pass;
+    # the page's range is -0.1 to +1.95 V.
+    Vbs_max: {min: -0.1, max: 1.95}
+    Vbd_max: 1.95   # TASK-48: was 1.98 (1.1 x 1.8 V nominal, unsourced)
+  junction_ratings_provenance:
+    source: >-
+      $PDK_ROOT/skywater-pdk/docs/rules/device-details/pfet_01v8/index.rst
+      ("Operating Voltages where SPICE models are valid"; public copy
+      https://skywater-pdk.readthedocs.io/en/main/rules/device-details.html):
+      VDS 0 to -1.95 V, VGS 0 to -1.95 V, VBS -0.1 to +1.95 V (line 14).
+      Vbs_max is the signed range {min: -0.1, max: 1.95} (Vbs = V(b) - V(s)):
+      for a PMOS the n-well body normally sits ABOVE the source, so +1.95 is
+      the reverse-bias end (body up to 1.95 V above the source) and -0.1 the
+      forward end (body at most 0.1 V below the source).
+    heuristic:
+      Vgd_max: >-
+        = Vds_max; no separate Vgd operating limit is published. Vgd equals
+        Vds with the gate at source potential, the normal off-state, and the
+        page gives no direction-specific Vgd limit, so the symmetric Vds
+        range is taken for the gate above and below the drain alike (STR-001
+        scores the signed pair; there is simply no published asymmetry to
+        store here).
+      Vbd_max: >-
+        = Vds_max; no separate Vbd operating limit is published. Vbd equals
+        Vds with the body at source potential (the source-tied body every
+        shipped example uses).
+  # TASK-330.3 (save_device_params): see nmos1p8's op_params comment above --
+  # same verification (TASK-330.1's op_probe.sp exercises nfet AND pfet
+  # together), same internal-name authoring convention, same TASK-330.4
+  # gate-finding exclusion of cgso/cgdo/cgbo (silent zero outside .tran).
+  op_params:
+    [id, vgs, vds, vbs, vth, vdsat, gm, gds, gmbs,
+     cgg, cgs, cgd, capbd, capbs]
+  op_internal_name: msky130_fd_pr__pfet_01v8
+  # TASK-330.4 (op_table): channel polarity, a third per-device PDK
+  # declaration -- there is no general rule from the model name alone.
+  polarity: p
+  # TASK-330.5: which simulator backends this device's op-point addressing
+  # has been VERIFIED on by a real run -- see nmos1p8's op_backends comment.
+  op_backends: [ngspice, xyce]
+  schemdraw:
+    element: PFet
+    category: transistor
+    terminalMap:
+      d: drain
+      g: gate
+      s: source
+      b: bulk
+pmos1p8_lvt:
+  PDKDevice: sky130_fd_pr__pfet_01v8_lvt
+  op_params: [id, vgs, vds, vbs, vth, vdsat, gm, gds, gmbs, cgg, cgs, cgd, capbd, capbs]
+  op_internal_name: msky130_fd_pr__pfet_01v8_lvt
+  op_backends: [ngspice, xyce]
+  polarity: p
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+    w:
+      maxval: -1
+      minval: 0.42
+      pdk_unit: u
+      resolution: 0.005
+    l:
+      maxval: -1
+      minval: 0.35
+      pdk_unit: u
+      resolution: 0.005
+  pinList:
+    d: drain
+    g: gate
+    s: source
+    b: bulk
+  junction_ratings:
+    Vgs_max: 1.95   # TASK-48: was 1.98 (1.1 x 1.8 V nominal, unsourced)
+    Vds_max: 1.95   # TASK-48: was 1.98 (1.1 x 1.8 V nominal, unsourced)
+    Vgd_max: 1.95   # TASK-48: was 1.98 (1.1 x 1.8 V nominal, unsourced)
+    # TASK-107: was the magnitude 1.95 (TASK-48: was 1.98), which let a body
+    # forward-biased (n-well pulled below the source) by up to 1.95 V pass;
+    # the page's range is -0.1 to +1.95 V.
+    Vbs_max: {min: -0.1, max: 1.95}
+    Vbd_max: 1.95   # TASK-48: was 1.98 (1.1 x 1.8 V nominal, unsourced)
+  junction_ratings_provenance:
+    source: >-
+      $PDK_ROOT/skywater-pdk/docs/rules/device-details/pfet_01v8_lvt/index.rst
+      ("Operating Voltages where SPICE models are valid"; public copy
+      https://skywater-pdk.readthedocs.io/en/main/rules/device-details.html):
+      VDS 0 to -1.95 V, VGS 0 to -1.95 V, VBS -0.1 to +1.95 V (line 14).
+      Vbs_max is the signed range {min: -0.1, max: 1.95} (Vbs = V(b) - V(s)):
+      for a PMOS the n-well body normally sits ABOVE the source, so +1.95 is
+      the reverse-bias end (body up to 1.95 V above the source) and -0.1 the
+      forward end (body at most 0.1 V below the source).
+    heuristic:
+      Vgd_max: >-
+        = Vds_max; no separate Vgd operating limit is published. Vgd equals
+        Vds with the gate at source potential, the normal off-state, and the
+        page gives no direction-specific Vgd limit, so the symmetric Vds
+        range is taken for the gate above and below the drain alike (STR-001
+        scores the signed pair; there is simply no published asymmetry to
+        store here).
+      Vbd_max: >-
+        = Vds_max; no separate Vbd operating limit is published. Vbd equals
+        Vds with the body at source potential (the source-tied body every
+        shipped example uses).
+  schemdraw:
+    element: PFet
+    category: transistor
+    terminalMap:
+      d: drain
+      g: gate
+      s: source
+      b: bulk
+pmos1p8_hvt:
+  PDKDevice: sky130_fd_pr__pfet_01v8_hvt
+  op_params: [id, vgs, vds, vbs, vth, vdsat, gm, gds, gmbs, cgg, cgs, cgd, capbd, capbs]
+  op_internal_name: msky130_fd_pr__pfet_01v8_hvt
+  op_backends: [ngspice, xyce]
+  polarity: p
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+    w:
+      maxval: -1
+      minval: 0.42
+      pdk_unit: u
+      resolution: 0.005
+    l:
+      maxval: -1
+      minval: 0.15
+      pdk_unit: u
+      resolution: 0.005
+  pinList:
+    d: drain
+    g: gate
+    s: source
+    b: bulk
+  junction_ratings:
+    Vgs_max: 1.95   # TASK-48: was 1.98 (1.1 x 1.8 V nominal, unsourced)
+    Vds_max: 1.95   # TASK-48: was 1.98 (1.1 x 1.8 V nominal, unsourced)
+    Vgd_max: 1.95   # TASK-48: was 1.98 (1.1 x 1.8 V nominal, unsourced)
+    # TASK-107: was the magnitude 1.95 (TASK-48: was 1.98), which let a body
+    # forward-biased (n-well pulled below the source) by up to 1.95 V pass;
+    # the page's range is -0.1 to +1.95 V.
+    Vbs_max: {min: -0.1, max: 1.95}
+    Vbd_max: 1.95   # TASK-48: was 1.98 (1.1 x 1.8 V nominal, unsourced)
+  junction_ratings_provenance:
+    source: >-
+      $PDK_ROOT/skywater-pdk/docs/rules/device-details/pfet_01v8_hvt/index.rst
+      ("Operating Voltages where SPICE models are valid"; public copy
+      https://skywater-pdk.readthedocs.io/en/main/rules/device-details.html):
+      VDS 0 to -1.95 V, VGS 0 to -1.95 V, VBS -0.1 to +1.95 V (line 14).
+      Vbs_max is the signed range {min: -0.1, max: 1.95} (Vbs = V(b) - V(s)):
+      for a PMOS the n-well body normally sits ABOVE the source, so +1.95 is
+      the reverse-bias end (body up to 1.95 V above the source) and -0.1 the
+      forward end (body at most 0.1 V below the source).
+    heuristic:
+      Vgd_max: >-
+        = Vds_max; no separate Vgd operating limit is published. Vgd equals
+        Vds with the gate at source potential, the normal off-state, and the
+        page gives no direction-specific Vgd limit, so the symmetric Vds
+        range is taken for the gate above and below the drain alike (STR-001
+        scores the signed pair; there is simply no published asymmetry to
+        store here).
+      Vbd_max: >-
+        = Vds_max; no separate Vbd operating limit is published. Vbd equals
+        Vds with the body at source potential (the source-tied body every
+        shipped example uses).
+  schemdraw:
+    element: PFet
+    category: transistor
+    terminalMap:
+      d: drain
+      g: gate
+      s: source
+      b: bulk
+pmos5v:
+  PDKDevice: sky130_fd_pr__pfet_g5v0d10v5
+  op_params: [id, vgs, vds, vbs, vth, vdsat, gm, gds, gmbs, cgg, cgs, cgd, capbd, capbs]
+  op_internal_name: msky130_fd_pr__pfet_g5v0d10v5
+  op_backends: [ngspice, xyce]
+  polarity: p
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+    w:
+      maxval: -1
+      minval: 0.42
+      pdk_unit: u
+      resolution: 0.005
+    l:
+      maxval: -1
+      minval: 0.5
+      pdk_unit: u
+      resolution: 0.005
+  pinList:
+    d: drain
+    g: gate
+    s: source
+    b: bulk
+  junction_ratings:
+    Vgs_max: 5.5   # TASK-48: was 6.0 (1.2 x 5 V nominal, unsourced)
+    Vds_max: 11.0   # TASK-48: was 10.5 (the 10v5 in the cell name, unsourced)
+    Vgd_max: 11.0   # TASK-48: was 10.5 (the 10v5 in the cell name, unsourced)
+    Vbs_max: 5.5   # TASK-48: was 10.5 (the 10v5 in the cell name, unsourced)
+    Vbd_max: 11.0   # TASK-48: was 10.5 (the 10v5 in the cell name, unsourced)
+  junction_ratings_provenance:
+    source: >-
+      $PDK_ROOT/skywater-pdk/docs/rules/device-details/pfet_g5v0d10v5/index.rst
+      ("Operating Voltages where SPICE models are valid"; public copy
+      https://skywater-pdk.readthedocs.io/en/main/rules/device-details.html):
+      VDS 0 to -11.0 V, VGS 0 to -5.5 V, VBS 0 to +5.5 V
+    heuristic:
+      Vgd_max: >-
+        = Vds_max; no separate Vgd operating limit is published. Vgd equals
+        Vds with the gate at source potential, the normal off-state, and the
+        page gives no direction-specific Vgd limit, so the symmetric Vds
+        range is taken for the gate above and below the drain alike (STR-001
+        scores the signed pair; there is simply no published asymmetry to
+        store here).
+      Vbd_max: >-
+        = Vds_max; no separate Vbd operating limit is published. Vbd equals
+        Vds with the body at source potential (the source-tied body every
+        shipped example uses).
+  schemdraw:
+    element: PFet
+    category: transistor
+    terminalMap:
+      d: drain
+      g: gate
+      s: source
+      b: bulk
+pmos20v:
+  PDKDevice: sky130_fd_pr__pfet_20v0
+  op_params: [id, vgs, vds, vbs, vth, vdsat, gm, gds, gmbs, cgg, cgs, cgd, capbd, capbs]
+  op_internal_name: m1
+  op_backends: [ngspice]
+  polarity: p
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+    w:
+      maxval: -1
+      minval: 0.36
+      pdk_unit: u
+      resolution: 0.005
+    l:
+      maxval: -1
+      minval: 0.5
+      pdk_unit: u
+      resolution: 0.005
+  pinList:
+    d: drain
+    g: gate
+    s: source
+    b: bulk
+  junction_ratings:
+    Vgs_max: 5.5   # TASK-48: was 22.0 (1.1 x 20 V nominal, unsourced)
+    Vds_max: 22.0
+    Vgd_max: 22.0
+    Vbs_max: 2.0   # TASK-48: was 22.0 (1.1 x 20 V nominal, unsourced)
+    Vbd_max: 22.0
+  junction_ratings_provenance:
+    source: >-
+      $PDK_ROOT/skywater-pdk/docs/rules/device-details/pfet_20v0/index.rst
+      ("Operating Voltages where SPICE models are valid"; public copy
+      https://skywater-pdk.readthedocs.io/en/main/rules/device-details.html):
+      VDS 0 to -22 V, VGS 0 to -5.5 V, VBS 0 to +2.0 V, "subject to SOA
+      limitations". The gate oxide is the 5 V one (rules/hv.rst: VHV
+      gate-to-channel limit 5.5 V), so the gate is NOT a 20 V terminal
+    heuristic:
+      Vgd_max: >-
+        = Vds_max; no separate Vgd operating limit is published. Vgd equals
+        Vds with the gate at source potential, the normal off-state, and the
+        page gives no direction-specific Vgd limit, so the symmetric Vds
+        range is taken for the gate above and below the drain alike (STR-001
+        scores the signed pair; there is simply no published asymmetry to
+        store here).
+      Vbd_max: >-
+        = Vds_max; no separate Vbd operating limit is published. Vbd equals
+        Vds with the body at source potential (the source-tied body every
+        shipped example uses).
+  schemdraw:
+    element: PFet
+    category: transistor
+    terminalMap:
+      d: drain
+      g: gate
+      s: source
+      b: bulk
+pmos_esd:
+  PDKDevice: sky130_fd_pr__esd_pfet_g5v0d10v5
+  op_params: [id, vgs, vds, vbs, vth, vdsat, gm, gds, gmbs, cgg, cgs, cgd, capbd, capbs]
+  op_internal_name: msky130_fd_pr__esd_pfet_g5v0d10v5
+  op_backends: [ngspice, xyce]
+  polarity: p
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+    w:
+      maxval: 26.5
+      minval: 14.5
+      pdk_unit: u
+      resolution: 0.005
+    l:
+      maxval: 0.55
+      minval: 0.55
+      pdk_unit: u
+      resolution: 0.005
+  pinList:
+    d: drain
+    g: gate
+    s: source
+    b: bulk
+  junction_ratings:
+    Vgs_max: 5.5   # TASK-48: was 6.0 (1.2 x 5 V nominal, unsourced)
+    Vds_max: 11.0   # TASK-48: was 10.5 (the 10v5 in the cell name, unsourced)
+    Vgd_max: 11.0   # TASK-48: was 10.5 (the 10v5 in the cell name, unsourced)
+    Vbs_max: 5.5   # TASK-48: was 10.5 (the 10v5 in the cell name, unsourced)
+    Vbd_max: 11.0   # TASK-48: was 10.5 (the 10v5 in the cell name, unsourced)
+  junction_ratings_provenance:
+    source: >-
+      $PDK_ROOT/skywater-pdk/docs/rules/device-details/pfet_g5v0d10v5/index.rst
+      ("Operating Voltages where SPICE models are valid"; public copy
+      https://skywater-pdk.readthedocs.io/en/main/rules/device-details.html):
+      the page lists sky130_fd_pr__esd_pfet_g5v0d10v5 under the same operating
+      voltages as pfet_g5v0d10v5: VDS 0 to -11.0 V, VGS 0 to -5.5 V, VBS 0 to
+      +5.5 V (there is no separate esd_pfet page)
+    heuristic:
+      Vgd_max: >-
+        = Vds_max; no separate Vgd operating limit is published. Vgd equals
+        Vds with the gate at source potential, the normal off-state, and the
+        page gives no direction-specific Vgd limit, so the symmetric Vds
+        range is taken for the gate above and below the drain alike (STR-001
+        scores the signed pair; there is simply no published asymmetry to
+        store here).
+      Vbd_max: >-
+        = Vds_max; no separate Vbd operating limit is published. Vbd equals
+        Vds with the body at source potential (the source-tied body every
+        shipped example uses).
+  schemdraw:
+    element: PFet
+    category: transistor
+    terminalMap:
+      d: drain
+      g: gate
+      s: source
+      b: bulk
+res_hpo:
+  PDKDevice: sky130_fd_pr__res_high_po
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+    w:
+      maxval: -1
+      minval: 0.35
+      pdk_unit: u
+      resolution: 0.005
+    l:
+      maxval: -1
+      minval: 0.5
+      pdk_unit: u
+      resolution: 0.005
+  pinList:
+    a: plus
+    b: minus
+    c: body
+  schemdraw:
+    element: Resistor
+    category: passive
+    terminalMap:
+      a: start
+      b: end
+res_xhpo:
+  PDKDevice: sky130_fd_pr__res_xhigh_po
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+    w:
+      maxval: -1
+      minval: 0.35
+      pdk_unit: u
+      resolution: 0.005
+    l:
+      maxval: -1
+      minval: 0.5
+      pdk_unit: u
+      resolution: 0.005
+  pinList:
+    a: plus
+    b: minus
+    c: sub
+  schemdraw:
+    element: Resistor
+    category: passive
+    terminalMap:
+      a: start
+      b: end
+res_generic_nd:
+  PDKDevice: sky130_fd_pr__res_generic_nd
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+    w:
+      maxval: -1
+      minval: 0.42
+      pdk_unit: u
+      resolution: 0.005
+    l:
+      maxval: -1
+      minval: 0.5
+      pdk_unit: u
+      resolution: 0.005
+  pinList:
+    a: plus
+    b: minus
+    c: sub
+  schemdraw:
+    element: Resistor
+    category: passive
+    terminalMap:
+      a: start
+      b: end
+res_generic_pd:
+  PDKDevice: sky130_fd_pr__res_generic_pd
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+    w:
+      maxval: -1
+      minval: 0.42
+      pdk_unit: u
+      resolution: 0.005
+    l:
+      maxval: -1
+      minval: 0.5
+      pdk_unit: u
+      resolution: 0.005
+  pinList:
+    a: plus
+    b: minus
+    c: sub
+  schemdraw:
+    element: Resistor
+    category: passive
+    terminalMap:
+      a: start
+      b: end
+res_iso_pw:
+  PDKDevice: sky130_fd_pr__res_iso_pw
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+    w:
+      maxval: -1
+      minval: 0.42
+      pdk_unit: u
+      resolution: 0.005
+    l:
+      maxval: -1
+      minval: 0.84
+      pdk_unit: u
+      resolution: 0.005
+  pinList:
+    a: plus
+    b: minus
+    c: sub
+  schemdraw:
+    element: Resistor
+    category: passive
+    terminalMap:
+      a: start
+      b: end
+cap_mim1:
+  PDKDevice: sky130_fd_pr__cap_mim_m3_1
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+    w:
+      maxval: -1
+      minval: 2.0
+      pdk_unit: u
+      resolution: 0.005
+    l:
+      maxval: -1
+      minval: 2.0
+      pdk_unit: u
+      resolution: 0.005
+  pinList:
+    plus: plus
+    minus: minus
+  schemdraw:
+    element: Capacitor
+    category: passive
+    terminalMap:
+      plus: start
+      minus: end
+cap_mim2:
+  PDKDevice: sky130_fd_pr__cap_mim_m3_2
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+    w:
+      maxval: -1
+      minval: 2.0
+      pdk_unit: u
+      resolution: 0.005
+    l:
+      maxval: -1
+      minval: 2.0
+      pdk_unit: u
+      resolution: 0.005
+  pinList:
+    plus: plus
+    minus: minus
+  schemdraw:
+    element: Capacitor
+    category: passive
+    terminalMap:
+      plus: start
+      minus: end
+varactor_nmos:
+  PDKDevice: sky130_fd_pr__cap_var_lvt
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+    w:
+      maxval: -1
+      minval: 0.18
+      pdk_unit: u
+      resolution: 0.005
+    l:
+      maxval: -1
+      minval: 0.18
+      pdk_unit: u
+      resolution: 0.005
+  pinList:
+    plus: plus
+    minus: minus
+    bulk: bulk
+  schemdraw:
+    element: Capacitor
+    category: passive
+    terminalMap:
+      plus: start
+      minus: end
+varactor_pmos:
+  PDKDevice: sky130_fd_pr__cap_var_hvt
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+    w:
+      maxval: -1
+      minval: 0.18
+      pdk_unit: u
+      resolution: 0.005
+    l:
+      maxval: -1
+      minval: 0.18
+      pdk_unit: u
+      resolution: 0.005
+  pinList:
+    plus: plus
+    minus: minus
+    bulk: bulk
+  schemdraw:
+    element: Capacitor
+    category: passive
+    terminalMap:
+      plus: start
+      minus: end
+cap_vpp_11p5x11p7:
+  PDKDevice: sky130_fd_pr__cap_vpp_11p5x11p7_m1m2_noshield
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+  pinList:
+    c0: cap0
+    c1: cap1
+    b: body
+  schemdraw:
+    element: Capacitor
+    category: passive
+    terminalMap:
+      c0: start
+      c1: end
+diode_std:
+  PDKDevice: sky130_fd_pr__diode_pw2nd_05v5
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+    area:
+      maxval: -1
+      minval: 0.09
+      pdk_unit: p
+      quantity: area
+    perim:
+      maxval: -1
+      minval: 1.2
+      pdk_unit: u
+      resolution: 0.005
+  pinList:
+    a: anode
+    k: cathode
+  junction_ratings:
+    Vak_max: 5.0   # TASK-48: was 5.5 (1.1 x 5 V nominal, unsourced)
+  junction_ratings_provenance:
+    source: >-
+      $PDK_ROOT/skywater-pdk/docs/rules/device-details/diodes/index.rst
+      ("Operating regime where SPICE models are valid"; public copy
+      https://skywater-pdk.readthedocs.io/en/main/rules/device-details.html):
+      |Vd0 - Vd1| = 0 to 5.0 V, stated once for every listed diode model
+      including sky130_fd_pr__diode_pw2nd_11v0 and
+      sky130_fd_pr__diode_pd2nw_11v0. No 11 V operating regime is published
+      for the _11v0 diodes; rules/hv.rst gives 11.0 V only as the HV junction
+      BREAKDOWN ("points of failure, not operating voltages"), which is not a
+      rating.
+  schemdraw:
+    element: Diode
+    category: diode
+    terminalMap:
+      a: anode
+      k: cathode
+diode_pwnd:
+  PDKDevice: sky130_fd_pr__diode_pw2nd_11v0
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+    area:
+      maxval: -1
+      minval: 0.09
+      pdk_unit: p
+      quantity: area
+    perim:
+      maxval: -1
+      minval: 1.2
+      pdk_unit: u
+      resolution: 0.005
+  pinList:
+    a: anode
+    k: cathode
+  junction_ratings:
+    Vak_max: 5.0   # TASK-48: was 5.5 (1.1 x 5 V nominal, unsourced)
+  junction_ratings_provenance:
+    source: >-
+      $PDK_ROOT/skywater-pdk/docs/rules/device-details/diodes/index.rst
+      ("Operating regime where SPICE models are valid"; public copy
+      https://skywater-pdk.readthedocs.io/en/main/rules/device-details.html):
+      |Vd0 - Vd1| = 0 to 5.0 V, stated once for every listed diode model
+      including sky130_fd_pr__diode_pw2nd_11v0 and
+      sky130_fd_pr__diode_pd2nw_11v0. No 11 V operating regime is published
+      for the _11v0 diodes; rules/hv.rst gives 11.0 V only as the HV junction
+      BREAKDOWN ("points of failure, not operating voltages"), which is not a
+      rating.
+  schemdraw:
+    element: Diode
+    category: diode
+    terminalMap:
+      a: anode
+      k: cathode
+diode_nw:
+  PDKDevice: sky130_fd_pr__diode_pd2nw_11v0
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+    area:
+      maxval: -1
+      minval: 0.09
+      pdk_unit: p
+      quantity: area
+    perim:
+      maxval: -1
+      minval: 1.2
+      pdk_unit: u
+      resolution: 0.005
+  pinList:
+    a: anode
+    k: cathode
+  junction_ratings:
+    Vak_max: 5.0   # TASK-48: was 5.5 (1.1 x 5 V nominal, unsourced)
+  junction_ratings_provenance:
+    source: >-
+      $PDK_ROOT/skywater-pdk/docs/rules/device-details/diodes/index.rst
+      ("Operating regime where SPICE models are valid"; public copy
+      https://skywater-pdk.readthedocs.io/en/main/rules/device-details.html):
+      |Vd0 - Vd1| = 0 to 5.0 V, stated once for every listed diode model
+      including sky130_fd_pr__diode_pw2nd_11v0 and
+      sky130_fd_pr__diode_pd2nw_11v0. No 11 V operating regime is published
+      for the _11v0 diodes; rules/hv.rst gives 11.0 V only as the HV junction
+      BREAKDOWN ("points of failure, not operating voltages"), which is not a
+      rating.
+  schemdraw:
+    element: Diode
+    category: diode
+    terminalMap:
+      a: anode
+      k: cathode
+npn_std:
+  PDKDevice: sky130_fd_pr__npn_05v5_W1p00L1p00
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+  pinList:
+    c: collector
+    b: base
+    e: emitter
+    s: substrate
+  junction_ratings:
+    Vbe_max: 5.0   # TASK-48: was 0.7 (a forward diode drop, not a rating)
+    Vbc_max: 5.0   # TASK-48: was 0.7 (a forward diode drop, not a rating)
+    Vce_max: 5.0   # TASK-48: was 5.5 (1.1 x 5 V nominal, unsourced)
+  junction_ratings_provenance:
+    source: >-
+      $PDK_ROOT/skywater-pdk/docs/rules/device-details/npn_05v0/index.rst
+      ("Operating regime where SPICE models are valid"; public copy
+      https://skywater-pdk.readthedocs.io/en/main/rules/device-details.html):
+      |VCE| = 0 to 5.0 V, |VBE| = 0 to 5.0 V, forward-active only. The page
+      covers BOTH sky130_fd_pr__npn_05v5 and sky130_fd_pr__npn_11v0 under the
+      one regime; no separate 11 V regime is published for npn_11v0.
+    heuristic:
+      Vbc_max: >-
+        = Vce_max; no separate Vbc operating limit is published. Vbc = Vbe -
+        Vce, and with reverse-active operation "neither modeled nor permitted"
+        (same page) |Vbc| cannot exceed |Vce| while |Vbe| <= |Vce|; both are
+        bounded at 5.0 V.
+  schemdraw:
+    element: BJT_NPN
+    category: transistor
+    terminalMap:
+      c: collector
+      b: base
+      e: emitter
+      s: substrate
+npn_11v:
+  PDKDevice: sky130_fd_pr__npn_11v0_W1p00L1p00
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+  pinList:
+    c: collector
+    b: base
+    e: emitter
+    s: substrate
+  junction_ratings:
+    Vbe_max: 5.0   # TASK-48: was 0.7 (a forward diode drop, not a rating)
+    Vbc_max: 5.0   # TASK-48: was 0.7 (a forward diode drop, not a rating)
+    Vce_max: 5.0   # TASK-48: was 5.5 (1.1 x 5 V nominal, unsourced)
+  junction_ratings_provenance:
+    source: >-
+      $PDK_ROOT/skywater-pdk/docs/rules/device-details/npn_05v0/index.rst
+      ("Operating regime where SPICE models are valid"; public copy
+      https://skywater-pdk.readthedocs.io/en/main/rules/device-details.html):
+      |VCE| = 0 to 5.0 V, |VBE| = 0 to 5.0 V, forward-active only. The page
+      covers BOTH sky130_fd_pr__npn_05v5 and sky130_fd_pr__npn_11v0 under the
+      one regime; no separate 11 V regime is published for npn_11v0.
+    heuristic:
+      Vbc_max: >-
+        = Vce_max; no separate Vbc operating limit is published. Vbc = Vbe -
+        Vce, and with reverse-active operation "neither modeled nor permitted"
+        (same page) |Vbc| cannot exceed |Vce| while |Vbe| <= |Vce|; both are
+        bounded at 5.0 V.
+  schemdraw:
+    element: BJT_NPN
+    category: transistor
+    terminalMap:
+      c: collector
+      b: base
+      e: emitter
+      s: substrate
+pnp_small:
+  PDKDevice: sky130_fd_pr__pnp_05v5_W0p68L0p68
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+  pinList:
+    c: collector
+    b: base
+    e: emitter
+  junction_ratings:
+    Vbe_max: 5.0   # TASK-48: was 0.7 (a forward diode drop, not a rating)
+    Vbc_max: 5.0   # TASK-48: was 0.7 (a forward diode drop, not a rating)
+    Vce_max: 5.0   # TASK-48: was 5.5 (1.1 x 5 V nominal, unsourced)
+  junction_ratings_provenance:
+    source: >-
+      $PDK_ROOT/skywater-pdk/docs/rules/device-details/pnp_05v0/index.rst
+      ("Operating regime where SPICE models are valid"; public copy
+      https://skywater-pdk.readthedocs.io/en/main/rules/device-details.html):
+      |VCE| = 0 to 5.0 V, |VBE| = 0 to 5.0 V, forward-active only.
+    heuristic:
+      Vbc_max: >-
+        = Vce_max; no separate Vbc operating limit is published. Vbc = Vbe -
+        Vce, and with reverse-active operation "neither modeled nor permitted"
+        (same page) |Vbc| cannot exceed |Vce| while |Vbe| <= |Vce|; both are
+        bounded at 5.0 V.
+  schemdraw:
+    element: BJT_PNP
+    category: transistor
+    terminalMap:
+      c: collector
+      b: base
+      e: emitter
+pnp_large:
+  PDKDevice: sky130_fd_pr__pnp_05v5_W3p40L3p40
+  paramList:
+    m:
+      maxval: -1
+      minval: 1
+      resolution: 1
+  pinList:
+    c: collector
+    b: base
+    e: emitter
+  junction_ratings:
+    Vbe_max: 5.0   # TASK-48: was 0.7 (a forward diode drop, not a rating)
+    Vbc_max: 5.0   # TASK-48: was 0.7 (a forward diode drop, not a rating)
+    Vce_max: 5.0   # TASK-48: was 5.5 (1.1 x 5 V nominal, unsourced)
+  junction_ratings_provenance:
+    source: >-
+      $PDK_ROOT/skywater-pdk/docs/rules/device-details/pnp_05v0/index.rst
+      ("Operating regime where SPICE models are valid"; public copy
+      https://skywater-pdk.readthedocs.io/en/main/rules/device-details.html):
+      |VCE| = 0 to 5.0 V, |VBE| = 0 to 5.0 V, forward-active only.
+    heuristic:
+      Vbc_max: >-
+        = Vce_max; no separate Vbc operating limit is published. Vbc = Vbe -
+        Vce, and with reverse-active operation "neither modeled nor permitted"
+        (same page) |Vbc| cannot exceed |Vce| while |Vbe| <= |Vce|; both are
+        bounded at 5.0 V.
+  schemdraw:
+    element: BJT_PNP
+    category: transistor
+    terminalMap:
+      c: collector
+      b: base
+      e: emitter

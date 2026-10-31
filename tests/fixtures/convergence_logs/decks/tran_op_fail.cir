@@ -1,0 +1,6 @@
+tran timestep too small
+V1 1 0 PULSE(0 1 1n 1p 1p 1u 2u)
+R1 1 2 1
+B1 2 0 I=1/(v(2)-0.5)
+.tran 1n 5u
+.end

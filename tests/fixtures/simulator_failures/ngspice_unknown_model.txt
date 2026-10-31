@@ -1,0 +1,12 @@
+
+Note: No compatibility mode selected!
+
+warning, can't find model 'missing_model' from line
+    d1 out 0 missing_model
+
+Circuit: * unknown model
+
+Error on line 3 or its substitute:
+  d1 out 0 missing_model
+could not find a valid modelname
+    Simulation interrupted due to error!

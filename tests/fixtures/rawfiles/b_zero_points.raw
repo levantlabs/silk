@@ -1,0 +1,10 @@
+Title: b zero points
+Date: Mon Jul 20 00:00:00 2026
+Plotname: Transient Analysis
+Flags: real
+No. Variables: 2
+No. Points: 0
+Variables:
+	0	time	time
+	1	v(1)	voltage
+Values:

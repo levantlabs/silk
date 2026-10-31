@@ -1,0 +1,6 @@
+* TASK-547: measure abort output, including a possible partial rawfile
+Bloop n 0 V={TIME > 1.5e-9 ? V(n) + 1 : 0}
+Rload n 0 1Meg
+.tran 10p 3n
+.print tran format=raw file=rawfile.raw V(n)
+.end

@@ -1,0 +1,62 @@
+
+Note: No compatibility mode selected!
+
+
+Circuit: *** circuit: top.cir
+
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using SPARSE 1.3 as Direct Linear Solver
+
+Initial Transient Solution
+--------------------------
+
+Node                                   Voltage
+----                                   -------
+d0                                           1
+g                                            1
+d1                                           1
+d2                                           1
+d3                                           1
+d4                                           1
+d5                                           1
+d6                                           1
+d7                                           1
+d8                                           1
+d9                                           1
+d10                                          1
+d11                                          1
+d12                                          1
+d13                                          1
+d14                                          1
+d15                                          1
+d16                                          1
+d17                                          1
+d18                                          1
+d19                                          1
+vvd19#branch                      -6.94215e-05
+vvd18#branch                      -6.94215e-05
+vvd17#branch                      -6.94215e-05
+vvd16#branch                      -6.94215e-05
+vvd15#branch                      -6.94215e-05
+vvd14#branch                      -6.94215e-05
+vvd13#branch                      -6.94215e-05
+vvd12#branch                      -6.94215e-05
+vvd11#branch                      -6.94215e-05
+vvd10#branch                      -6.94215e-05
+vvd9#branch                       -6.94215e-05
+vvd8#branch                       -6.94215e-05
+vvd7#branch                       -6.94215e-05
+vvd6#branch                       -6.94215e-05
+vvd5#branch                       -6.94215e-05
+vvd4#branch                       -6.94215e-05
+vvd3#branch                       -6.94215e-05
+vvd2#branch                       -6.94215e-05
+vvd1#branch                       -6.94215e-05
+vvd0#branch                       -6.94215e-05
+vvg#branch                                   0
+
+ Reference value :  0.00000e+00 Reference value :  8.00000e-10 Reference value :  2.28000e-08 Reference value :  8.02800e-07 Reference value :  1.92280e-06 Reference value :  3.50280e-06 Reference value :  3.84280e-06 Reference value :  4.94280e-06 Reference value :  4.98280e-06 Reference value :  5.47280e-06 Reference value :  5.51280e-06 Reference value :  6.72280e-06 Reference value :  7.41280e-06 Reference value :  8.87280e-06
+No. of Data Rows : 1008
+binary raw file "tran_size_with_params.raw"
+ngspice-47 done

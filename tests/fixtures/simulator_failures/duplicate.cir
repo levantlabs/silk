@@ -1,0 +1,9 @@
+* duplicate device
+v1 out 0 1
+.subckt twin out
+R1 out 0 1k
+r1 out 0 1k
+.ends twin
+xdut out twin
+.tran 1n 10n
+.end

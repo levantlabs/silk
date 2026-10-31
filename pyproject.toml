@@ -1,0 +1,85 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "circuitsilk"
+version = "0.2.0"
+description = "Custom circuit design in Python, from specs to layout"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Levant Labs"},
+]
+keywords = ["spice", "analog", "eda", "sky130", "ngspice", "circuit", "netlist"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
+    "Topic :: Scientific/Engineering",
+]
+# 3.10, not 3.9: two class-body PEP 604 annotations (silk/lint/rule.py,
+# silk/codegen/testbench_generator.py) are evaluated at import time, so plain
+# `import silk` raises TypeError on 3.9 — reproduced on CPython 3.9.25.
+# Declaring 3.9 shipped an install that could not import.
+requires-python = ">=3.10"
+dependencies = [
+    # >=1.26: every integration site goes through silk/utils/_compat.py's
+    # trapezoid shim (np.trapezoid on 2.x, np.trapz on 1.x), verified against
+    # numpy 1.26.4. Bare "numpy" let pip resolve 1.x, where 12 direct
+    # np.trapezoid call sites raised AttributeError at CALL time — import
+    # succeeded, the metric died later.
+    "numpy>=1.26",
+    "matplotlib",
+    "pyyaml",
+    "pydantic>=2",
+]
+
+[project.urls]
+Homepage = "https://github.com/levantlabs/silk"
+Repository = "https://github.com/levantlabs/silk"
+Documentation = "https://github.com/levantlabs/silk/blob/main/docs/quickstart.md"
+"Bug Tracker" = "https://github.com/levantlabs/silk/issues"
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-cov", "build", "twine"]
+# The generated API reference (docs/reference/). Dev-only: never a runtime
+# dependency. Sphinx bundles napoleon; MyST reads the Markdown pages.
+docs = ["sphinx>=7.2,<9", "myst-parser>=3,<5"]
+
+[tool.setuptools.packages.find]
+# Auto-discover every silk subpackage — a hand-maintained list went stale and
+# shipped wheels missing half the library (lint, metrics, faults, specs, …).
+include = ["silk*"]
+# samples/ holds frontend dev fixtures with a generator .py; without this
+# exclude, namespace-package discovery (namespaces=true by default) ships it
+# as code.
+exclude = ["silk.signals.view.assets.samples*"]
+
+[tool.setuptools.package-data]
+# Non-.py files each package needs at runtime. silk/pdk/data and
+# silk/circuit/data are plain directories (no __init__.py), so their globs
+# hang off the owning package.
+"silk.pdk" = ["data/*.yaml"]
+"silk.circuit" = ["data/*.yaml"]
+"silk.elements" = ["*.yaml"]
+"silk.simulators" = ["*.yaml"]
+"silk.sources" = ["*.yaml"]
+"silk.signals" = ["view/assets/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m 'not slow'"
+markers = [
+    "slow: opt-in integration or artifact tests requiring external tools or significant runtime",
+    "requires_xyce: tests requiring the optional Xyce simulator",
+    "requires_gf180: tests requiring an installed GF180MCU PDK",
+    "requires_sg13g2: tests requiring an installed SG13G2 PDK with compiled OSDI plugins and an ngspice that loads them",
+]

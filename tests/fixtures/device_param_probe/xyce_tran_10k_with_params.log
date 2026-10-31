@@ -1,0 +1,954 @@
+
+*****
+***** Welcome to the Xyce(TM) Parallel Electronic Simulator
+*****
+***** This is version Xyce Release 7.10.0-opensource
+***** Date: Mon Sep 28 09:39:30 CDT 2026
+
+
+***** Executing netlist xyce_tran_10k_with_params.cir
+
+***** Reading and parsing netlist...
+Netlist warning in file xyce_tran_10k_with_params.cir at or near line 54
+ SCALE:  duplicate PARSER parameter.  Using the first value found = 1.0u
+ 
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM0:SKY130_FD_PR__NFET_01V8__MODEL.62: Model card specifies
+ BSIM4 version 4.5 which is older than the oldest version supported in Xyce
+ (4.6.1).  Using oldest version available.
+ 
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM0:SKY130_FD_PR__NFET_01V8__MODEL.62: Given pbswgd is less
+ than 0.1. Pbswgd is set to 0.1
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM1:SKY130_FD_PR__NFET_01V8__MODEL.62: Model card specifies
+ BSIM4 version 4.5 which is older than the oldest version supported in Xyce
+ (4.6.1).  Using oldest version available.
+ 
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM1:SKY130_FD_PR__NFET_01V8__MODEL.62: Given pbswgd is less
+ than 0.1. Pbswgd is set to 0.1
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM2:SKY130_FD_PR__NFET_01V8__MODEL.62: Model card specifies
+ BSIM4 version 4.5 which is older than the oldest version supported in Xyce
+ (4.6.1).  Using oldest version available.
+ 
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM2:SKY130_FD_PR__NFET_01V8__MODEL.62: Given pbswgd is less
+ than 0.1. Pbswgd is set to 0.1
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM3:SKY130_FD_PR__NFET_01V8__MODEL.62: Model card specifies
+ BSIM4 version 4.5 which is older than the oldest version supported in Xyce
+ (4.6.1).  Using oldest version available.
+ 
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM3:SKY130_FD_PR__NFET_01V8__MODEL.62: Given pbswgd is less
+ than 0.1. Pbswgd is set to 0.1
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM4:SKY130_FD_PR__NFET_01V8__MODEL.62: Model card specifies
+ BSIM4 version 4.5 which is older than the oldest version supported in Xyce
+ (4.6.1).  Using oldest version available.
+ 
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM4:SKY130_FD_PR__NFET_01V8__MODEL.62: Given pbswgd is less
+ than 0.1. Pbswgd is set to 0.1
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM5:SKY130_FD_PR__NFET_01V8__MODEL.62: Model card specifies
+ BSIM4 version 4.5 which is older than the oldest version supported in Xyce
+ (4.6.1).  Using oldest version available.
+ 
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM5:SKY130_FD_PR__NFET_01V8__MODEL.62: Given pbswgd is less
+ than 0.1. Pbswgd is set to 0.1
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM6:SKY130_FD_PR__NFET_01V8__MODEL.62: Model card specifies
+ BSIM4 version 4.5 which is older than the oldest version supported in Xyce
+ (4.6.1).  Using oldest version available.
+ 
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM6:SKY130_FD_PR__NFET_01V8__MODEL.62: Given pbswgd is less
+ than 0.1. Pbswgd is set to 0.1
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM7:SKY130_FD_PR__NFET_01V8__MODEL.62: Model card specifies
+ BSIM4 version 4.5 which is older than the oldest version supported in Xyce
+ (4.6.1).  Using oldest version available.
+ 
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM7:SKY130_FD_PR__NFET_01V8__MODEL.62: Given pbswgd is less
+ than 0.1. Pbswgd is set to 0.1
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM8:SKY130_FD_PR__NFET_01V8__MODEL.62: Model card specifies
+ BSIM4 version 4.5 which is older than the oldest version supported in Xyce
+ (4.6.1).  Using oldest version available.
+ 
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM8:SKY130_FD_PR__NFET_01V8__MODEL.62: Given pbswgd is less
+ than 0.1. Pbswgd is set to 0.1
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM9:SKY130_FD_PR__NFET_01V8__MODEL.62: Model card specifies
+ BSIM4 version 4.5 which is older than the oldest version supported in Xyce
+ (4.6.1).  Using oldest version available.
+ 
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM9:SKY130_FD_PR__NFET_01V8__MODEL.62: Given pbswgd is less
+ than 0.1. Pbswgd is set to 0.1
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM10:SKY130_FD_PR__NFET_01V8__MODEL.62: Model card specifies
+ BSIM4 version 4.5 which is older than the oldest version supported in Xyce
+ (4.6.1).  Using oldest version available.
+ 
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM10:SKY130_FD_PR__NFET_01V8__MODEL.62: Given pbswgd is less
+ than 0.1. Pbswgd is set to 0.1
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM11:SKY130_FD_PR__NFET_01V8__MODEL.62: Model card specifies
+ BSIM4 version 4.5 which is older than the oldest version supported in Xyce
+ (4.6.1).  Using oldest version available.
+ 
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM11:SKY130_FD_PR__NFET_01V8__MODEL.62: Given pbswgd is less
+ than 0.1. Pbswgd is set to 0.1
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM12:SKY130_FD_PR__NFET_01V8__MODEL.62: Model card specifies
+ BSIM4 version 4.5 which is older than the oldest version supported in Xyce
+ (4.6.1).  Using oldest version available.
+ 
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM12:SKY130_FD_PR__NFET_01V8__MODEL.62: Given pbswgd is less
+ than 0.1. Pbswgd is set to 0.1
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM13:SKY130_FD_PR__NFET_01V8__MODEL.62: Model card specifies
+ BSIM4 version 4.5 which is older than the oldest version supported in Xyce
+ (4.6.1).  Using oldest version available.
+ 
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM13:SKY130_FD_PR__NFET_01V8__MODEL.62: Given pbswgd is less
+ than 0.1. Pbswgd is set to 0.1
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM14:SKY130_FD_PR__NFET_01V8__MODEL.62: Model card specifies
+ BSIM4 version 4.5 which is older than the oldest version supported in Xyce
+ (4.6.1).  Using oldest version available.
+ 
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM14:SKY130_FD_PR__NFET_01V8__MODEL.62: Given pbswgd is less
+ than 0.1. Pbswgd is set to 0.1
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM15:SKY130_FD_PR__NFET_01V8__MODEL.62: Model card specifies
+ BSIM4 version 4.5 which is older than the oldest version supported in Xyce
+ (4.6.1).  Using oldest version available.
+ 
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM15:SKY130_FD_PR__NFET_01V8__MODEL.62: Given pbswgd is less
+ than 0.1. Pbswgd is set to 0.1
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM16:SKY130_FD_PR__NFET_01V8__MODEL.62: Model card specifies
+ BSIM4 version 4.5 which is older than the oldest version supported in Xyce
+ (4.6.1).  Using oldest version available.
+ 
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM16:SKY130_FD_PR__NFET_01V8__MODEL.62: Given pbswgd is less
+ than 0.1. Pbswgd is set to 0.1
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM17:SKY130_FD_PR__NFET_01V8__MODEL.62: Model card specifies
+ BSIM4 version 4.5 which is older than the oldest version supported in Xyce
+ (4.6.1).  Using oldest version available.
+ 
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM17:SKY130_FD_PR__NFET_01V8__MODEL.62: Given pbswgd is less
+ than 0.1. Pbswgd is set to 0.1
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM18:SKY130_FD_PR__NFET_01V8__MODEL.62: Model card specifies
+ BSIM4 version 4.5 which is older than the oldest version supported in Xyce
+ (4.6.1).  Using oldest version available.
+ 
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM18:SKY130_FD_PR__NFET_01V8__MODEL.62: Given pbswgd is less
+ than 0.1. Pbswgd is set to 0.1
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM19:SKY130_FD_PR__NFET_01V8__MODEL.62: Model card specifies
+ BSIM4 version 4.5 which is older than the oldest version supported in Xyce
+ (4.6.1).  Using oldest version available.
+ 
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 16841
+ Device model XMMM19:SKY130_FD_PR__NFET_01V8__MODEL.62: Given pbswgd is less
+ than 0.1. Pbswgd is set to 0.1
+***** Setting up topology...
+
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM18:MSKY130_FD_PR__NFET_01V8: Source conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM18:MSKY130_FD_PR__NFET_01V8: Drain conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM17:MSKY130_FD_PR__NFET_01V8: Source conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM17:MSKY130_FD_PR__NFET_01V8: Drain conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM16:MSKY130_FD_PR__NFET_01V8: Source conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM16:MSKY130_FD_PR__NFET_01V8: Drain conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM15:MSKY130_FD_PR__NFET_01V8: Source conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM15:MSKY130_FD_PR__NFET_01V8: Drain conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM14:MSKY130_FD_PR__NFET_01V8: Source conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM14:MSKY130_FD_PR__NFET_01V8: Drain conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM13:MSKY130_FD_PR__NFET_01V8: Source conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM13:MSKY130_FD_PR__NFET_01V8: Drain conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM12:MSKY130_FD_PR__NFET_01V8: Source conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM12:MSKY130_FD_PR__NFET_01V8: Drain conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM11:MSKY130_FD_PR__NFET_01V8: Source conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM11:MSKY130_FD_PR__NFET_01V8: Drain conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM10:MSKY130_FD_PR__NFET_01V8: Source conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM10:MSKY130_FD_PR__NFET_01V8: Drain conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM9:MSKY130_FD_PR__NFET_01V8: Source conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM9:MSKY130_FD_PR__NFET_01V8: Drain conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM8:MSKY130_FD_PR__NFET_01V8: Source conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM8:MSKY130_FD_PR__NFET_01V8: Drain conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM7:MSKY130_FD_PR__NFET_01V8: Source conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM7:MSKY130_FD_PR__NFET_01V8: Drain conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM6:MSKY130_FD_PR__NFET_01V8: Source conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM6:MSKY130_FD_PR__NFET_01V8: Drain conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM5:MSKY130_FD_PR__NFET_01V8: Source conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM5:MSKY130_FD_PR__NFET_01V8: Drain conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM4:MSKY130_FD_PR__NFET_01V8: Source conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM4:MSKY130_FD_PR__NFET_01V8: Drain conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM3:MSKY130_FD_PR__NFET_01V8: Source conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM3:MSKY130_FD_PR__NFET_01V8: Drain conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM2:MSKY130_FD_PR__NFET_01V8: Source conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM2:MSKY130_FD_PR__NFET_01V8: Drain conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM1:MSKY130_FD_PR__NFET_01V8: Source conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM1:MSKY130_FD_PR__NFET_01V8: Drain conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM0:MSKY130_FD_PR__NFET_01V8: Source conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM0:MSKY130_FD_PR__NFET_01V8: Drain conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM19:MSKY130_FD_PR__NFET_01V8: Source conductance reset to
+ 1.0e3 mho
+Netlist warning in file
+ $PDK_ROOT/sky130A/libs.tech/ngspice/corners/../../../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+ at or near line 38
+ Device instance XMMM19:MSKY130_FD_PR__NFET_01V8: Drain conductance reset to
+ 1.0e3 mho
+***** Device Count Summary ...
+       M level 14 (BSIM4)                     20
+       V level 1 (Independent Voltage Source) 21
+       -----------------------------------------
+       Total Devices                          41
+***** Setting up matrix structure...
+***** Number of Unknowns = 102
+***** Initializing...
+
+***** Beginning DC Operating Point Calculation...
+
+***** Beginning Transient Calculation...
+
+***** Percent complete: 1 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 2.01 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 3.02 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 4.03 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 5.04 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 6.05 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 7.06 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 8.07 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 9.08 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 10.09 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 11.1 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 12.11 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 13.12 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 14.13 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 15.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 16.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 17.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 18.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 19.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 20.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 21.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 22.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 23.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 24.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 25.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 26.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 27.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 28.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 29.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 30.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 31.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 32.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 33.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 34.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 35.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 36.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 37.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 38.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 39.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 40.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 41.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 42.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 43.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 44.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 45.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 46.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 47.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 48.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 49.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 50.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 51.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 52.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 53.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 54.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 55.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 56.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 57.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 58.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 59.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 60.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 61.14 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 62.15 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 63.16 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 64.17 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 65.18 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 66.19 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 67.2 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 68.21 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 69.22 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 70.23 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 71.24 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 72.25 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 73.26 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 74.27 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 75.28 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 76.29 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 77.3 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 78.31 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 79.32 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 80.33 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 81.34 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 82.35 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 83.36 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 84.37 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 85.38 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 86.39 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 87.4 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 88.41 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 89.42 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 90.43 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 91.44 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 92.45 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 93.46 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 94.47 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 95.48 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 96.49 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 97.5 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 98.51 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Percent complete: 99.52 %
+***** Current system time: Mon Sep 28 09:39:30 2026
+***** Estimated time to completion:  0 sec.
+
+***** Problem read in and set up time: 0.275618 seconds
+ ***** DCOP time: 0.00112891 seconds.  Breakdown follows:
+	Number Successful Steps Taken:		1
+	Number Failed Steps Attempted:		0
+	Number Jacobians Evaluated:		3
+	Number Linear Solves:			3
+	Number Failed Linear Solves:		0
+	Number Residual Evaluations:		5
+	Number Nonlinear Convergence Failures:	0
+	Total Residual Load Time:		9.39369e-05 seconds
+	Total Jacobian Load Time:		2.40803e-05 seconds
+	Total Linear Solution Time:		0.000540972 seconds
+
+ ***** Transient Stepping time: 0.423116 seconds.  Breakdown follows:
+	Number Successful Steps Taken:		10000
+	Number Failed Steps Attempted:		0
+	Number Jacobians Evaluated:		10000
+	Number Linear Solves:			10000
+	Number Failed Linear Solves:		0
+	Number Residual Evaluations:		20000
+	Number Nonlinear Convergence Failures:	0
+	Total Residual Load Time:		0.214665 seconds
+	Total Jacobian Load Time:		0.0284321 seconds
+	Total Linear Solution Time:		0.0580873 seconds
+
+
+***** Solution Summary *****
+	Number Successful Steps Taken:		10001
+	Number Failed Steps Attempted:		0
+	Number Jacobians Evaluated:		10003
+	Number Linear Solves:			10003
+	Number Failed Linear Solves:		0
+	Number Residual Evaluations:		20005
+	Number Nonlinear Convergence Failures:	0
+	Total Residual Load Time:		0.214759 seconds
+	Total Jacobian Load Time:		0.0284562 seconds
+	Total Linear Solution Time:		0.0586283 seconds
+
+
+***** Total Simulation Solvers Run Time: 0.424298 seconds
+***** Total Elapsed Run Time:            0.699909 seconds
+*****
+***** End of Xyce(TM) Simulation
+*****
+
+Timing summary of 1 processor
+                 Stats                   Count       CPU Time              Wall Time
+---------------------------------------- ----- --------------------- ---------------------
+Xyce                                         1        0.737 (100.0%)        0.701 (100.0%)
+  Analysis                                   1        0.382 (51.78%)        0.424 (60.57%)
+    Transient                                1        0.382 (51.78%)        0.424 (60.57%)
+      Nonlinear Solve                    10001        0.309 (41.97%)        0.344 (49.09%)
+        Residual                         20005        0.198 (26.85%)        0.220 (31.44%)
+        Jacobian                         10003        0.028 ( 3.78%)        0.031 ( 4.44%)
+        Linear Solve                     10003        0.055 ( 7.47%)        0.061 ( 8.75%)
+      Successful DCOP Steps                  1        0.000 ( 0.03%)        0.000 ( 0.03%)
+      Successful Step                    10000        0.051 ( 6.94%)        0.057 ( 8.14%)
+  Netlist Import                             1        0.346 (46.97%)        0.269 (38.44%)
+    Parse Context                            1        0.323 (43.86%)        0.247 (35.19%)
+    Distribute Devices                       1        0.015 ( 2.01%)        0.015 ( 2.11%)
+    Verify Devices                           1        0.000 (<0.01%)        0.000 (<0.01%)
+    Instantiate                              1        0.000 ( 0.05%)        0.000 ( 0.05%)
+  Late Initialization                        1        0.002 ( 0.24%)        0.002 ( 0.25%)
+    Global Indices                           1        0.000 ( 0.01%)        0.000 ( 0.01%)
+  Setup Matrix Structure                     1        0.000 ( 0.02%)        0.000 ( 0.03%)
+
+	Command being timed: "$SILK_XYCE_BIN xyce_tran_10k_with_params.cir"
+	User time (seconds): 0.74
+	System time (seconds): 0.55
+	Percent of CPU this job got: 181%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.71
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 88348
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 13680
+	Voluntary context switches: 21
+	Involuntary context switches: 804
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 25568
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

@@ -1,0 +1,22 @@
+*** TASK-330.8 AC#1 spike: Xyce 7.10 per-point N()/ID() in a swept .dc.
+*** Same DUT hierarchy as tests/fixtures/op_point/xyce_probe.cir
+*** (XDUT:XMMM1:MSKY130_FD_PR__NFET_01V8 qualified name).
+
+.lib "$PDK_ROOT/sky130A/libs.tech/ngspice/sky130.lib.spice" tt
+.include "$PDK_ROOT/sky130A/libs.ref/sky130_fd_pr/spice/sky130_fd_pr__cap_vpp_11p5x11p7_m1m2_noshield.model.spice"
+
+.subckt dut d g s b
+XMmm1 d g s b sky130_fd_pr__nfet_01v8 m=1 w=1 l=0.15
+.ends
+
+xdut vd vg vs vs dut
+
+Vvd vd 0 DC 1
+Vvg vg 0 DC 0.9
+Vvs vs 0 DC 0
+
+.dc vvg 0 1.8 0.05
+
+.options parser scale=1e-6
+.print dc format=raw file=xyce_dc_sweep.raw v(vd) v(vg) N(XDUT:XMMM1:MSKY130_FD_PR__NFET_01V8:GM) N(XDUT:XMMM1:MSKY130_FD_PR__NFET_01V8:GDS) N(XDUT:XMMM1:MSKY130_FD_PR__NFET_01V8:VTH) N(XDUT:XMMM1:MSKY130_FD_PR__NFET_01V8:VDSAT) ID(XDUT:XMMM1:MSKY130_FD_PR__NFET_01V8)
+.end

@@ -1,0 +1,52 @@
+{
+  "category": "module",
+  "code_template": "from silk.circuit.circuit_elements import PortDir\nmod = Module(..., module_name='flash_core')\nmod.define_module_ports({'vin': PortDir.IN, 'vref': PortDir.IN, 'vbias': PortDir.IN, 'vdd': PortDir.IN, 'vss': PortDir.IN, 'out0': PortDir.OUT, 'out1': PortDir.OUT, 'out2': PortDir.OUT})",
+  "devices": [
+    "Rlad0",
+    "Rlad1",
+    "Rlad2",
+    "Rlad3",
+    "comp0",
+    "comp1",
+    "comp2"
+  ],
+  "is_pdk_device": false,
+  "name": "flash_core",
+  "pdk_model": null,
+  "pins": [
+    {
+      "direction": "input",
+      "name": "vin"
+    },
+    {
+      "direction": "input",
+      "name": "vref"
+    },
+    {
+      "direction": "input",
+      "name": "vbias"
+    },
+    {
+      "direction": "input",
+      "name": "vdd"
+    },
+    {
+      "direction": "input",
+      "name": "vss"
+    },
+    {
+      "direction": "output",
+      "name": "out0"
+    },
+    {
+      "direction": "output",
+      "name": "out1"
+    },
+    {
+      "direction": "output",
+      "name": "out2"
+    }
+  ],
+  "spice_prefix": "X",
+  "type": "module"
+}

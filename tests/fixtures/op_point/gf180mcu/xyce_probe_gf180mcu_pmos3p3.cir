@@ -1,0 +1,15 @@
+*** TASK-330.5 gf180mcu-on-Xyce probe (ruling C), PMOS half. Same library
+*** line as the nmos3p3 probe -- run to confirm the PDK-library parse
+*** failure is not device-specific (see xyce_probe_gf180mcu_nmos3p3.cir).
+
+.lib "$PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice" typical
+
+XMM1 vd vg 3.3 3.3 pfet_03v3 m=1 w=10u l=0.28u
+
+Vvd vd 0 DC 1.8
+Vvg vg 0 DC 1.8
+
+.dc vvd 1.8 1.8 1
+
+.print dc format=raw file=xyce_probe_gf180mcu_pmos3p3.raw v(vd) v(vg) N(XMM1:M0:GM) N(XMM1:M0:GDS) N(XMM1:M0:VTH) N(XMM1:M0:VDSAT) N(XMM1:M0:VGS) N(XMM1:M0:VDS) N(XMM1:M0:VBS) ID(XMM1:M0)
+.end

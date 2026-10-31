@@ -1,0 +1,918 @@
+{
+  "CurrentControlledCurrentSource": {
+    "category": "source",
+    "code_template": "sources.CurrentControlledCurrentSource('{instance_name}', out_pos={net_out_pos}, out_neg={net_out_neg}, gain={param_gain}, ctrl_vname={ref_ctrl_vname})",
+    "name": "CurrentControlledCurrentSource",
+    "parameters": [
+      {
+        "default": null,
+        "name": "gain",
+        "required": true,
+        "unit": "A/A"
+      }
+    ],
+    "pins": [
+      {
+        "name": "out_pos"
+      },
+      {
+        "name": "out_neg"
+      }
+    ],
+    "references": [
+      {
+        "default": null,
+        "kind": "source",
+        "name": "ctrl_vname",
+        "required": true
+      }
+    ],
+    "symbol": "CCCS",
+    "unit": "A/A",
+    "waveform_exclusive": true,
+    "waveforms": {}
+  },
+  "CurrentControlledVoltageSource": {
+    "category": "source",
+    "code_template": "sources.CurrentControlledVoltageSource('{instance_name}', out_pos={net_out_pos}, out_neg={net_out_neg}, transresistance={param_transresistance}, ctrl_vname={ref_ctrl_vname})",
+    "name": "CurrentControlledVoltageSource",
+    "parameters": [
+      {
+        "default": null,
+        "name": "transresistance",
+        "required": true,
+        "unit": "V/A"
+      }
+    ],
+    "pins": [
+      {
+        "name": "out_pos"
+      },
+      {
+        "name": "out_neg"
+      }
+    ],
+    "references": [
+      {
+        "default": null,
+        "kind": "source",
+        "name": "ctrl_vname",
+        "required": true
+      }
+    ],
+    "symbol": "CCVS",
+    "unit": "V/A",
+    "waveform_exclusive": true,
+    "waveforms": {}
+  },
+  "CurrentSource": {
+    "category": "source",
+    "code_template": "sources.CurrentSource('{instance_name}', positive={net_positive}, negative={net_negative}, dc={param_dc}, ac={param_ac})",
+    "name": "CurrentSource",
+    "parameters": [
+      {
+        "default": 0,
+        "name": "dc",
+        "required": false,
+        "unit": "A"
+      },
+      {
+        "default": 0,
+        "name": "ac",
+        "required": false,
+        "unit": "A"
+      }
+    ],
+    "pins": [
+      {
+        "name": "positive"
+      },
+      {
+        "name": "negative"
+      }
+    ],
+    "symbol": "ISource",
+    "unit": "A",
+    "waveform_exclusive": true,
+    "waveforms": {
+      "am": {
+        "class": "AM",
+        "code_template": "sources.AM(va={param_va}, vo={param_vo}, mf={param_mf}, fc={param_fc}, td={param_td}, phases={param_phases})",
+        "kwarg": "am",
+        "parameters": [
+          {
+            "default": null,
+            "name": "va",
+            "required": true,
+            "unit": "A"
+          },
+          {
+            "default": null,
+            "name": "vo",
+            "required": true,
+            "unit": "A"
+          },
+          {
+            "default": null,
+            "name": "mf",
+            "required": true,
+            "unit": "Hz"
+          },
+          {
+            "default": null,
+            "name": "fc",
+            "required": true,
+            "unit": "Hz"
+          },
+          {
+            "default": 0,
+            "name": "td",
+            "required": false,
+            "unit": "s"
+          },
+          {
+            "default": 0,
+            "name": "phases",
+            "required": false,
+            "unit": "deg"
+          }
+        ]
+      },
+      "exponential": {
+        "class": "Exponential",
+        "code_template": "sources.Exponential(v1={param_v1}, v2={param_v2}, td1={param_td1}, tau1={param_tau1}, td2={param_td2}, tau2={param_tau2})",
+        "kwarg": "exponential",
+        "parameters": [
+          {
+            "default": null,
+            "name": "v1",
+            "required": true,
+            "unit": "A"
+          },
+          {
+            "default": null,
+            "name": "v2",
+            "required": true,
+            "unit": "A"
+          },
+          {
+            "default": 0,
+            "name": "td1",
+            "required": false,
+            "unit": "s"
+          },
+          {
+            "default": 0,
+            "name": "tau1",
+            "required": false,
+            "unit": "s"
+          },
+          {
+            "default": 0,
+            "name": "td2",
+            "required": false,
+            "unit": "s"
+          },
+          {
+            "default": 0,
+            "name": "tau2",
+            "required": false,
+            "unit": "s"
+          }
+        ]
+      },
+      "pulse": {
+        "class": "Pulse",
+        "code_template": "sources.Pulse(v1={param_v1}, v2={param_v2}, td={param_td}, tr={param_tr}, tf={param_tf}, pw={param_pw}, per={param_per}, np={param_np})",
+        "kwarg": "pulse",
+        "parameters": [
+          {
+            "default": null,
+            "name": "v1",
+            "required": true,
+            "unit": "A"
+          },
+          {
+            "default": null,
+            "name": "v2",
+            "required": true,
+            "unit": "A"
+          },
+          {
+            "default": 0,
+            "name": "td",
+            "required": false,
+            "unit": "s"
+          },
+          {
+            "default": null,
+            "name": "tr",
+            "required": true,
+            "unit": "s"
+          },
+          {
+            "default": null,
+            "name": "tf",
+            "required": true,
+            "unit": "s"
+          },
+          {
+            "default": 0,
+            "name": "pw",
+            "required": false,
+            "unit": "s"
+          },
+          {
+            "default": 0,
+            "name": "per",
+            "required": false,
+            "unit": "s"
+          },
+          {
+            "default": null,
+            "name": "np",
+            "required": false,
+            "unit": null
+          }
+        ]
+      },
+      "pwl": {
+        "class": "PWL",
+        "code_template": "sources.PWL(points={param_points}, r={param_r}, td={param_td})",
+        "kwarg": "pwl",
+        "parameters": [
+          {
+            "default": null,
+            "name": "points",
+            "required": false,
+            "unit": null
+          },
+          {
+            "default": null,
+            "name": "r",
+            "required": false,
+            "unit": "s"
+          },
+          {
+            "default": null,
+            "name": "td",
+            "required": false,
+            "unit": "s"
+          }
+        ]
+      },
+      "sffm": {
+        "class": "SFFM",
+        "code_template": "sources.SFFM(vo={param_vo}, va={param_va}, fc={param_fc}, mdi={param_mdi}, fs={param_fs}, phasec={param_phasec}, phases={param_phases})",
+        "kwarg": "sffm",
+        "parameters": [
+          {
+            "default": null,
+            "name": "vo",
+            "required": true,
+            "unit": "A"
+          },
+          {
+            "default": null,
+            "name": "va",
+            "required": true,
+            "unit": "A"
+          },
+          {
+            "default": null,
+            "name": "fc",
+            "required": true,
+            "unit": "Hz"
+          },
+          {
+            "default": null,
+            "name": "mdi",
+            "required": true,
+            "unit": ""
+          },
+          {
+            "default": null,
+            "name": "fs",
+            "required": true,
+            "unit": "Hz"
+          },
+          {
+            "default": 0,
+            "name": "phasec",
+            "required": false,
+            "unit": "deg"
+          },
+          {
+            "default": 0,
+            "name": "phases",
+            "required": false,
+            "unit": "deg"
+          }
+        ]
+      },
+      "sine": {
+        "class": "Sine",
+        "code_template": "sources.Sine(voffset={param_voffset}, vampl={param_vampl}, freq={param_freq}, td={param_td}, theta={param_theta}, phase={param_phase})",
+        "kwarg": "sine",
+        "parameters": [
+          {
+            "default": null,
+            "name": "voffset",
+            "required": true,
+            "unit": "A"
+          },
+          {
+            "default": null,
+            "name": "vampl",
+            "required": true,
+            "unit": "A"
+          },
+          {
+            "default": null,
+            "name": "freq",
+            "required": true,
+            "unit": "Hz"
+          },
+          {
+            "default": 0,
+            "name": "td",
+            "required": false,
+            "unit": "s"
+          },
+          {
+            "default": 0,
+            "name": "theta",
+            "required": false,
+            "unit": "1/s"
+          },
+          {
+            "default": 0,
+            "name": "phase",
+            "required": false,
+            "unit": "deg"
+          }
+        ]
+      },
+      "trnoise": {
+        "class": "TransientNoise",
+        "code_template": "sources.TransientNoise(na={param_na}, nt={param_nt}, nalpha={param_nalpha}, namp={param_namp}, rtsam={param_rtsam}, rtscapt={param_rtscapt}, rtsemt={param_rtsemt})",
+        "kwarg": "trnoise",
+        "parameters": [
+          {
+            "default": null,
+            "name": "na",
+            "required": true,
+            "unit": "A"
+          },
+          {
+            "default": null,
+            "name": "nt",
+            "required": true,
+            "unit": "s"
+          },
+          {
+            "default": 0,
+            "name": "nalpha",
+            "required": false,
+            "unit": null
+          },
+          {
+            "default": 0,
+            "name": "namp",
+            "required": false,
+            "unit": "A"
+          },
+          {
+            "default": 0,
+            "name": "rtsam",
+            "required": false,
+            "unit": "A"
+          },
+          {
+            "default": 0,
+            "name": "rtscapt",
+            "required": false,
+            "unit": "s"
+          },
+          {
+            "default": 0,
+            "name": "rtsemt",
+            "required": false,
+            "unit": "s"
+          }
+        ]
+      },
+      "trrandom": {
+        "class": "RandomSource",
+        "code_template": "sources.RandomSource(type={param_type}, ts={param_ts}, td={param_td}, param1={param_param1}, param2={param_param2})",
+        "kwarg": "trrandom",
+        "parameters": [
+          {
+            "choices": [
+              {
+                "label": "uniform",
+                "value": 1
+              },
+              {
+                "label": "gaussian",
+                "value": 2
+              },
+              {
+                "label": "exponential",
+                "value": 3
+              },
+              {
+                "label": "poisson",
+                "value": 4
+              }
+            ],
+            "default": null,
+            "name": "type",
+            "required": true,
+            "unit": null
+          },
+          {
+            "default": null,
+            "name": "ts",
+            "required": true,
+            "unit": "s"
+          },
+          {
+            "default": 0,
+            "name": "td",
+            "required": false,
+            "unit": "s"
+          },
+          {
+            "default": 1,
+            "name": "param1",
+            "required": false,
+            "unit": null
+          },
+          {
+            "default": 0,
+            "name": "param2",
+            "required": false,
+            "unit": null
+          }
+        ]
+      }
+    }
+  },
+  "VoltageControlledCurrentSource": {
+    "category": "source",
+    "code_template": "sources.VoltageControlledCurrentSource('{instance_name}', out_pos={net_out_pos}, out_neg={net_out_neg}, ctrl_pos={net_ctrl_pos}, ctrl_neg={net_ctrl_neg}, gm={param_gm})",
+    "name": "VoltageControlledCurrentSource",
+    "parameters": [
+      {
+        "default": null,
+        "name": "gm",
+        "required": true,
+        "unit": "A/V"
+      }
+    ],
+    "pins": [
+      {
+        "name": "out_pos"
+      },
+      {
+        "name": "out_neg"
+      },
+      {
+        "name": "ctrl_pos"
+      },
+      {
+        "name": "ctrl_neg"
+      }
+    ],
+    "symbol": "VCCS",
+    "unit": "A/V",
+    "waveform_exclusive": true,
+    "waveforms": {}
+  },
+  "VoltageControlledVoltageSource": {
+    "category": "source",
+    "code_template": "sources.VoltageControlledVoltageSource('{instance_name}', out_pos={net_out_pos}, out_neg={net_out_neg}, ctrl_pos={net_ctrl_pos}, ctrl_neg={net_ctrl_neg}, gain={param_gain})",
+    "name": "VoltageControlledVoltageSource",
+    "parameters": [
+      {
+        "default": null,
+        "name": "gain",
+        "required": true,
+        "unit": "V/V"
+      }
+    ],
+    "pins": [
+      {
+        "name": "out_pos"
+      },
+      {
+        "name": "out_neg"
+      },
+      {
+        "name": "ctrl_pos"
+      },
+      {
+        "name": "ctrl_neg"
+      }
+    ],
+    "symbol": "VCVS",
+    "unit": "V/V",
+    "waveform_exclusive": true,
+    "waveforms": {}
+  },
+  "VoltageSource": {
+    "category": "source",
+    "code_template": "sources.VoltageSource('{instance_name}', positive={net_positive}, negative={net_negative}, dc={param_dc}, ac={param_ac})",
+    "name": "VoltageSource",
+    "parameters": [
+      {
+        "default": 0,
+        "name": "dc",
+        "required": false,
+        "unit": "V"
+      },
+      {
+        "default": 0,
+        "name": "ac",
+        "required": false,
+        "unit": "V"
+      }
+    ],
+    "pins": [
+      {
+        "name": "positive"
+      },
+      {
+        "name": "negative"
+      }
+    ],
+    "symbol": "VSource",
+    "unit": "V",
+    "waveform_exclusive": true,
+    "waveforms": {
+      "am": {
+        "class": "AM",
+        "code_template": "sources.AM(va={param_va}, vo={param_vo}, mf={param_mf}, fc={param_fc}, td={param_td}, phases={param_phases})",
+        "kwarg": "am",
+        "parameters": [
+          {
+            "default": null,
+            "name": "va",
+            "required": true,
+            "unit": "V"
+          },
+          {
+            "default": null,
+            "name": "vo",
+            "required": true,
+            "unit": "V"
+          },
+          {
+            "default": null,
+            "name": "mf",
+            "required": true,
+            "unit": "Hz"
+          },
+          {
+            "default": null,
+            "name": "fc",
+            "required": true,
+            "unit": "Hz"
+          },
+          {
+            "default": 0,
+            "name": "td",
+            "required": false,
+            "unit": "s"
+          },
+          {
+            "default": 0,
+            "name": "phases",
+            "required": false,
+            "unit": "deg"
+          }
+        ]
+      },
+      "exponential": {
+        "class": "Exponential",
+        "code_template": "sources.Exponential(v1={param_v1}, v2={param_v2}, td1={param_td1}, tau1={param_tau1}, td2={param_td2}, tau2={param_tau2})",
+        "kwarg": "exponential",
+        "parameters": [
+          {
+            "default": null,
+            "name": "v1",
+            "required": true,
+            "unit": "V"
+          },
+          {
+            "default": null,
+            "name": "v2",
+            "required": true,
+            "unit": "V"
+          },
+          {
+            "default": 0,
+            "name": "td1",
+            "required": false,
+            "unit": "s"
+          },
+          {
+            "default": 0,
+            "name": "tau1",
+            "required": false,
+            "unit": "s"
+          },
+          {
+            "default": 0,
+            "name": "td2",
+            "required": false,
+            "unit": "s"
+          },
+          {
+            "default": 0,
+            "name": "tau2",
+            "required": false,
+            "unit": "s"
+          }
+        ]
+      },
+      "pulse": {
+        "class": "Pulse",
+        "code_template": "sources.Pulse(v1={param_v1}, v2={param_v2}, td={param_td}, tr={param_tr}, tf={param_tf}, pw={param_pw}, per={param_per}, np={param_np})",
+        "kwarg": "pulse",
+        "parameters": [
+          {
+            "default": null,
+            "name": "v1",
+            "required": true,
+            "unit": "V"
+          },
+          {
+            "default": null,
+            "name": "v2",
+            "required": true,
+            "unit": "V"
+          },
+          {
+            "default": 0,
+            "name": "td",
+            "required": false,
+            "unit": "s"
+          },
+          {
+            "default": null,
+            "name": "tr",
+            "required": true,
+            "unit": "s"
+          },
+          {
+            "default": null,
+            "name": "tf",
+            "required": true,
+            "unit": "s"
+          },
+          {
+            "default": 0,
+            "name": "pw",
+            "required": false,
+            "unit": "s"
+          },
+          {
+            "default": 0,
+            "name": "per",
+            "required": false,
+            "unit": "s"
+          },
+          {
+            "default": null,
+            "name": "np",
+            "required": false,
+            "unit": null
+          }
+        ]
+      },
+      "pwl": {
+        "class": "PWL",
+        "code_template": "sources.PWL(points={param_points}, r={param_r}, td={param_td})",
+        "kwarg": "pwl",
+        "parameters": [
+          {
+            "default": null,
+            "name": "points",
+            "required": false,
+            "unit": null
+          },
+          {
+            "default": null,
+            "name": "r",
+            "required": false,
+            "unit": "s"
+          },
+          {
+            "default": null,
+            "name": "td",
+            "required": false,
+            "unit": "s"
+          }
+        ]
+      },
+      "sffm": {
+        "class": "SFFM",
+        "code_template": "sources.SFFM(vo={param_vo}, va={param_va}, fc={param_fc}, mdi={param_mdi}, fs={param_fs}, phasec={param_phasec}, phases={param_phases})",
+        "kwarg": "sffm",
+        "parameters": [
+          {
+            "default": null,
+            "name": "vo",
+            "required": true,
+            "unit": "V"
+          },
+          {
+            "default": null,
+            "name": "va",
+            "required": true,
+            "unit": "V"
+          },
+          {
+            "default": null,
+            "name": "fc",
+            "required": true,
+            "unit": "Hz"
+          },
+          {
+            "default": null,
+            "name": "mdi",
+            "required": true,
+            "unit": ""
+          },
+          {
+            "default": null,
+            "name": "fs",
+            "required": true,
+            "unit": "Hz"
+          },
+          {
+            "default": 0,
+            "name": "phasec",
+            "required": false,
+            "unit": "deg"
+          },
+          {
+            "default": 0,
+            "name": "phases",
+            "required": false,
+            "unit": "deg"
+          }
+        ]
+      },
+      "sine": {
+        "class": "Sine",
+        "code_template": "sources.Sine(voffset={param_voffset}, vampl={param_vampl}, freq={param_freq}, td={param_td}, theta={param_theta}, phase={param_phase})",
+        "kwarg": "sine",
+        "parameters": [
+          {
+            "default": null,
+            "name": "voffset",
+            "required": true,
+            "unit": "V"
+          },
+          {
+            "default": null,
+            "name": "vampl",
+            "required": true,
+            "unit": "V"
+          },
+          {
+            "default": null,
+            "name": "freq",
+            "required": true,
+            "unit": "Hz"
+          },
+          {
+            "default": 0,
+            "name": "td",
+            "required": false,
+            "unit": "s"
+          },
+          {
+            "default": 0,
+            "name": "theta",
+            "required": false,
+            "unit": "1/s"
+          },
+          {
+            "default": 0,
+            "name": "phase",
+            "required": false,
+            "unit": "deg"
+          }
+        ]
+      },
+      "trnoise": {
+        "class": "TransientNoise",
+        "code_template": "sources.TransientNoise(na={param_na}, nt={param_nt}, nalpha={param_nalpha}, namp={param_namp}, rtsam={param_rtsam}, rtscapt={param_rtscapt}, rtsemt={param_rtsemt})",
+        "kwarg": "trnoise",
+        "parameters": [
+          {
+            "default": null,
+            "name": "na",
+            "required": true,
+            "unit": "V"
+          },
+          {
+            "default": null,
+            "name": "nt",
+            "required": true,
+            "unit": "s"
+          },
+          {
+            "default": 0,
+            "name": "nalpha",
+            "required": false,
+            "unit": null
+          },
+          {
+            "default": 0,
+            "name": "namp",
+            "required": false,
+            "unit": "V"
+          },
+          {
+            "default": 0,
+            "name": "rtsam",
+            "required": false,
+            "unit": "V"
+          },
+          {
+            "default": 0,
+            "name": "rtscapt",
+            "required": false,
+            "unit": "s"
+          },
+          {
+            "default": 0,
+            "name": "rtsemt",
+            "required": false,
+            "unit": "s"
+          }
+        ]
+      },
+      "trrandom": {
+        "class": "RandomSource",
+        "code_template": "sources.RandomSource(type={param_type}, ts={param_ts}, td={param_td}, param1={param_param1}, param2={param_param2})",
+        "kwarg": "trrandom",
+        "parameters": [
+          {
+            "choices": [
+              {
+                "label": "uniform",
+                "value": 1
+              },
+              {
+                "label": "gaussian",
+                "value": 2
+              },
+              {
+                "label": "exponential",
+                "value": 3
+              },
+              {
+                "label": "poisson",
+                "value": 4
+              }
+            ],
+            "default": null,
+            "name": "type",
+            "required": true,
+            "unit": null
+          },
+          {
+            "default": null,
+            "name": "ts",
+            "required": true,
+            "unit": "s"
+          },
+          {
+            "default": 0,
+            "name": "td",
+            "required": false,
+            "unit": "s"
+          },
+          {
+            "default": 1,
+            "name": "param1",
+            "required": false,
+            "unit": null
+          },
+          {
+            "default": 0,
+            "name": "param2",
+            "required": false,
+            "unit": null
+          }
+        ]
+      }
+    }
+  }
+}

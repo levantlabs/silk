@@ -1,0 +1,18 @@
+# port-roles.default.yaml — opt-in. Copy + edit for house style.
+version: 1
+rules:
+  # "*vdd*" also matches a MONITOR input such as vdd_sense / vdd_ok. An inferred
+  # role is a guess: INT-004 (NO_DRIVER) does not let an inferred POWER role
+  # silence an undriven input (TASK-42), but INT-002 / STRUCT-002 /
+  # Net.classification will still treat such a port as a supply. Put an exact
+  # rule for those names first (exact literal beats any wildcard), or narrow
+  # the glob in your house ruleset.
+  - {match: "*vdd*", role: power}
+  - {match: "*vcc*", role: power}
+  - {match: "*vss*", role: ground}
+  - {match: "*gnd*", role: ground}
+  - {match: "0",     role: ground}     # SPICE ground node
+  - {match: "*clk*", role: clock}
+  - {match: "*clock*", role: clock}
+  # power-user escape hatch: `regex:` instead of `match:`
+  # - {regex: "^d\\[[0-9]+\\]$", role: digital}

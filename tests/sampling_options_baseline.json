@@ -1,0 +1,379 @@
+{
+  "variable/linear/random": [
+    6.732655185893089,
+    3.4280804238748326,
+    1.368761715425752,
+    1.1487487197567618
+  ],
+  "variable/linear/lhs": [
+    5.592190428856438,
+    1.0371871799391905,
+    5.079858038200613,
+    9.803700048874875
+  ],
+  "variable/linear/halton": [
+    5.5,
+    3.25,
+    7.75,
+    2.125
+  ],
+  "variable/linear/grid": [
+    1.0,
+    4.0,
+    7.0,
+    10.0
+  ],
+  "variable/linear/log_grid": [
+    1.0,
+    2.154434690031884,
+    4.641588833612779,
+    10.000000000000002
+  ],
+  "variable/log/random": [
+    4.334726365239159,
+    1.8611728721136578,
+    1.0989388423533013,
+    1.038789701786718
+  ],
+  "variable/log/lhs": [
+    3.23775051393196,
+    1.0095594744525003,
+    2.839994897703067,
+    9.510183446197672
+  ],
+  "variable/log/halton": [
+    3.1622776601683795,
+    1.778279410038923,
+    5.623413251903492,
+    1.333521432163324
+  ],
+  "variable/log/grid": [
+    1.0,
+    4.0,
+    7.0,
+    10.0
+  ],
+  "variable/log/log_grid": [
+    1.0,
+    2.154434690031884,
+    4.641588833612779,
+    10.000000000000002
+  ],
+  "variable/integer/random": [
+    7,
+    3,
+    1,
+    1
+  ],
+  "variable/integer/lhs": [
+    6,
+    1,
+    5,
+    10
+  ],
+  "variable/integer/halton": [
+    6,
+    3,
+    8,
+    2
+  ],
+  "variable/integer/grid": [
+    1,
+    4,
+    7,
+    10
+  ],
+  "variable/integer/log_grid": [
+    1,
+    2,
+    5,
+    10
+  ],
+  "variable/categorical/random": [
+    "c",
+    "b",
+    "b",
+    "a"
+  ],
+  "variable/categorical/lhs": [
+    "c",
+    "b",
+    "b",
+    "a"
+  ],
+  "variable/categorical/halton": [
+    "c",
+    "b",
+    "b",
+    "a"
+  ],
+  "variable/categorical/grid": [
+    "c",
+    "b",
+    "b",
+    "a"
+  ],
+  "variable/categorical/log_grid": [
+    "b",
+    "a",
+    "b",
+    "c"
+  ],
+  "variable/resolution/random": [
+    9,
+    7,
+    5,
+    3
+  ],
+  "variable/resolution/lhs": [
+    5,
+    1,
+    5,
+    9
+  ],
+  "variable/resolution/halton": [
+    5.5,
+    3.25,
+    7.75,
+    2.125
+  ],
+  "variable/resolution/grid": [
+    1.0,
+    4.0,
+    7.0,
+    10.0
+  ],
+  "variable/resolution/log_grid": [
+    1.0,
+    2.154434690031884,
+    4.641588833612779,
+    10.000000000000002
+  ],
+  "variable/unenforced/random": [
+    6.732655185893089,
+    3.4280804238748326,
+    1.368761715425752,
+    1.1487487197567618
+  ],
+  "variable/unenforced/lhs": [
+    5.592190428856438,
+    1.0371871799391905,
+    5.079858038200613,
+    9.803700048874875
+  ],
+  "variable/unenforced/halton": [
+    5.5,
+    3.25,
+    7.75,
+    2.125
+  ],
+  "variable/unenforced/grid": [
+    1.0,
+    4.0,
+    7.0,
+    10.0
+  ],
+  "variable/unenforced/log_grid": [
+    1.0,
+    2.154434690031884,
+    4.641588833612779,
+    10.000000000000002
+  ],
+  "variable/log_resolution/random": [
+    5,
+    1,
+    1,
+    1
+  ],
+  "variable/log_resolution/lhs": [
+    3,
+    1,
+    3,
+    9
+  ],
+  "variable/log_resolution/halton": [
+    3.1622776601683795,
+    1.778279410038923,
+    5.623413251903492,
+    1.333521432163324
+  ],
+  "variable/log_resolution/grid": [
+    1.0,
+    4.0,
+    7.0,
+    10.0
+  ],
+  "variable/log_resolution/log_grid": [
+    1.0,
+    2.154434690031884,
+    4.641588833612779,
+    10.000000000000002
+  ],
+  "space/linear/random": [
+    8.319432152802452,
+    1.368761715425752,
+    1.1487487197567618,
+    9.214800195499496
+  ],
+  "space/linear/lhs": [
+    5.592190428856438,
+    1.0371871799391905,
+    5.079858038200613,
+    9.803700048874875
+  ],
+  "space/linear/halton": [
+    5.5,
+    3.25,
+    7.75,
+    2.125
+  ],
+  "space/linear/grid": [
+    1.0,
+    4.0,
+    7.0,
+    10.0
+  ],
+  "space/log/random": [
+    6.505343586220127,
+    1.0989388423533013,
+    1.038789701786718,
+    8.1800428238207
+  ],
+  "space/log/lhs": [
+    3.23775051393196,
+    1.0095594744525003,
+    2.839994897703067,
+    9.510183446197672
+  ],
+  "space/log/halton": [
+    3.1622776601683795,
+    1.778279410038923,
+    5.623413251903492,
+    1.333521432163324
+  ],
+  "space/log/grid": [
+    1.0,
+    4.0,
+    7.0,
+    10.0
+  ],
+  "space/integer/random": [
+    8,
+    1,
+    1,
+    9
+  ],
+  "space/integer/lhs": [
+    6,
+    1,
+    5,
+    10
+  ],
+  "space/integer/halton": [
+    6,
+    3,
+    8,
+    2
+  ],
+  "space/integer/grid": [
+    1,
+    4,
+    7,
+    10
+  ],
+  "space/categorical/random": [
+    "a",
+    "a",
+    "a",
+    "a"
+  ],
+  "space/categorical/lhs": [
+    "a",
+    "a",
+    "a",
+    "a"
+  ],
+  "space/categorical/halton": [
+    "c",
+    "b",
+    "b",
+    "a"
+  ],
+  "space/categorical/grid": [
+    "a",
+    "b",
+    "c"
+  ],
+  "space/resolution/random": [
+    1,
+    3,
+    1,
+    1
+  ],
+  "space/resolution/lhs": [
+    5,
+    1,
+    5,
+    9
+  ],
+  "space/resolution/halton": [
+    5,
+    3,
+    7,
+    1
+  ],
+  "space/resolution/grid": [
+    1,
+    3,
+    5,
+    9
+  ],
+  "space/unenforced/random": [
+    8.319432152802452,
+    1.368761715425752,
+    1.1487487197567618,
+    9.214800195499496
+  ],
+  "space/unenforced/lhs": [
+    5.592190428856438,
+    1.0371871799391905,
+    5.079858038200613,
+    9.803700048874875
+  ],
+  "space/unenforced/halton": [
+    5.5,
+    3.25,
+    7.75,
+    2.125
+  ],
+  "space/unenforced/grid": [
+    1.0,
+    4.0,
+    7.0,
+    10.0
+  ],
+  "space/log_resolution/random": [
+    7,
+    1,
+    1,
+    9
+  ],
+  "space/log_resolution/lhs": [
+    3,
+    1,
+    3,
+    9
+  ],
+  "space/log_resolution/halton": [
+    5,
+    3,
+    7,
+    1
+  ],
+  "space/log_resolution/grid": [
+    1,
+    3,
+    5,
+    9
+  ]
+}

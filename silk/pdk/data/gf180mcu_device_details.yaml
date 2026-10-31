@@ -1,0 +1,2087 @@
+# GF180MCU device catalog for silk — GENERATED from the installed PDK.
+#
+# Source: $PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice
+#   (gf180mcuA/B/C/D ship a BYTE-IDENTICAL model file — verified by md5 — so
+#    the variant affects the metal stack only, never these models.)
+#
+# Device names, pin names AND PIN ORDER, and every `default:` below are read
+# out of that file's .subckt lines. Nothing here is invented.
+#
+# `minval: -1` / `maxval: -1` mean silk declares NO limit, not "no limit
+# exists". GF180MCU's drawn-W/L design rules are not present in the installed
+# tree in machine-readable form, and writing a guessed DRC number into a
+# constraint that silk *enforces* would be worse than declaring nothing: it
+# would reject legal geometry, or pass illegal geometry, silently. Fill these
+# in from the GF180MCU design-rule document before relying on range checking.
+#
+# `resolution` is likewise omitted rather than guessed.
+#
+# UNITS — READ THIS BEFORE CHANGING A NUMBER.
+#
+# W and L here are in **METRES**, not µm. That is not a silk convention, it is
+# GF180MCU's: its .subckt lines declare `w=10u l=0.28u` and its models are
+# BINNED on W/L in metres. Every W/L below therefore carries `pdk_unit: base`
+# — `base` is silk's name for "the SI base unit, no prefix" (see
+# basepdk._SI_TO_PDK_SCALE), added precisely so a metres-native PDK could
+# declare itself truthfully; `u` would claim µm, which these numbers are NOT.
+#
+# The `default:` values are in metres too (read straight off the .subckt
+# lines) and are never unit-scaled: a default is already the PDK's own
+# number. Note PyYAML 1.1 types a dot-less `1e-05` as a STRING and `2.8e-07`
+# as a float; silk treats both as the same PDK-unit number (the string is
+# emitted verbatim, the float via _fmt) — see
+# tests/test_pdk_defaults_are_author_units.py.
+#
+# What the circuit author writes is a SEPARATE setting: the manifest's
+# `user_units: u` (gf180mcu.pdk.yaml) means authors write MICRONS —
+#     pdk.nmos3p3('M1', ..., w=10, l=0.28)
+# — and silk converts caller-supplied values to metres on emission
+# (BasePDK._scale_factor: 1e-6 for `u` → `base`). Pass
+# `load_pdk('gf180mcu', user_units='si')` to write metres instead.
+#
+# Every consumer of this geometry — netlist emission on both construction
+# paths, and silk.layout's area model via basepdk.device_geometry_um — reads
+# these tags through BasePDK. Nothing in silk assumes a unit for an untagged
+# length; leave the tags in place.
+#
+# `junction_ratings:` IS NOT GENERATED. It is hand-authored: each value is
+# the foundry's stated maximum operating voltage (Design Manual 14.1) and the
+# `junction_ratings_provenance:` block beside it cites where, or states the
+# rule a value was derived by when GF publishes none for that pair. The
+# convention is written once in docs/adding-a-pdk.md ("Junction ratings") and
+# `python -m silk.pdk.validate --pdk gf180mcu` enforces it (TASK-48).
+
+nmos3p3:
+  PDKDevice: nfet_03v3
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    w:
+      minval: -1
+      maxval: -1
+      default: 1e-05
+      pdk_unit: base
+    l:
+      minval: -1
+      maxval: -1
+      default: 2.8e-07
+      pdk_unit: base
+  pinList:
+    d: drain
+    g: gate
+    s: source
+    b: bulk
+  junction_ratings:
+    Vgs_max: 3.63
+    Vds_max: 3.63
+    Vgd_max: 3.63
+    Vbs_max: 3.63
+    Vbd_max: 3.63
+  junction_ratings_provenance:
+    source: >-
+      GF180MCU Design Manual 14.1 "Chip Operating Conditions",
+      https://gf180mcu-pdk.readthedocs.io/en/latest/physical_verification/design_manual/drm_14_1.html:
+      14.1.4.2 "Maximum absolute value of DC voltage allowed between the gate
+      and any other FET node (gate-node voltage) is 3.63V (for thin oxide)" ->
+      Vgs_max, Vgd_max; 14.1.2 "nominal power supply voltage ... 3.3V for LV
+      ... with a supply overshoot tolerance of 10%" -> Vds_max = 3.3 x 1.1 =
+      3.63 V, corroborated by the electrical specification 1.0 (Low Voltage
+      Devices), which characterizes Ioff at |Vds| = 3.63 V.
+    heuristic:
+      Vbs_max: >-
+        = Vds_max; no body-junction operating limit is published. Body and
+        source both sit within the rail, so Vbs is bounded by the same 3.3 V +
+        10% supply tolerance as Vds.
+      Vbd_max: >-
+        = Vds_max; no separate Vbd operating limit is published. Vbd equals
+        Vds with the body at source potential (the source-tied body every
+        shipped example uses).
+  # TASK-330.3 (save_device_params), gate finding: measured with a real
+  # ngspice run (tests/fixtures/op_point/gf180mcu/ngspice{42,47}_nmos3p3_op_params.*)
+  # against sm141064.ngspice's own nfet_03v3 subckt body. 14 of the 17
+  # DEVICE_OP_PARAMS resolve; cgso/cgdo/cgbo are unavailable/zero-length on
+  # this model and are dropped. op_internal_name is 'm0' -- this model's OWN
+  # internal MOSFET instance line ('m0 d g s b nfet_03v3 ...'), NOT
+  # 'm'+PDKDevice the way sky130's happens to be spelled: guessing the
+  # sky130 spelling here is exactly what made every '@' reference fail
+  # identically before this was measured (see
+  # silk.circuit.modules_results.device_op_save_lines's docstring).
+  op_params:
+    [id, vgs, vds, vbs, vth, vdsat, gm, gds, gmbs, cgg, cgs, cgd, capbd, capbs]
+  op_internal_name: m0
+  # TASK-330.4 (op_table): channel polarity, a third per-device PDK
+  # declaration -- there is no general rule from the model name alone.
+  polarity: n
+  # TASK-330.5: which simulator backends this device's op-point addressing
+  # has been VERIFIED on by a real run. ngspice only -- gf180mcu fails to
+  # even LOAD on Xyce 7.10 (a whole-PDK library-parse incompatibility in
+  # sm141064.ngspice's nested .LIB/.ENDL sections and its 'statistical'/
+  # 'noise_corner' sub-includes, unrelated to op columns), measured with a
+  # real run: tests/fixtures/op_point/gf180mcu/xyce_probe_gf180mcu_nmos3p3.log.
+  op_backends: [ngspice]
+  schemdraw:
+    element: NFet
+    category: transistor
+    terminalMap:
+      d: drain
+      g: gate
+      s: source
+      b: bulk
+pmos3p3:
+  PDKDevice: pfet_03v3
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    w:
+      minval: -1
+      maxval: -1
+      default: 1e-05
+      pdk_unit: base
+    l:
+      minval: -1
+      maxval: -1
+      default: 2.8e-07
+      pdk_unit: base
+  pinList:
+    d: drain
+    g: gate
+    s: source
+    b: bulk
+  junction_ratings:
+    Vgs_max: 3.63
+    Vds_max: 3.63
+    Vgd_max: 3.63
+    Vbs_max: 3.63
+    Vbd_max: 3.63
+  junction_ratings_provenance:
+    source: >-
+      GF180MCU Design Manual 14.1 "Chip Operating Conditions",
+      https://gf180mcu-pdk.readthedocs.io/en/latest/physical_verification/design_manual/drm_14_1.html:
+      14.1.4.2 "Maximum absolute value of DC voltage allowed between the gate
+      and any other FET node (gate-node voltage) is 3.63V (for thin oxide)" ->
+      Vgs_max, Vgd_max; 14.1.2 "nominal power supply voltage ... 3.3V for LV
+      ... with a supply overshoot tolerance of 10%" -> Vds_max = 3.3 x 1.1 =
+      3.63 V, corroborated by the electrical specification 1.0 (Low Voltage
+      Devices), which characterizes Ioff at |Vds| = 3.63 V.
+    heuristic:
+      Vbs_max: >-
+        = Vds_max; no body-junction operating limit is published. Body and
+        source both sit within the rail, so Vbs is bounded by the same 3.3 V +
+        10% supply tolerance as Vds.
+      Vbd_max: >-
+        = Vds_max; no separate Vbd operating limit is published. Vbd equals
+        Vds with the body at source potential (the source-tied body every
+        shipped example uses).
+  # TASK-330.3 (save_device_params), gate finding: same measurement as
+  # nmos3p3 above (tests/fixtures/op_point/gf180mcu/ngspice{42,47}_pmos3p3_op_params.*),
+  # same model family (pfet_03v3's subckt body also names its internal
+  # MOSFET instance 'm0'). Same 14/17 result.
+  op_params:
+    [id, vgs, vds, vbs, vth, vdsat, gm, gds, gmbs, cgg, cgs, cgd, capbd, capbs]
+  op_internal_name: m0
+  # TASK-330.4 (op_table): channel polarity, a third per-device PDK
+  # declaration -- there is no general rule from the model name alone.
+  polarity: p
+  # TASK-330.5: ngspice only -- see nmos3p3's op_backends comment
+  # (gf180mcu-wide Xyce library-parse failure, not device-specific).
+  op_backends: [ngspice]
+  schemdraw:
+    element: PFet
+    category: transistor
+    terminalMap:
+      d: drain
+      g: gate
+      s: source
+      b: bulk
+nmos6p0:
+  PDKDevice: nfet_06v0
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    w:
+      minval: -1
+      maxval: -1
+      default: 1e-05
+      pdk_unit: base
+    l:
+      minval: -1
+      maxval: -1
+      default: 7e-07
+      pdk_unit: base
+  pinList:
+    d: drain
+    g: gate
+    s: source
+    b: bulk
+  junction_ratings:
+    Vgs_max: 6.6
+    Vds_max: 6.6
+    Vgd_max: 6.6
+    Vbs_max: 6.6
+    Vbd_max: 6.6
+  junction_ratings_provenance:
+    source: >-
+      GF180MCU Design Manual 14.1 "Chip Operating Conditions",
+      https://gf180mcu-pdk.readthedocs.io/en/latest/physical_verification/design_manual/drm_14_1.html:
+      14.1.2 "nominal power supply voltage ... 5V/6V for HV devices with a
+      supply overshoot tolerance of 10%" and "high voltage case drain and gate
+      voltages shall not exceed more than 10% from the maximum operating
+      voltages" -> Vgs_max = Vgd_max = Vds_max = 6.0 x 1.1 = 6.6 V,
+      corroborated by the electrical specification 2.0 (Medium Voltage Devices
+      (6V)), which characterizes Ioff at |Vds| = 6.6 V. 14.1.4.2 words the
+      thick-gate gate-node limit as "6.5V/6V for 5V/6V process thick gate",
+      which does not parse as one number; the 10% rule stated twice in 14.1.2
+      is used instead.
+    heuristic:
+      Vbs_max: >-
+        = Vds_max; no body-junction operating limit is published. Body and
+        source both sit within the rail, so Vbs is bounded by the same 6 V +
+        10% supply tolerance as Vds.
+      Vbd_max: >-
+        = Vds_max; no separate Vbd operating limit is published. Vbd equals
+        Vds with the body at source potential (the source-tied body every
+        shipped example uses).
+  schemdraw:
+    element: NFet
+    category: transistor
+    terminalMap:
+      d: drain
+      g: gate
+      s: source
+      b: bulk
+pmos6p0:
+  PDKDevice: pfet_06v0
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    w:
+      minval: -1
+      maxval: -1
+      default: 1e-05
+      pdk_unit: base
+    l:
+      minval: -1
+      maxval: -1
+      default: 5.5e-07
+      pdk_unit: base
+  pinList:
+    d: drain
+    g: gate
+    s: source
+    b: bulk
+  junction_ratings:
+    Vgs_max: 6.6
+    Vds_max: 6.6
+    Vgd_max: 6.6
+    Vbs_max: 6.6
+    Vbd_max: 6.6
+  junction_ratings_provenance:
+    source: >-
+      GF180MCU Design Manual 14.1 "Chip Operating Conditions",
+      https://gf180mcu-pdk.readthedocs.io/en/latest/physical_verification/design_manual/drm_14_1.html:
+      14.1.2 "nominal power supply voltage ... 5V/6V for HV devices with a
+      supply overshoot tolerance of 10%" and "high voltage case drain and gate
+      voltages shall not exceed more than 10% from the maximum operating
+      voltages" -> Vgs_max = Vgd_max = Vds_max = 6.0 x 1.1 = 6.6 V,
+      corroborated by the electrical specification 2.0 (Medium Voltage Devices
+      (6V)), which characterizes Ioff at |Vds| = 6.6 V. 14.1.4.2 words the
+      thick-gate gate-node limit as "6.5V/6V for 5V/6V process thick gate",
+      which does not parse as one number; the 10% rule stated twice in 14.1.2
+      is used instead.
+    heuristic:
+      Vbs_max: >-
+        = Vds_max; no body-junction operating limit is published. Body and
+        source both sit within the rail, so Vbs is bounded by the same 6 V +
+        10% supply tolerance as Vds.
+      Vbd_max: >-
+        = Vds_max; no separate Vbd operating limit is published. Vbd equals
+        Vds with the body at source potential (the source-tied body every
+        shipped example uses).
+  schemdraw:
+    element: PFet
+    category: transistor
+    terminalMap:
+      d: drain
+      g: gate
+      s: source
+      b: bulk
+nmos6p0_nvt:
+  PDKDevice: nfet_06v0_nvt
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    w:
+      minval: -1
+      maxval: -1
+      default: 1e-05
+      pdk_unit: base
+    l:
+      minval: -1
+      maxval: -1
+      default: 1.8e-06
+      pdk_unit: base
+    nf:
+      minval: 1
+      maxval: -1
+      resolution: 1
+  pinList:
+    d: drain
+    g: gate
+    s: source
+    b: bulk
+  junction_ratings:
+    Vgs_max: 6.6
+    Vds_max: 6.6
+    Vgd_max: 6.6
+    Vbs_max: 6.6
+    Vbd_max: 6.6
+  junction_ratings_provenance:
+    source: >-
+      GF180MCU Design Manual 14.1 "Chip Operating Conditions",
+      https://gf180mcu-pdk.readthedocs.io/en/latest/physical_verification/design_manual/drm_14_1.html:
+      14.1.2 "nominal power supply voltage ... 5V/6V for HV devices with a
+      supply overshoot tolerance of 10%" and "high voltage case drain and gate
+      voltages shall not exceed more than 10% from the maximum operating
+      voltages" -> Vgs_max = Vgd_max = Vds_max = 6.0 x 1.1 = 6.6 V,
+      corroborated by the electrical specification 4.0 (Native Vt transistor
+      (6V)), which characterizes Ioff at |Vds| = 6.6 V (W/L = 10/1.8). 14.1.4.2 words the
+      thick-gate gate-node limit as "6.5V/6V for 5V/6V process thick gate",
+      which does not parse as one number; the 10% rule stated twice in 14.1.2
+      is used instead.
+    heuristic:
+      Vbs_max: >-
+        = Vds_max; no body-junction operating limit is published. Body and
+        source both sit within the rail, so Vbs is bounded by the same 6 V +
+        10% supply tolerance as Vds.
+      Vbd_max: >-
+        = Vds_max; no separate Vbd operating limit is published. Vbd equals
+        Vds with the body at source potential (the source-tied body every
+        shipped example uses).
+  schemdraw:
+    element: NFet
+    category: transistor
+    terminalMap:
+      d: drain
+      g: gate
+      s: source
+      b: bulk
+nmos3p3_dss:
+  PDKDevice: nfet_03v3_dss
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    w:
+      minval: -1
+      maxval: -1
+      default: 1e-05
+      pdk_unit: base
+    l:
+      minval: -1
+      maxval: -1
+      default: 2.8e-07
+      pdk_unit: base
+    nf:
+      minval: 1
+      maxval: -1
+      resolution: 1
+  pinList:
+    d: drain
+    g: gate
+    s: source
+    b: bulk
+  junction_ratings:
+    Vgs_max: 3.63
+    Vds_max: 3.63
+    Vgd_max: 3.63
+    Vbs_max: 3.63
+    Vbd_max: 3.63
+  junction_ratings_provenance:
+    source: >-
+      GF180MCU Design Manual 14.1 "Chip Operating Conditions",
+      https://gf180mcu-pdk.readthedocs.io/en/latest/physical_verification/design_manual/drm_14_1.html:
+      14.1.4.2 "Maximum absolute value of DC voltage allowed between the gate
+      and any other FET node (gate-node voltage) is 3.63V (for thin oxide)" ->
+      Vgs_max, Vgd_max; 14.1.2 "nominal power supply voltage ... 3.3V for LV
+      ... with a supply overshoot tolerance of 10%" -> Vds_max = 3.3 x 1.1 =
+      3.63 V, corroborated by the electrical specification 1.0 (Low Voltage
+      Devices), which characterizes Ioff at |Vds| = 3.63 V.
+    heuristic:
+      Vbs_max: >-
+        = Vds_max; no body-junction operating limit is published. Body and
+        source both sit within the rail, so Vbs is bounded by the same 3.3 V +
+        10% supply tolerance as Vds.
+      Vbd_max: >-
+        = Vds_max; no separate Vbd operating limit is published. Vbd equals
+        Vds with the body at source potential (the source-tied body every
+        shipped example uses).
+  schemdraw:
+    element: NFet
+    category: transistor
+    terminalMap:
+      d: drain
+      g: gate
+      s: source
+      b: bulk
+pmos3p3_dss:
+  PDKDevice: pfet_03v3_dss
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    w:
+      minval: -1
+      maxval: -1
+      default: 1e-05
+      pdk_unit: base
+    l:
+      minval: -1
+      maxval: -1
+      default: 2.8e-07
+      pdk_unit: base
+    nf:
+      minval: 1
+      maxval: -1
+      resolution: 1
+  pinList:
+    d: drain
+    g: gate
+    s: source
+    b: bulk
+  junction_ratings:
+    Vgs_max: 3.63
+    Vds_max: 3.63
+    Vgd_max: 3.63
+    Vbs_max: 3.63
+    Vbd_max: 3.63
+  junction_ratings_provenance:
+    source: >-
+      GF180MCU Design Manual 14.1 "Chip Operating Conditions",
+      https://gf180mcu-pdk.readthedocs.io/en/latest/physical_verification/design_manual/drm_14_1.html:
+      14.1.4.2 "Maximum absolute value of DC voltage allowed between the gate
+      and any other FET node (gate-node voltage) is 3.63V (for thin oxide)" ->
+      Vgs_max, Vgd_max; 14.1.2 "nominal power supply voltage ... 3.3V for LV
+      ... with a supply overshoot tolerance of 10%" -> Vds_max = 3.3 x 1.1 =
+      3.63 V, corroborated by the electrical specification 1.0 (Low Voltage
+      Devices), which characterizes Ioff at |Vds| = 3.63 V.
+    heuristic:
+      Vbs_max: >-
+        = Vds_max; no body-junction operating limit is published. Body and
+        source both sit within the rail, so Vbs is bounded by the same 3.3 V +
+        10% supply tolerance as Vds.
+      Vbd_max: >-
+        = Vds_max; no separate Vbd operating limit is published. Vbd equals
+        Vds with the body at source potential (the source-tied body every
+        shipped example uses).
+  schemdraw:
+    element: PFet
+    category: transistor
+    terminalMap:
+      d: drain
+      g: gate
+      s: source
+      b: bulk
+nmos6p0_dss:
+  PDKDevice: nfet_06v0_dss
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    w:
+      minval: -1
+      maxval: -1
+      default: 1e-05
+      pdk_unit: base
+    l:
+      minval: -1
+      maxval: -1
+      default: 6e-07
+      pdk_unit: base
+    nf:
+      minval: 1
+      maxval: -1
+      resolution: 1
+  pinList:
+    d: drain
+    g: gate
+    s: source
+    b: bulk
+  junction_ratings:
+    Vgs_max: 6.6
+    Vds_max: 6.6
+    Vgd_max: 6.6
+    Vbs_max: 6.6
+    Vbd_max: 6.6
+  junction_ratings_provenance:
+    source: >-
+      GF180MCU Design Manual 14.1 "Chip Operating Conditions",
+      https://gf180mcu-pdk.readthedocs.io/en/latest/physical_verification/design_manual/drm_14_1.html:
+      14.1.2 "nominal power supply voltage ... 5V/6V for HV devices with a
+      supply overshoot tolerance of 10%" and "high voltage case drain and gate
+      voltages shall not exceed more than 10% from the maximum operating
+      voltages" -> Vgs_max = Vgd_max = Vds_max = 6.0 x 1.1 = 6.6 V,
+      corroborated by the electrical specification 2.0 (Medium Voltage Devices
+      (6V)), which characterizes Ioff at |Vds| = 6.6 V. 14.1.4.2 words the
+      thick-gate gate-node limit as "6.5V/6V for 5V/6V process thick gate",
+      which does not parse as one number; the 10% rule stated twice in 14.1.2
+      is used instead.
+    heuristic:
+      Vbs_max: >-
+        = Vds_max; no body-junction operating limit is published. Body and
+        source both sit within the rail, so Vbs is bounded by the same 6 V +
+        10% supply tolerance as Vds.
+      Vbd_max: >-
+        = Vds_max; no separate Vbd operating limit is published. Vbd equals
+        Vds with the body at source potential (the source-tied body every
+        shipped example uses).
+  schemdraw:
+    element: NFet
+    category: transistor
+    terminalMap:
+      d: drain
+      g: gate
+      s: source
+      b: bulk
+pmos6p0_dss:
+  PDKDevice: pfet_06v0_dss
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    w:
+      minval: -1
+      maxval: -1
+      default: 1e-05
+      pdk_unit: base
+    l:
+      minval: -1
+      maxval: -1
+      default: 5e-07
+      pdk_unit: base
+    nf:
+      minval: 1
+      maxval: -1
+      resolution: 1
+  pinList:
+    d: drain
+    g: gate
+    s: source
+    b: bulk
+  junction_ratings:
+    Vgs_max: 6.6
+    Vds_max: 6.6
+    Vgd_max: 6.6
+    Vbs_max: 6.6
+    Vbd_max: 6.6
+  junction_ratings_provenance:
+    source: >-
+      GF180MCU Design Manual 14.1 "Chip Operating Conditions",
+      https://gf180mcu-pdk.readthedocs.io/en/latest/physical_verification/design_manual/drm_14_1.html:
+      14.1.2 "nominal power supply voltage ... 5V/6V for HV devices with a
+      supply overshoot tolerance of 10%" and "high voltage case drain and gate
+      voltages shall not exceed more than 10% from the maximum operating
+      voltages" -> Vgs_max = Vgd_max = Vds_max = 6.0 x 1.1 = 6.6 V,
+      corroborated by the electrical specification 2.0 (Medium Voltage Devices
+      (6V)), which characterizes Ioff at |Vds| = 6.6 V. 14.1.4.2 words the
+      thick-gate gate-node limit as "6.5V/6V for 5V/6V process thick gate",
+      which does not parse as one number; the 10% rule stated twice in 14.1.2
+      is used instead.
+    heuristic:
+      Vbs_max: >-
+        = Vds_max; no body-junction operating limit is published. Body and
+        source both sit within the rail, so Vbs is bounded by the same 6 V +
+        10% supply tolerance as Vds.
+      Vbd_max: >-
+        = Vds_max; no separate Vbd operating limit is published. Vbd equals
+        Vds with the body at source potential (the source-tied body every
+        shipped example uses).
+  schemdraw:
+    element: PFet
+    category: transistor
+    terminalMap:
+      d: drain
+      g: gate
+      s: source
+      b: bulk
+
+# ===========================================================================
+# PASSIVES, DIODES AND BIPOLARS
+#
+# Reachable since the manifest's corners gained per-corner `includes:` — one
+# `.lib` line per device family (see gf180mcu.pdk.yaml). Everything below is
+# read out of the installed PDK; the notes say which file said what.
+#
+# GEOMETRY DEFAULTS. The .subckt lines declare `r_length=l r_width=w` — a
+# reference to global parameters `l` and `w` that GF180MCU never defines
+# (design.ngspice sets only the statistical/noise switches). So the PDK's own
+# stated default is "the caller must supply it", and the numbers below come
+# from the next authority down: the `template=` block of that device's xschem
+# symbol under libs.tech/xschem/symbols, which is the geometry GF's own
+# schematics instantiate. Hence nwell's 3 µm and rm1–rm3's 0.6 µm rather than
+# a blanket 1 µm.
+#
+# Every default below is QUOTED, and that is load-bearing rather than a style
+# choice. silk scales a NUMERIC parameter from the author's unit into the
+# PDK's (BasePDK._param_scales) but passes a STRING through as a literal
+# already in the PDK's own unit (factory._render_param). These numbers are
+# metres, so quoting them is what makes them mean the same thing under
+# user_units 'u', 'si' and 'pdk' alike. Unquote one and PyYAML's typing decides
+# for you: `1e-06` has no decimal point so YAML 1.1 calls it a string, while
+# `1.2e-05` has one and becomes a float that then gets scaled again — 1.2e-11 m
+# instead of 1.2e-5 m, silently.
+#
+# Seven devices (nplus_s, pplus_s, rm4, tm6k, tm9k, tm11k, tm30k) have no
+# xschem symbol, so no PDK-stated default exists; each carries a comment
+# saying its 1 µm square is silk's choice. A default is a convenience, not a
+# constraint silk enforces — the enforced bounds are still `-1`.
+#
+# LIMITS. `-1` throughout, for the reason the header above gives: GF180MCU's
+# drawn-geometry design rules are not in the installed tree in machine-
+# readable form, and a guessed minimum is worse than none.
+#
+# res_rm4 IN THE `statistical` CORNER IS BROKEN, AND IT IS GF'S BUG, NOT
+# SILK'S: the `res_statistical` section defines a sheet resistance for every
+# resistor EXCEPT rm4, which res_typical/_ss/_ff all define. ngspice aborts
+# with "Formula() error" (verified). Every other device, and res_rm4 in every
+# other corner, is unaffected; res_rm4 measures 9.000 ohm at
+# 1 x 100 um / typical, exactly rsh_rm4 = 0.09 ohm/sq x 100 squares.
+#
+# `junction_ratings:` is likewise ABSENT from every device below. It is
+# enforced (silk.lint.rules.stress reads it), and GF states no per-terminal
+# use ratings for these devices. The diode models do carry `bv`, but that is
+# a breakdown parameter of the model, not a rated operating voltage, and
+# publishing it as one would be a fabrication.
+#
+# RESISTOR PIN 3 is the well/substrate tie, not a body-effect terminal: each
+# `.subckt` ties both ends to node 3 through a junction diode (diffusion and
+# nwell resistors) or a field-oxide capacitor (poly resistors). Its direction
+# is what names it here — `sub` where node 3 is the diode ANODE (p-substrate:
+# nplus_u/_s, nwell) or the field-oxide plate (all poly), `nwell` where node 3
+# is the CATHODE (pplus_u/_s, p+ in n-well). Pins `a` and `b` are the two ends
+# and are interchangeable: rt1/rt2 use the same terminal model and the body
+# resistor is symmetric.
+#
+# DIODES ARE `.model` CARDS, not subcircuits — so they carry
+# `spice_prefix: D` and silk emits a D primitive line. Emitting them as `XM…`
+# would produce an unknown-subckt bind. `area` and `pj` are the D card's own
+# instance parameters, in m² and m: these are `level=3` diodes, whose `is`,
+# `cjo` and `jsw` are per-area/per-length densities (that is also how the
+# resistor subckts instantiate them internally, e.g. `area='r_w*r_l/2'`).
+# `area` therefore declares `quantity: area`, so an author writing µm² has the
+# value scaled by 1e12, not 1e6. The defaults are the xschem symbol's own
+# `area = r_w*r_l`, `pj = 2*r_w + 2*r_l` evaluated at its template geometry.
+#
+# MOS CAP PIN ORDER: node 1 is the GATE, node 2 the well/bulk. The .subckt
+# numbers them, and the symbol's pin *numbers* disagree with its file order,
+# so this is settled from the model equation instead:
+# `c = A*(cvar1 + cvar2*tanh(cvar3*v(1,2) + cvar4))` peaks at
+# v(1,2) = -cvar4/cvar3 = +0.63 V for cap_nmos_03v3 and -0.79 V for
+# cap_pmos_03v3 — i.e. capacitance is maximal when node 1 is a threshold above
+# (n) or below (p) node 2, which is the gate. Confirmed by simulation on a
+# 10x10 um cap_nmos_03v3: C(v(g,b) = +3.3 V) = 398.3 fF and
+# C(v(g,b) = -3.3 V) = 2.3 fF, a 173.2x swing that matches the equation's own
+# (cvar1+cvar2)/(cvar1-cvar2) to 0.0%.
+#
+# MIM CAP pins are `plus`/`minus` in .subckt order, and are interchangeable —
+# the model is a single symmetric `c_cap 1 2` (plus, on the 2 fF/µm² cell, a
+# symmetric leakage resistor). The three cells here are the generic names GF's
+# own symbols use; the metal-stack-specific twins (cap_mim_1f5_m5m6_noshield
+# and friends) are also in scope through the same include and are numerically
+# identical — same c_cox, c_capsw, tc1, tc2 — so they are not duplicated here.
+# ===========================================================================
+
+res_nplus_u:
+  PDKDevice: nplus_u
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    r_width:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+    r_length:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+  pinList:
+    a: plus
+    b: minus
+    c: sub
+  schemdraw:
+    element: Resistor
+    category: passive
+    terminalMap:
+      a: start
+      b: end
+
+res_pplus_u:
+  PDKDevice: pplus_u
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    r_width:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+    r_length:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+  pinList:
+    a: plus
+    b: minus
+    c: nwell
+  schemdraw:
+    element: Resistor
+    category: passive
+    terminalMap:
+      a: start
+      b: end
+
+res_nplus_s:
+  # GF ships no xschem symbol for this device, so the PDK states no
+  # default geometry: the 1 um square below is silk's, NOT a design rule.
+  PDKDevice: nplus_s
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    r_width:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+    r_length:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+  pinList:
+    a: plus
+    b: minus
+    c: sub
+  schemdraw:
+    element: Resistor
+    category: passive
+    terminalMap:
+      a: start
+      b: end
+
+res_pplus_s:
+  # GF ships no xschem symbol for this device, so the PDK states no
+  # default geometry: the 1 um square below is silk's, NOT a design rule.
+  PDKDevice: pplus_s
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    r_width:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+    r_length:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+  pinList:
+    a: plus
+    b: minus
+    c: nwell
+  schemdraw:
+    element: Resistor
+    category: passive
+    terminalMap:
+      a: start
+      b: end
+
+res_nwell:
+  PDKDevice: nwell
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    r_width:
+      minval: -1
+      maxval: -1
+      default: 3e-06
+      pdk_unit: base
+    r_length:
+      minval: -1
+      maxval: -1
+      default: 3e-06
+      pdk_unit: base
+  pinList:
+    a: plus
+    b: minus
+    c: sub
+  schemdraw:
+    element: Resistor
+    category: passive
+    terminalMap:
+      a: start
+      b: end
+
+res_npolyf_u:
+  PDKDevice: npolyf_u
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    r_width:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+    r_length:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+  pinList:
+    a: plus
+    b: minus
+    c: sub
+  schemdraw:
+    element: Resistor
+    category: passive
+    terminalMap:
+      a: start
+      b: end
+
+res_ppolyf_u:
+  PDKDevice: ppolyf_u
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    r_width:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+    r_length:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+  pinList:
+    a: plus
+    b: minus
+    c: sub
+  schemdraw:
+    element: Resistor
+    category: passive
+    terminalMap:
+      a: start
+      b: end
+
+res_npolyf_s:
+  PDKDevice: npolyf_s
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    r_width:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+    r_length:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+  pinList:
+    a: plus
+    b: minus
+    c: sub
+  schemdraw:
+    element: Resistor
+    category: passive
+    terminalMap:
+      a: start
+      b: end
+
+res_ppolyf_s:
+  PDKDevice: ppolyf_s
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    r_width:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+    r_length:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+  pinList:
+    a: plus
+    b: minus
+    c: sub
+  schemdraw:
+    element: Resistor
+    category: passive
+    terminalMap:
+      a: start
+      b: end
+
+res_ppolyf_1k:
+  PDKDevice: ppolyf_u_1k
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    r_width:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+    r_length:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+  pinList:
+    a: plus
+    b: minus
+    c: sub
+  schemdraw:
+    element: Resistor
+    category: passive
+    terminalMap:
+      a: start
+      b: end
+
+res_ppolyf_2k:
+  PDKDevice: ppolyf_u_2k
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    r_width:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+    r_length:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+  pinList:
+    a: plus
+    b: minus
+    c: sub
+  schemdraw:
+    element: Resistor
+    category: passive
+    terminalMap:
+      a: start
+      b: end
+
+res_ppolyf_3k:
+  PDKDevice: ppolyf_u_3k
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    r_width:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+    r_length:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+  pinList:
+    a: plus
+    b: minus
+    c: sub
+  schemdraw:
+    element: Resistor
+    category: passive
+    terminalMap:
+      a: start
+      b: end
+
+res_ppolyf_1k_6p0:
+  PDKDevice: ppolyf_u_1k_6p0
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    r_width:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+    r_length:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+  pinList:
+    a: plus
+    b: minus
+    c: sub
+  schemdraw:
+    element: Resistor
+    category: passive
+    terminalMap:
+      a: start
+      b: end
+
+res_ppolyf_2k_6p0:
+  PDKDevice: ppolyf_u_2k_6p0
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    r_width:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+    r_length:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+  pinList:
+    a: plus
+    b: minus
+    c: sub
+  schemdraw:
+    element: Resistor
+    category: passive
+    terminalMap:
+      a: start
+      b: end
+
+res_rm1:
+  PDKDevice: rm1
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    r_width:
+      minval: -1
+      maxval: -1
+      default: 6e-07
+      pdk_unit: base
+    r_length:
+      minval: -1
+      maxval: -1
+      default: 6e-07
+      pdk_unit: base
+  pinList:
+    a: plus
+    b: minus
+  schemdraw:
+    element: Resistor
+    category: passive
+    terminalMap:
+      a: start
+      b: end
+
+res_rm2:
+  PDKDevice: rm2
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    r_width:
+      minval: -1
+      maxval: -1
+      default: 6e-07
+      pdk_unit: base
+    r_length:
+      minval: -1
+      maxval: -1
+      default: 6e-07
+      pdk_unit: base
+  pinList:
+    a: plus
+    b: minus
+  schemdraw:
+    element: Resistor
+    category: passive
+    terminalMap:
+      a: start
+      b: end
+
+res_rm3:
+  PDKDevice: rm3
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    r_width:
+      minval: -1
+      maxval: -1
+      default: 6e-07
+      pdk_unit: base
+    r_length:
+      minval: -1
+      maxval: -1
+      default: 6e-07
+      pdk_unit: base
+  pinList:
+    a: plus
+    b: minus
+  schemdraw:
+    element: Resistor
+    category: passive
+    terminalMap:
+      a: start
+      b: end
+
+res_rm4:
+  # GF ships no xschem symbol for this device, so the PDK states no
+  # default geometry: the 1 um square below is silk's, NOT a design rule.
+  PDKDevice: rm4
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    r_width:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+    r_length:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+  pinList:
+    a: plus
+    b: minus
+  schemdraw:
+    element: Resistor
+    category: passive
+    terminalMap:
+      a: start
+      b: end
+
+res_tm6k:
+  # GF ships no xschem symbol for this device, so the PDK states no
+  # default geometry: the 1 um square below is silk's, NOT a design rule.
+  PDKDevice: tm6k
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    r_width:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+    r_length:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+  pinList:
+    a: plus
+    b: minus
+  schemdraw:
+    element: Resistor
+    category: passive
+    terminalMap:
+      a: start
+      b: end
+
+res_tm9k:
+  # GF ships no xschem symbol for this device, so the PDK states no
+  # default geometry: the 1 um square below is silk's, NOT a design rule.
+  PDKDevice: tm9k
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    r_width:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+    r_length:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+  pinList:
+    a: plus
+    b: minus
+  schemdraw:
+    element: Resistor
+    category: passive
+    terminalMap:
+      a: start
+      b: end
+
+res_tm11k:
+  # GF ships no xschem symbol for this device, so the PDK states no
+  # default geometry: the 1 um square below is silk's, NOT a design rule.
+  PDKDevice: tm11k
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    r_width:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+    r_length:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+  pinList:
+    a: plus
+    b: minus
+  schemdraw:
+    element: Resistor
+    category: passive
+    terminalMap:
+      a: start
+      b: end
+
+res_tm30k:
+  # GF ships no xschem symbol for this device, so the PDK states no
+  # default geometry: the 1 um square below is silk's, NOT a design rule.
+  PDKDevice: tm30k
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    r_width:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+    r_length:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+  pinList:
+    a: plus
+    b: minus
+  schemdraw:
+    element: Resistor
+    category: passive
+    terminalMap:
+      a: start
+      b: end
+
+cap_mim_1f0:
+  PDKDevice: cap_mim_1f0fF
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    c_width:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+    c_length:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+  pinList:
+    plus: plate1
+    minus: plate2
+  schemdraw:
+    element: Capacitor
+    category: passive
+    terminalMap:
+      plus: start
+      minus: end
+
+cap_mim_1f5:
+  PDKDevice: cap_mim_1f5fF
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    c_width:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+    c_length:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+  pinList:
+    plus: plate1
+    minus: plate2
+  schemdraw:
+    element: Capacitor
+    category: passive
+    terminalMap:
+      plus: start
+      minus: end
+
+cap_mim_2f0:
+  PDKDevice: cap_mim_2f0fF
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    c_width:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+    c_length:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+  pinList:
+    plus: plate1
+    minus: plate2
+  schemdraw:
+    element: Capacitor
+    category: passive
+    terminalMap:
+      plus: start
+      minus: end
+
+cap_nmos3p3:
+  PDKDevice: cap_nmos_03v3
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    c_width:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+    c_length:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+  pinList:
+    g: gate
+    b: bulk
+  schemdraw:
+    element: Capacitor
+    category: passive
+    terminalMap:
+      g: start
+      b: end
+
+cap_pmos3p3:
+  PDKDevice: cap_pmos_03v3
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    c_width:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+    c_length:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+  pinList:
+    g: gate
+    b: bulk
+  schemdraw:
+    element: Capacitor
+    category: passive
+    terminalMap:
+      g: start
+      b: end
+
+cap_nmos6p0:
+  PDKDevice: cap_nmos_06v0
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    c_width:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+    c_length:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+  pinList:
+    g: gate
+    b: bulk
+  schemdraw:
+    element: Capacitor
+    category: passive
+    terminalMap:
+      g: start
+      b: end
+
+cap_pmos6p0:
+  PDKDevice: cap_pmos_06v0
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    c_width:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+    c_length:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+  pinList:
+    g: gate
+    b: bulk
+  schemdraw:
+    element: Capacitor
+    category: passive
+    terminalMap:
+      g: start
+      b: end
+
+cap_nmos3p3_b:
+  PDKDevice: cap_nmos_03v3_b
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    c_width:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+    c_length:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+  pinList:
+    g: gate
+    b: bulk
+  schemdraw:
+    element: Capacitor
+    category: passive
+    terminalMap:
+      g: start
+      b: end
+
+cap_pmos3p3_b:
+  PDKDevice: cap_pmos_03v3_b
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    c_width:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+    c_length:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+  pinList:
+    g: gate
+    b: bulk
+  schemdraw:
+    element: Capacitor
+    category: passive
+    terminalMap:
+      g: start
+      b: end
+
+cap_nmos6p0_b:
+  PDKDevice: cap_nmos_06v0_b
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    c_width:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+    c_length:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+  pinList:
+    g: gate
+    b: bulk
+  schemdraw:
+    element: Capacitor
+    category: passive
+    terminalMap:
+      g: start
+      b: end
+
+cap_pmos6p0_b:
+  PDKDevice: cap_pmos_06v0_b
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    c_width:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+    c_length:
+      minval: -1
+      maxval: -1
+      default: 1e-06
+      pdk_unit: base
+  pinList:
+    g: gate
+    b: bulk
+  schemdraw:
+    element: Capacitor
+    category: passive
+    terminalMap:
+      g: start
+      b: end
+
+diode_nd2ps_3p3:
+  PDKDevice: diode_nd2ps_03v3
+  spice_prefix: D
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    area:
+      minval: -1
+      maxval: -1
+      default: 1e-12
+      pdk_unit: base
+      quantity: area
+    pj:
+      minval: -1
+      maxval: -1
+      default: 4e-06
+      pdk_unit: base
+  pinList:
+    a: anode
+    k: cathode
+  schemdraw:
+    element: Diode
+    category: diode
+    terminalMap:
+      a: anode
+      k: cathode
+
+diode_pd2nw_3p3:
+  PDKDevice: diode_pd2nw_03v3
+  spice_prefix: D
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    area:
+      minval: -1
+      maxval: -1
+      default: 1e-12
+      pdk_unit: base
+      quantity: area
+    pj:
+      minval: -1
+      maxval: -1
+      default: 4e-06
+      pdk_unit: base
+  pinList:
+    a: anode
+    k: cathode
+  schemdraw:
+    element: Diode
+    category: diode
+    terminalMap:
+      a: anode
+      k: cathode
+
+diode_nd2ps_6p0:
+  PDKDevice: diode_nd2ps_06v0
+  spice_prefix: D
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    area:
+      minval: -1
+      maxval: -1
+      default: 1e-12
+      pdk_unit: base
+      quantity: area
+    pj:
+      minval: -1
+      maxval: -1
+      default: 4e-06
+      pdk_unit: base
+  pinList:
+    a: anode
+    k: cathode
+  schemdraw:
+    element: Diode
+    category: diode
+    terminalMap:
+      a: anode
+      k: cathode
+
+diode_pd2nw_6p0:
+  PDKDevice: diode_pd2nw_06v0
+  spice_prefix: D
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    area:
+      minval: -1
+      maxval: -1
+      default: 1e-12
+      pdk_unit: base
+      quantity: area
+    pj:
+      minval: -1
+      maxval: -1
+      default: 4e-06
+      pdk_unit: base
+  pinList:
+    a: anode
+    k: cathode
+  schemdraw:
+    element: Diode
+    category: diode
+    terminalMap:
+      a: anode
+      k: cathode
+
+diode_nw2ps_3p3:
+  PDKDevice: diode_nw2ps_03v3
+  spice_prefix: D
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    area:
+      minval: -1
+      maxval: -1
+      default: 1e-12
+      pdk_unit: base
+      quantity: area
+    pj:
+      minval: -1
+      maxval: -1
+      default: 4e-06
+      pdk_unit: base
+  pinList:
+    a: anode
+    k: cathode
+  schemdraw:
+    element: Diode
+    category: diode
+    terminalMap:
+      a: anode
+      k: cathode
+
+diode_nw2ps_6p0:
+  PDKDevice: diode_nw2ps_06v0
+  spice_prefix: D
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    area:
+      minval: -1
+      maxval: -1
+      default: 1e-12
+      pdk_unit: base
+      quantity: area
+    pj:
+      minval: -1
+      maxval: -1
+      default: 4e-06
+      pdk_unit: base
+  pinList:
+    a: anode
+    k: cathode
+  schemdraw:
+    element: Diode
+    category: diode
+    terminalMap:
+      a: anode
+      k: cathode
+
+diode_pw2dw:
+  PDKDevice: diode_pw2dw
+  spice_prefix: D
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    area:
+      minval: -1
+      maxval: -1
+      default: 9e-12
+      pdk_unit: base
+      quantity: area
+    pj:
+      minval: -1
+      maxval: -1
+      default: 1.2e-05
+      pdk_unit: base
+  pinList:
+    a: anode
+    k: cathode
+  schemdraw:
+    element: Diode
+    category: diode
+    terminalMap:
+      a: anode
+      k: cathode
+
+diode_dw2ps:
+  PDKDevice: diode_dw2ps
+  spice_prefix: D
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    area:
+      minval: -1
+      maxval: -1
+      default: 1e-12
+      pdk_unit: base
+      quantity: area
+    pj:
+      minval: -1
+      maxval: -1
+      default: 4e-06
+      pdk_unit: base
+  pinList:
+    a: anode
+    k: cathode
+  schemdraw:
+    element: Diode
+    category: diode
+    terminalMap:
+      a: anode
+      k: cathode
+
+diode_schottky:
+  PDKDevice: sc_diode
+  spice_prefix: D
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+    area:
+      minval: -1
+      maxval: -1
+      default: 1e-12
+      pdk_unit: base
+      quantity: area
+    pj:
+      minval: -1
+      maxval: -1
+      default: 4e-06
+      pdk_unit: base
+  pinList:
+    a: anode
+    k: cathode
+  schemdraw:
+    element: Diode
+    category: diode
+    terminalMap:
+      a: anode
+      k: cathode
+
+npn_10x10:
+  PDKDevice: npn_10p00x10p00
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+  pinList:
+    c: collector
+    b: base
+    e: emitter
+    s: substrate
+  schemdraw:
+    element: BJT_NPN
+    category: transistor
+    terminalMap:
+      c: collector
+      b: base
+      e: emitter
+      s: substrate
+
+npn_05x05:
+  PDKDevice: npn_05p00x05p00
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+  pinList:
+    c: collector
+    b: base
+    e: emitter
+    s: substrate
+  schemdraw:
+    element: BJT_NPN
+    category: transistor
+    terminalMap:
+      c: collector
+      b: base
+      e: emitter
+      s: substrate
+
+npn_0p54x16:
+  PDKDevice: npn_00p54x16p00
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+  pinList:
+    c: collector
+    b: base
+    e: emitter
+    s: substrate
+  schemdraw:
+    element: BJT_NPN
+    category: transistor
+    terminalMap:
+      c: collector
+      b: base
+      e: emitter
+      s: substrate
+
+npn_0p54x08:
+  PDKDevice: npn_00p54x08p00
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+  pinList:
+    c: collector
+    b: base
+    e: emitter
+    s: substrate
+  schemdraw:
+    element: BJT_NPN
+    category: transistor
+    terminalMap:
+      c: collector
+      b: base
+      e: emitter
+      s: substrate
+
+npn_0p54x04:
+  PDKDevice: npn_00p54x04p00
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+  pinList:
+    c: collector
+    b: base
+    e: emitter
+    s: substrate
+  schemdraw:
+    element: BJT_NPN
+    category: transistor
+    terminalMap:
+      c: collector
+      b: base
+      e: emitter
+      s: substrate
+
+npn_0p54x02:
+  PDKDevice: npn_00p54x02p00
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+  pinList:
+    c: collector
+    b: base
+    e: emitter
+    s: substrate
+  schemdraw:
+    element: BJT_NPN
+    category: transistor
+    terminalMap:
+      c: collector
+      b: base
+      e: emitter
+      s: substrate
+
+pnp_10x10:
+  PDKDevice: pnp_10p00x10p00
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+  pinList:
+    c: collector
+    b: base
+    e: emitter
+  schemdraw:
+    element: BJT_PNP
+    category: transistor
+    terminalMap:
+      c: collector
+      b: base
+      e: emitter
+
+pnp_05x05:
+  PDKDevice: pnp_05p00x05p00
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+  pinList:
+    c: collector
+    b: base
+    e: emitter
+  schemdraw:
+    element: BJT_PNP
+    category: transistor
+    terminalMap:
+      c: collector
+      b: base
+      e: emitter
+
+pnp_10x0p42:
+  PDKDevice: pnp_10p00x00p42
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+  pinList:
+    c: collector
+    b: base
+    e: emitter
+  schemdraw:
+    element: BJT_PNP
+    category: transistor
+    terminalMap:
+      c: collector
+      b: base
+      e: emitter
+
+pnp_05x0p42:
+  PDKDevice: pnp_05p00x00p42
+  paramList:
+    m:
+      minval: 1
+      maxval: -1
+      resolution: 1
+  pinList:
+    c: collector
+    b: base
+    e: emitter
+  schemdraw:
+    element: BJT_PNP
+    category: transistor
+    terminalMap:
+      c: collector
+      b: base
+      e: emitter

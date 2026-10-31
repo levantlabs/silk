@@ -1,0 +1,30 @@
+name: Public hygiene
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Scan shipping tree and history
+        env:
+          PRIVATE_NAMES: ${{ secrets.RELEASE_PRIVATE_NAMES }}
+          EXPLICIT_EMPTY: ${{ vars.RELEASE_PRIVATE_NAMES_EMPTY }}
+          RELEASE_AUTHOR_NAME: ${{ vars.RELEASE_AUTHOR_NAME }}
+          RELEASE_AUTHOR_EMAIL: ${{ vars.RELEASE_AUTHOR_EMAIL }}
+        run: |
+          if [ -n "$PRIVATE_NAMES" ] || [ "$EXPLICIT_EMPTY" = true ]; then
+            export RELEASE_PRIVATE_NAMES="$PRIVATE_NAMES"
+          fi
+          python scripts/scan_release.py . --history
+      - name: Check public documentation destinations
+        run: python scripts/check_public_links.py .

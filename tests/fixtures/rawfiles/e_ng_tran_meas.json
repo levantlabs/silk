@@ -1,0 +1,40 @@
+{
+  "deriv": {
+    "note": "ngspice parses DERIV but its .measure dispatch refuses it ('function 'deriv' currently not supported') in every version checked by TASK-303.1 -- confirmed again here on this exact deck; no ngspice oracle exists for silk's derivative().",
+    "status": "unsupported"
+  },
+  "generated_by": "gen_e_meas.py (TASK-303.2)",
+  "ngspice_form": {
+    "deriv_out": "DERIV v(out) AT=3e-05",
+    "fall_time_clk": "TRIG v(clk) VAL=1.62 FALL=1 TARG v(clk) VAL=0.18 FALL=1",
+    "find_when_out_at_step_050": "FIND v(out) WHEN v(step)=0.5",
+    "propagation_delay_step_out": "TRIG v(step) VAL=0.5 RISE=1 TARG v(out) VAL=0.5 RISE=1",
+    "rise_time_clk": "TRIG v(clk) VAL=0.18 RISE=1 TARG v(clk) VAL=1.62 RISE=1",
+    "value_at_out": "FIND v(out) AT=3e-05",
+    "window_avg_out": "AVG v(out) FROM=7.150199999999975e-06 TO=3.247020000000029e-05",
+    "window_integ_out": "INTEG v(out) FROM=7.150199999999975e-06 TO=3.247020000000029e-05",
+    "window_max_out": "MAX v(out) FROM=7.150199999999975e-06 TO=3.247020000000029e-05",
+    "window_min_out": "MIN v(out) FROM=7.150199999999975e-06 TO=3.247020000000029e-05",
+    "window_pp_out": "PP v(out) FROM=7.150199999999975e-06 TO=3.247020000000029e-05",
+    "window_rms_out": "RMS v(out) FROM=7.150199999999975e-06 TO=3.247020000000029e-05",
+    "x_when_out_050": "WHEN v(out)=0.5 RISE=1"
+  },
+  "ngspice_version": "ngspice-42 : Circuit level simulation program",
+  "value_at_t_s": 3e-05,
+  "values": {
+    "fall_time_clk": 4e-09,
+    "find_when_out_at_step_050": 2.789867e-06,
+    "propagation_delay_step_out": 1.182201e-06,
+    "rise_time_clk": 4e-09,
+    "value_at_out": 1.000106,
+    "window_avg_out": 0.9943833,
+    "window_integ_out": 2.51778e-05,
+    "window_max_out": 1.051624,
+    "window_min_out": 0.861356,
+    "window_pp_out": 0.1902675,
+    "window_rms_out": 0.994957,
+    "x_when_out_050": 2.1872e-06
+  },
+  "window_from_s": 7.150199999999975e-06,
+  "window_to_s": 3.247020000000029e-05
+}

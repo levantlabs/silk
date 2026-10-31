@@ -1,0 +1,142 @@
+
+*****
+***** Welcome to the Xyce(TM) Parallel Electronic Simulator
+*****
+***** This is version Xyce Release 7.10.0-opensource
+***** Date: Sun Sep 27 21:31:28 CDT 2026
+
+
+***** Executing netlist xyce_probe_gf180mcu_nmos3p3.cir
+
+***** Reading and parsing netlist...
+Netlist error in file
+ $PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice at or near
+ line 137
+ .ENDL encountered without library name, currently inside .LIB TYPICAL
+Netlist error in file
+ $PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice at or near
+ line 172
+ .ENDL encountered without library name, currently inside .LIB FF
+Netlist error in file
+ $PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice at or near
+ line 207
+ .ENDL encountered without library name, currently inside .LIB SS
+Netlist error in file
+ $PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice at or near
+ line 242
+ .ENDL encountered without library name, currently inside .LIB FS
+Netlist error in file
+ $PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice at or near
+ line 277
+ .ENDL encountered without library name, currently inside .LIB SF
+Netlist error in file
+ $PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice at or near
+ line 308
+ .ENDL encountered without library name, currently inside .LIB BJT_TYPICAL
+Netlist error in file
+ $PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice at or near
+ line 338
+ .ENDL encountered without library name, currently inside .LIB BJT_SS
+Netlist error in file
+ $PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice at or near
+ line 368
+ .ENDL encountered without library name, currently inside .LIB BJT_FF
+Netlist warning in file
+ $PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice at or near
+ line 371
+ Extraneous data on .LIB ignored
+Netlist error: Could not find include file diode_typical
+Netlist error in file
+ $PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice at or near
+ line 376
+ .ENDL encountered without .LIB 
+Netlist warning in file
+ $PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice at or near
+ line 378
+ Extraneous data on .LIB ignored
+Netlist error: Could not find include file diode_ss
+Netlist error in file
+ $PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice at or near
+ line 383
+ .ENDL encountered without .LIB 
+Netlist warning in file
+ $PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice at or near
+ line 385
+ Extraneous data on .LIB ignored
+Netlist error: Could not find include file diode_ff
+Netlist error in file
+ $PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice at or near
+ line 390
+ .ENDL encountered without .LIB 
+Netlist error in file
+ $PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice at or near
+ line 422
+ .ENDL encountered without library name, currently inside .LIB RES_TYPICAL
+Netlist error in file
+ $PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice at or near
+ line 453
+ .ENDL encountered without library name, currently inside .LIB RES_SS
+Netlist error in file
+ $PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice at or near
+ line 484
+ .ENDL encountered without library name, currently inside .LIB RES_FF
+Netlist error in file
+ $PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice at or near
+ line 497
+ .ENDL encountered without library name, currently inside .LIB MIMCAP_TYPICAL
+Netlist error in file
+ $PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice at or near
+ line 508
+ .ENDL encountered without library name, currently inside .LIB MIMCAP_SS
+Netlist error in file
+ $PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice at or near
+ line 520
+ .ENDL encountered without library name, currently inside .LIB MIMCAP_FF
+Netlist error in file
+ $PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice at or near
+ line 535
+ .ENDL encountered without library name, currently inside .LIB MOSCAP_TYPICAL
+Netlist error in file
+ $PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice at or near
+ line 549
+ .ENDL encountered without library name, currently inside .LIB MOSCAP_FF
+Netlist error in file
+ $PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice at or near
+ line 563
+ .ENDL encountered without library name, currently inside .LIB MOSCAP_SS
+Netlist warning in file
+ $PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice at or near
+ line 566
+ Extraneous data on .LIB ignored
+Netlist error: Could not find include file statistical
+Netlist error in file
+ $PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice at or near
+ line 710
+ .ENDL encountered without .LIB 
+Netlist warning in file
+ $PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice at or near
+ line 713
+ Extraneous data on .LIB ignored
+Netlist error: Could not find include file noise_corner
+Netlist error in file
+ $PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice at or near
+ line 735
+ .ENDL encountered without .LIB 
+Netlist error in file
+ $PDK_ROOT/gf180mcuD/libs.tech/ngspice/sm141064.ngspice at or near
+ line 38240
+ .ENDL encountered with name DIODE, which does not match .LIB name DIO
+Netlist error: Unable to resolve parameter RSH_PPLUS_U_M found in .PARAM
+ statement RSH_PPLUS_U_M =
+ {{rsh_pplus2_u*(1+(mc_rsh_pplus_u/(rsh_pplus2_u))*res_mc_skew*sw_stat_global)}}
+Netlist error: Unable to resolve parameter RSH_NPLUS_U_M found in .PARAM
+ statement RSH_NPLUS_U_M =
+ {{rsh_nplus2_u*(1+(mc_rsh_nplus_u/(rsh_nplus2_u))*res_mc_skew*sw_stat_global)}}
+Simulation aborted due to error.  There are 0 MSG_FATAL errors and 30
+ MSG_ERROR errors
+*** Xyce Abort ***
+Simulation aborted due to error.  There are 0 MSG_FATAL errors and 30
+ MSG_ERROR errors
+
+
+*** Xyce Abort ***

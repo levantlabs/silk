@@ -1,0 +1,30 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Standalone waveform core browser test</title>
+<body>RUNNING</body>
+<script type="module">
+try {
+    const core = await import('./waveform-core.mjs');
+    if (Object.keys(core).sort().join(',') !== 'build_pyramid,collect_vector_candidates,decimate,designer_alias_map,first_row,plan,read,to_designer_name,to_spice_name,vector_address') throw Error('exports');
+    if (core.to_designer_name('xx1<0>.xy<1>.g[0]') !== 'xx1[0].xy[1].g[0]') throw Error('codec');
+    if (core.to_designer_name('x\xe9<0>.mid\n') !== 'x\xe9<0>.mid\n') throw Error('codec guard');
+    const bytes = await (await fetch('./fixture.raw')).arrayBuffer();
+    const payload = await core.decimate(core.plan(core.read(bytes, {file_name: 'fixture.raw'})),
+        {min_points: 0, base: 2, min_bucket: 1});
+    if (payload.format !== 2 || payload.plots.length !== 1) throw Error('payload');
+    const plot = payload.plots[0], signal = plot.signals[0];
+    if (plot.kind !== 'tran' || signal.name !== 'v(out)' || signal.unit !== 'V') throw Error('metadata');
+    if (!(plot.x.levels[0].x instanceof Float64Array)) throw Error('x dtype');
+    if (!(signal.levels[0].y instanceof Float32Array)) throw Error('y dtype');
+    if (!Object.is(signal.levels[0].y[0], -0) || signal.levels[0].y[2] !== -0.5) throw Error('data');
+    if (signal.levels.length !== 8 || !(signal.levels[1].x instanceof Float64Array)) throw Error('pyramid');
+    if (!payload.run.title.includes('\xc2\xb5') || !payload.run.title.includes('\xe9')) throw Error('title');
+    if (!/^[0-9a-f]{16}$/.test(payload.run.id) || !/^[0-9a-f]{8}$/.test(payload.run.state_key)) throw Error('identity');
+    const clone = structuredClone(payload);
+    if (!Object.is(clone.plots[0].signals[0].levels[0].y[0], -0)) throw Error('structured clone');
+    document.body.textContent = `PASS ${payload.run.id} ${payload.run.state_key}`;
+} catch (error) {
+    document.body.textContent = `FAIL ${error.stack}`;
+}
+fetch('/result', {method: 'POST', body: document.body.textContent});
+</script>

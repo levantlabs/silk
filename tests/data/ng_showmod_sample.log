@@ -1,0 +1,29 @@
+
+Note: No compatibility mode selected!
+
+
+Circuit: *** circuit: test_pair_offset.cir
+
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using SPARSE 1.3 as Direct Linear Solver
+
+No. of Data Rows : 1
+binary raw file "<sample dir>/test_pair_offset/tt/mc_0000/rawfile.raw"
+ BSIM4v5 models (Berkeley Short Channel IGFET Model-4)
+      model xdut.xmm1:sky130_fd_p
+
+       vth0              0.522291
+       toxe           4.15175e-09
+       voff            -0.0876736
+    nfactor               2.53592
+
+ BSIM4v5 models (Berkeley Short Channel IGFET Model-4)
+      model xdut.xmm2:sky130_fd_p
+
+       vth0               0.52404
+       toxe           4.15646e-09
+       voff             -0.088229
+    nfactor               2.53592
+
+ngspice-42 done

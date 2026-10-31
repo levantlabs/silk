@@ -1,0 +1,24 @@
+
+Note: No compatibility mode selected!
+
+
+Circuit: * task-330.3 probe: same bench, switch off (no '@' saves at all) -- baseline
+
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using SPARSE 1.3 as Direct Linear Solver
+
+Initial Transient Solution
+--------------------------
+
+Node                                   Voltage
+----                                   -------
+vdn                                          1
+vgn                                          1
+vdn#branch                        -6.94215e-05
+vgn#branch                                   0
+
+
+No. of Data Rows : 59
+binary raw file "ngspice42_tran_baseline_off.raw"
+ngspice-42 done

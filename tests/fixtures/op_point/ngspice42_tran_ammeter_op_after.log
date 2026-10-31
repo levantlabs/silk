@@ -1,0 +1,73 @@
+
+Note: No compatibility mode selected!
+
+
+Circuit: * task-330.3 probe: ammeter_wrapper mode combined with save_device_params.
+
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using SPARSE 1.3 as Direct Linear Solver
+
+Initial Transient Solution
+--------------------------
+
+Node                                   Voltage
+----                                   -------
+vd                                           1
+xdut.xmmm1.d_i                               1
+vg                                           1
+xdut.xmmm1.g_i                               1
+vs                                           0
+xdut.xmmm1.s_i                               0
+xdut.xmmm1.b_i                               0
+vvs#branch                         6.94215e-05
+vvg#branch                                   0
+vvd#branch                        -6.94215e-05
+v.xdut.xmmm1.vamm_b#branch         -4.6001e-12
+v.xdut.xmmm1.vamm_s#branch        -6.94215e-05
+v.xdut.xmmm1.vamm_g#branch                   0
+v.xdut.xmmm1.vamm_d#branch         6.94215e-05
+
+
+No. of Data Rows : 59
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using SPARSE 1.3 as Direct Linear Solver
+
+No. of Data Rows : 1
+Warning from checkvalid: vector @m.xdut.xmmm1.xmdev.msky130_fd_pr__nfet_01v8[ib] is not available or has zero length.
+Here are the vectors currently active:
+
+Title: * task-330.3 probe: ammeter_wrapper mode combined with save_device_params.
+Name: op1 (Operating Point)
+Date: Sun Sep 27 16:48:25  2026
+
+    @m.xdut.xmmm1.xmdev.msky130_fd_pr__nfet_01v8[gm]: admittance, real, 1 long
+    @m.xdut.xmmm1.xmdev.msky130_fd_pr__nfet_01v8[ib]: current, real, 0 long
+    @m.xdut.xmmm1.xmdev.msky130_fd_pr__nfet_01v8[id]: current, real, 1 long
+    @m.xdut.xmmm1.xmdev.msky130_fd_pr__nfet_01v8[ig]: current, real, 0 long
+    @m.xdut.xmmm1.xmdev.msky130_fd_pr__nfet_01v8[is]: current, real, 0 long
+    @m.xdut.xmmm1.xmdev.msky130_fd_pr__nfet_01v8[vth]: voltage, real, 1 long
+    m.xdut.xmmm1.xmdev.msky130_fd_pr__nfet_01v8#body: voltage, real, 1 long
+    m.xdut.xmmm1.xmdev.msky130_fd_pr__nfet_01v8#dbody: voltage, real, 1 long
+    m.xdut.xmmm1.xmdev.msky130_fd_pr__nfet_01v8#sbody: voltage, real, 1 long
+    v.xdut.xmmm1.vamm_b#branch: current, real, 1 long
+    v.xdut.xmmm1.vamm_d#branch: current, real, 1 long
+    v.xdut.xmmm1.vamm_g#branch: current, real, 1 long
+    v.xdut.xmmm1.vamm_s#branch: current, real, 1 long
+    vd                  : voltage, real, 1 long [default scale]
+    vg                  : voltage, real, 1 long
+    vs                  : voltage, real, 1 long
+    vvd#branch          : current, real, 1 long
+    vvg#branch          : current, real, 1 long
+    vvs#branch          : current, real, 1 long
+    xdut.xmmm1.b_i      : voltage, real, 1 long
+    xdut.xmmm1.d_i      : voltage, real, 1 long
+    xdut.xmmm1.g_i      : voltage, real, 1 long
+    xdut.xmmm1.s_i      : voltage, real, 1 long
+List of plots available:
+
+Current op1	* task-330.3 probe: ammeter_wrapper mode combined with save_device_params. (Operating Point)
+	tran1	* task-330.3 probe: ammeter_wrapper mode combined with save_device_params. (Transient Analysis)
+	const	Constant values (constants)
+ngspice-42 done

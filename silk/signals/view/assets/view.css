@@ -1,0 +1,1358 @@
+/* silk waveform explorer -- application styling.
+ * Engineering-instrument aesthetic: dark, high-contrast, monospace numerics.
+ */
+
+.silk-explorer {
+  --bg-0: #0d1013;
+  --bg-1: #14181d;
+  --bg-2: #1b2027;
+  --bg-3: #232933;
+  --border: #2b323d;
+  --border-soft: #232933;
+  --text-0: #dfe4ea;
+  --text-1: #a7b0bd;
+  --text-2: #6d7686;
+  --accent: #4fd1c5;
+  --accent-dim: #2e7a72;
+  --amber: #e0a640;
+  --cursor-a: #5b9bd5;
+  --cursor-b: #e08a3c;
+  --sev-info: #5b9bd5;
+  --sev-warn: #e0a640;
+  --sev-error: #e0575a;
+  --trace-1: #4fd1c5;
+  --trace-2: #e0a640;
+  --trace-3: #5b9bd5;
+  --trace-4: #e08a3c;
+  --trace-5: #9b7fe0;
+  --trace-6: #7fc97f;
+  --trace-7: #e0575a;
+  --trace-8: #c9c15a;
+  --trace-9: #5ad1a0;
+  --trace-10: #c98fd6;
+  --marker-1: #e0575a;
+  --marker-2: #5ad1a0;
+  --marker-3: #c98fd6;
+  --marker-4: #e0a640;
+  --marker-5: #9b7fe0;
+  --marker-6: #7fc97f;
+  --marker-7: #4fd1c5;
+  --marker-8: #c9c15a;
+  --annotation-band: rgba(79, 209, 197, 0.10);
+  --annotation-marker: #e0a640;
+  --tag-text: #08151a;
+  --selection-fill: rgba(79, 209, 197, 0.22);
+  --selection-row: rgba(79, 209, 197, 0.14);
+  --selection-row-hover: rgba(79, 209, 197, 0.20);
+  --invalid-fill: rgba(224, 87, 90, 0.28);
+  --drop-overlay: rgba(15, 20, 26, 0.85);
+  --overlay-backdrop: rgba(0, 0, 0, 0.5);
+  --shadow-color: rgba(0, 0, 0, 0.5);
+  --shadow-soft: rgba(0, 0, 0, 0.4);
+  --uplot-cursor: #607d8b;
+  --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  --ui: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  /* Item 6: single base text size every other size derives from, in a
+   * 4-tier ladder (base / -1 / -2 / -3px) so relative hierarchy survives a
+   * scale change. Overridden inline on the explorer root by FontScale.apply()
+   * when the toolbar text-size control or the setFontScale command changes
+   * it; the value here is only the "normal" default (also the fallback for
+   * old saved state with no fontScale field). --row-h derives from it too,
+   * so the picker gets a couple of px of breathing room at larger sizes
+   * without a separate constant to keep in sync. */
+  --fs-base: 14px;
+  --row-h: calc(var(--fs-base) + 10px);
+  --panel-chart-h: 260px;
+  position: relative;
+  isolation: isolate;
+  container: silk-explorer / inline-size;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--bg-0);
+  color: var(--text-0);
+  font-family: var(--ui);
+  font-size: var(--fs-base);
+}
+
+/* uPlot 1.6.32 stylesheet, bundled under the component scope.
+ * Copyright Leon Sorokin and contributors; MIT License.
+ * Source asset: uplot.min.css (kept unchanged beside this file). */
+@scope (.silk-explorer) {
+
+:scope, :scope *, :scope *::before, :scope *::after { box-sizing: border-box; }
+.uplot, .uplot *, .uplot *::before, .uplot *::after {box-sizing:border-box;}.uplot {font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";line-height: 1.5;width: min-content;}.u-title {text-align: center;font-size: 18px;font-weight: bold;}.u-wrap {position: relative;user-select: none;}.u-over, .u-under {position: absolute;}.u-under {overflow: hidden;}.uplot canvas {display: block;position: relative;width: 100%;height: 100%;}.u-axis {position: absolute;}.u-legend {font-size: 14px;margin: auto;text-align: center;}.u-inline {display: block;}.u-inline * {display: inline-block;}.u-inline tr {margin-right: 16px;}.u-legend th {font-weight: 600;}.u-legend th > * {vertical-align: middle;display:inline-block;}.u-legend .u-marker {width:1em;height:1em;margin-right:4px;background-clip:padding-box !important;}.u-inline.u-live th::after {content:":";vertical-align:middle;}.u-inline:not(.u-live) .u-value {display:none;}.u-series > * {padding:4px;}.u-series th {cursor:pointer;}.u-legend .u-off > * {opacity:0.3;}.u-select {background:var(--selection-fill);position:absolute;pointer-events:none;}.u-cursor-x, .u-cursor-y {position:absolute;left:0;top:0;pointer-events:none;will-change:transform;}.u-hz .u-cursor-x, .u-vt .u-cursor-y {height:100%;border-right:1px dashed var(--uplot-cursor);}.u-hz .u-cursor-y, .u-vt .u-cursor-x {width:100%;border-bottom:1px dashed var(--uplot-cursor);}.u-cursor-pt {position:absolute;top:0;left:0;border-radius:50%;border:0 solid;pointer-events:none;will-change:transform;background-clip:padding-box !important;}.u-axis.u-off, .u-select.u-off, .u-cursor-x.u-off, .u-cursor-y.u-off, .u-cursor-pt.u-off {display:none;}
+
+:scope button, :scope select, :scope input {
+  font-family: inherit;
+  font-size: calc(var(--fs-base) - 1px);
+  color: var(--text-0);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 3px 7px;
+}
+
+:scope button {
+  cursor: pointer;
+}
+
+:scope button:hover { background: var(--bg-3); }
+:scope button:active { background: var(--bg-1); }
+:scope button:disabled { opacity: 0.4; cursor: default; }
+
+:scope input:focus, :scope select:focus, :scope button:focus {
+  outline: 1px solid var(--accent);
+  outline-offset: 0;
+}
+
+[data-silk="app"] {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+/* ---------------------------------------------------------------- toolbar */
+
+[data-silk="toolbar"] {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 6px 10px;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--border);
+  min-height: 34px;
+  /* Item 6 gotcha, found while verifying: every control's text (and its
+   * button padding-driven width) grows with --fs-base, and the left and right
+   * toolbar groups are both `flex: 0 0 auto` (never shrink) -- at the
+   * "Large" step this measurably overflowed the 1280px design floor width
+   * (toolbar content ~1485px), silently pushing View/Export/? off the
+   * right edge with no way to reach them. TASK-241: an embedded panel is
+   * routinely narrower than that floor, so `overflow-x: auto` (scroll the
+   * toolbar, never shown -- hosts can embed this with no visible scrollbar)
+   * is replaced by `flex-wrap: wrap` here and on the two control groups
+   * below: the toolbar grows onto additional rows instead, and every
+   * control stays reachable at its normal size. The toolbar has no fixed
+   * height (`flex: 0 0 auto` in the app's column layout, `[data-silk=
+   * "body"]` is `flex: 1 1 auto; min-height: 0`), so the extra rows push
+   * the plot area down rather than overlapping it.
+   *
+   * `flex-wrap` on the toolbar alone is not enough: toolbar-left/-right are
+   * each a single flex item from the toolbar's point of view, and an
+   * un-shrinkable item that is wider than the row does not wrap itself --
+   * it just overflows (confirmed while verifying: the group rendered at
+   * its full ~900px content width inside a 300px toolbar). `display:
+   * contents` below makes their own box disappear so their buttons become
+   * direct items of THIS wrapping flex row -- one flat, wrapping run of
+   * controls, left group then the center title then the right group in
+   * DOM order. `toolbar-center` stays a real box (not flattened): it must
+   * keep its own `justify-content: center` to center the run title, which
+   * flattening would lose. */
+}
+
+[data-silk="toolbar-left"], [data-silk="toolbar-right"] {
+  display: contents;
+}
+
+/* Each control keeps its natural size and wraps onto a new row instead of
+ * shrinking: a flex item's default `min-width: auto` already floors it at
+ * min-content, but `<select>` in particular can otherwise be squeezed
+ * toward an unreadably narrow box before wrapping kicks in. */
+[data-silk="toolbar-left"] > *, [data-silk="toolbar-right"] > * {
+  flex: 0 0 auto;
+}
+
+/* A flex row (not the old single-line ellipsis block) so the "i" button
+ * can never be swallowed by a long title's truncation: the title and subtitle
+ * each ellipsis-truncate within their own shrinkable flex slot, while the
+ * context-info button and cursor readout are `flex: 0 0 auto`
+ * and always keep their full size. A plain `text-overflow:ellipsis` on
+ * this container (the pre-context-and-scopes layout) truncated the WHOLE
+ * line as one text run, which silently clipped the button off-screen
+ * together with the tail of a long title -- found while adding it. */
+/* The title is the provenance feature's whole point ("what was
+ * simulated"), so it gets a real floor rather than being the first thing
+ * squeezed out: with the scope + font-scale controls added, a bare
+ * `min-width:0` collapsed it to "5T OTA …" at 1440px. Below the floor the
+ * toolbar's own overflow-x takes over instead of shrinking it further. */
+[data-silk="toolbar-center"] {
+  flex: 1 1 auto;
+  min-width: 22ch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: var(--text-1);
+}
+
+[data-silk="cursor-readout"] {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+[data-silk="app-title"] {
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+[data-silk="plot-select"] { max-width: 34ch; }
+
+[data-silk="run-title-group"] {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+[data-silk="run-title"] {
+  font-family: var(--mono);
+  font-size: calc(var(--fs-base) - 1px);
+  flex: 0 1 auto;
+  min-width: 3ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* view-context-and-scopes design §2.3: subtitle sits beside the title,
+ * visibly dimmer (--text-2 vs the toolbar center's own --text-1). Hidden via
+ * the `hidden` attribute (not display:none in a rule) so the base UA rule
+ * wins while empty -- the same convention as the reload and add-selected controls.
+ * `flex: 0 1 auto` + its own ellipsis (not inherited from an ancestor):
+ * a long title/subtitle pair truncates gracefully instead of pushing the
+ * "i" button out of the visible toolbar. */
+[data-silk="run-subtitle"] {
+  font-family: var(--mono);
+  font-size: calc(var(--fs-base) - 2px);
+  color: var(--text-2);
+  flex: 0 1 auto;
+  min-width: 2ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The context "i" button: same single-glyph shape as the shortcuts button,
+ * round to read as an info affordance rather than a text button. Hidden
+ * (no button at all, §2.3) whenever the payload carries no `context`.
+ * `flex: 0 0 auto`: never shrinks or truncates away, unlike the title/
+ * subtitle text beside it (see the toolbar-center comment). */
+[data-silk="context-info-btn"] {
+  flex: 0 0 auto;
+  padding: 1px 8px;
+  border-radius: 50%;
+  font-style: italic;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.badge {
+  font-size: calc(var(--fs-base) - 3px);
+  padding: 3px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  color: var(--text-1);
+  white-space: nowrap;
+}
+
+.badge.badge-warn {
+  border-color: var(--sev-warn);
+  color: var(--sev-warn);
+}
+
+.badge-retry {
+  margin-left: 6px;
+  text-decoration: underline;
+  cursor: pointer;
+  color: var(--accent);
+}
+
+/* ------------------------------------------------------------ dropdown menus */
+
+.dropdown-wrap { position: relative; }
+
+/* Base rule omits `display`: author rules beat the UA's `[hidden]
+ * { display:none }` regardless of specificity, so a `display:flex` here
+ * would paint every closed menu as an empty box. */
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 4px;
+  z-index: 60;
+  min-width: 200px;
+  box-shadow: 0 8px 24px var(--shadow-color);
+}
+
+.dropdown-menu:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* The toolbar clips overflow, so the renderer reparents open menus under the
+ * explorer root and supplies root-relative coordinates. Absolute positioning
+ * keeps the menu visible while containing it within its explorer. */
+.anchored-menu {
+  position: absolute;
+  left: 0;
+  right: auto;
+  top: 0;
+}
+
+.dropdown-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 5px 8px;
+  border-radius: 3px;
+  font-size: calc(var(--fs-base) - 2px);
+}
+.dropdown-menu button:hover { background: var(--bg-3); }
+.dropdown-menu button:disabled { opacity: 0.4; cursor: default; }
+
+.derive-menu {
+  min-width: 0;
+  width: max-content;
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+.derive-menu button { white-space: normal; }
+.derive-reason {
+  padding: 5px 8px;
+  color: var(--amber);
+  font-size: calc(var(--fs-base) - 2px);
+}
+.derive-scale {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px;
+  font-size: calc(var(--fs-base) - 2px);
+}
+.derive-scale label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.derive-scale label span { min-width: 4em; }
+.derive-scale input { flex: 1; min-width: 8em; }
+
+.dropdown-sep {
+  height: 1px;
+  background: var(--border-soft);
+  margin: 3px 2px;
+}
+
+.dropdown-heading {
+  font-size: calc(var(--fs-base) - 3px);
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 4px 8px 1px;
+}
+
+/* Run-provenance popover (view-context-and-scopes design §2.3): a
+ * label/value table, severity-colored via the SAME --sev-* vars the
+ * annotation badges already use (Annotations.severityColor mirrors these
+ * as canvas-drawn hex; here it's the real CSS vars since this is DOM, not
+ * canvas). */
+.context-popover { min-width: 220px; max-width: 420px; }
+.context-popover table {
+  border-collapse: collapse;
+  width: 100%;
+  font-family: var(--mono);
+  font-size: calc(var(--fs-base) - 2px);
+}
+.context-popover td {
+  padding: 3px 8px;
+  vertical-align: top;
+}
+.context-popover td.context-label {
+  color: var(--text-2);
+  white-space: nowrap;
+  padding-right: 12px;
+}
+.context-popover td.context-value {
+  word-break: break-word;
+}
+.context-popover td.context-value.sev-info { color: var(--sev-info); }
+.context-popover td.context-value.sev-warn { color: var(--sev-warn); }
+.context-popover td.context-value.sev-error { color: var(--sev-error); }
+
+.panel-export-wrap { position: relative; flex: 0 0 auto; }
+/* No explicit font-size: inherits the base `button` rule (this used to
+ * hardcode the same value the base rule already produced). */
+.panel-export-btn { padding: 3px 6px; }
+.panel-yauto-btn { font-size: calc(var(--fs-base) - 2px); padding: 2px 6px; }
+
+/* ------------------------------------------------------------- markers panel */
+
+/* Base rule omits `display` so the UA's `[hidden] { display:none }` wins
+ * (same trap as the fatal banner -- an explicit `display:flex` here would
+ * paint the drawer even while hidden). */
+[data-silk="markers-panel"] {
+  flex: 0 0 auto;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--border);
+  max-height: 220px;
+}
+
+[data-silk="markers-panel"]:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+}
+
+[data-silk="markers-panel-header"] {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+[data-silk="markers-panel-title"] {
+  font-weight: 600;
+  color: var(--accent);
+  flex: 1 1 auto;
+}
+
+[data-silk="markers-panel-close"] {
+  border: none;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 15px;
+  line-height: 1;
+}
+[data-silk="markers-panel-close"]:hover { color: var(--sev-error); }
+
+[data-silk="markers-table-wrap"] {
+  overflow: auto;
+  padding: 4px 10px 8px;
+}
+
+[data-silk="markers-table"] {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: calc(var(--fs-base) - 2px);
+}
+[data-silk="markers-table"] th, [data-silk="markers-table"] td {
+  padding: 3px 8px;
+  text-align: right;
+  white-space: nowrap;
+  border-top: 1px solid var(--border-soft);
+}
+[data-silk="markers-table"] th { color: var(--text-2); font-weight: 500; }
+[data-silk="markers-table"] td.sig-name, [data-silk="markers-table"] th:first-child {
+  text-align: left;
+}
+[data-silk="markers-table"] td.sig-name {
+  color: var(--text-0);
+  cursor: text;
+}
+[data-silk="markers-table"] .marker-del {
+  border: none;
+  background: transparent;
+  color: var(--text-2);
+  font-weight: bold;
+  padding: 0 4px;
+}
+[data-silk="markers-table"] .marker-del:hover { color: var(--sev-error); background: transparent; }
+
+/* --------------------------------------------------------- inline value edit */
+
+.editable-value {
+  cursor: text;
+  text-decoration: underline dotted 1px;
+  text-decoration-color: var(--text-2);
+}
+.editable-value:hover { color: var(--text-0); }
+
+.value-edit-input, .inline-edit-input {
+  width: 92px;
+  padding: 1px 3px;
+  font-size: calc(var(--fs-base) - 3px);
+}
+
+.value-edit-input.invalid {
+  border-color: var(--sev-error);
+  background: var(--invalid-fill);
+}
+
+/* ------------------------------------------------------------- named markers */
+
+.marker-badge {
+  position: absolute;
+  bottom: 0;
+  transform: translate(-50%, 100%);
+  font-family: var(--mono);
+  font-size: calc(var(--fs-base) - 3px);
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 0 3px 3px 3px;
+  cursor: grab;
+  pointer-events: auto;
+  color: var(--tag-text);
+  z-index: 5;
+  box-shadow: 0 1px 3px var(--shadow-color);
+}
+.marker-badge:active { cursor: grabbing; }
+.marker-badge input {
+  width: 46px;
+  font-size: calc(var(--fs-base) - 3px);
+  padding: 0 2px;
+}
+
+/* ------------------------------------------------------------------- body */
+
+[data-silk="body"] {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+}
+
+[data-silk="sidebar"] {
+  flex: 0 0 300px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--bg-1);
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+  /* TASK-341: a second, nested container (query axis: both, since `size`
+   * is the only container-type keyword that contains height -- there is no
+   * standalone "block-size" keyword) so the compact-mode query below can key
+   * off THIS element's own rendered height without touching `.silk-explorer`
+   * (view.css ~68), which governs the toolbar/plot-area width breakpoints and
+   * must stay inline-size-only. Safe to contain both axes here: this
+   * element's width is already a fixed flex-basis (300px, or the responsive
+   * override's 260px below), never derived from its content, and its height
+   * is already a used value from flex `align-items: stretch` in
+   * `[data-silk="body"]`, never from its content either -- confirmed by
+   * measuring an unchanged rendered width (260px / 300px, no overflow) at
+   * three mount widths with an artificially long signal name, before and
+   * after adding this containment. */
+  container-type: size;
+  container-name: silk-sidebar;
+}
+
+[data-silk="picker-controls"] {
+  flex: 0 0 auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+[data-silk="picker-filter-wrap"] {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+[data-silk="picker-filter-input-wrap"] {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+[data-silk="picker-filter"] {
+  width: 100%;
+  padding-right: 22px;
+}
+
+[data-silk="picker-filter-clear"] {
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px 6px;
+}
+[data-silk="picker-filter-clear"]:hover { color: var(--sev-error); background: transparent; }
+
+/* TASK-341: the filter row's compact-mode-only count badge and "more
+ * actions" menu button (see the @container silk-sidebar block below). Both
+ * stay in the DOM at every mount size -- kept out of layout via `display:
+ * none` rather than `hidden`, since the compact query needs to flip them
+ * back on and an author `display` rule already beats the UA `[hidden]` rule
+ * (same reasoning as the dropdown-menu rule above). */
+[data-silk="picker-count-inline"],
+[data-silk="picker-more-wrap"] {
+  display: none;
+  flex: 0 0 auto;
+}
+[data-silk="picker-count-inline"] {
+  font-size: 11px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+[data-silk="picker-more-btn"] {
+  padding: 3px 6px;
+}
+
+[data-silk="picker-actions"] {
+  display: flex;
+  gap: 4px;
+}
+
+/* TASK-341: fits 3 buttons (Plot visible / Clear panel / Add, folding in
+ * what used to be add-selected-btn's own reserved row) on one line, in both
+ * the 300px standalone sidebar and the 260px responsive overlay one -- the
+ * generic button rule's 7px horizontal padding left "Clear panel" a few px
+ * too wide for either at the old 6px gap, wrapping it (and every sibling,
+ * since flex row height comes from the tallest child) onto two lines.
+ * min-width: 0 lets a flex item shrink below its text's content width
+ * instead of forcing the row wider than the sidebar (the overflow is
+ * nowhere near enough to actually clip at either sidebar width, confirmed
+ * empirically: all three render single-line at both 260px and 300px). */
+[data-silk="picker-actions"] button {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 3px 4px;
+  font-size: calc(var(--fs-base) - 2px);
+}
+
+[data-silk="add-selected-btn"] {
+  color: var(--accent);
+  border-color: var(--accent-dim);
+}
+
+/* TASK-338: this button's slot must stay in the flex column even while
+ * empty-selection hides it -- an appearing/disappearing row shifted every
+ * picker row below it under the pointer, so the second click of a
+ * double-click landed on the wrong row. Two attribute selectors beat the
+ * UA's `[hidden] { display:none }` (see the dropdown-menu comment above for
+ * the same idiom run in reverse), so the button keeps its box and only its
+ * paint/interactivity toggle with the attribute. */
+[data-silk="add-selected-btn"][hidden] {
+  display: block;
+  visibility: hidden;
+}
+
+[data-silk="picker-tree-actions"] {
+  display: flex;
+  gap: 6px;
+}
+[data-silk="picker-tree-actions"] button { flex: 0 0 auto; }
+[data-silk="tree-mode-toggle"] { flex: 1 1 auto; }
+[data-silk="tree-mode-toggle"].flat-active { color: var(--amber); border-color: var(--amber); }
+[data-silk="add-selected-btn"]:hover { background: var(--bg-3); }
+
+[data-silk="picker-list"] {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  position: relative;
+}
+
+[data-silk="picker-count"] {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--text-2);
+  border-top: 1px solid var(--border-soft);
+}
+
+.picker-row {
+  position: absolute;
+  left: 0; right: 0;
+  height: var(--row-h);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 6px;
+  font-family: var(--mono);
+  font-size: calc(var(--fs-base) - 2px);
+  white-space: nowrap;
+  overflow: hidden;
+  border-bottom: 1px solid var(--bg-1);
+  cursor: grab;
+}
+
+.picker-row:hover { background: var(--bg-2); }
+.picker-row.dragging { opacity: 0.4; }
+
+.picker-row.selected {
+  background: var(--selection-row);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.picker-row.selected:hover { background: var(--selection-row-hover); }
+
+.picker-row .handle {
+  color: var(--text-2);
+  flex: 0 0 auto;
+  cursor: grab;
+}
+
+.picker-row .pname {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-0);
+}
+
+.picker-row .ptype {
+  flex: 0 0 auto;
+  color: var(--text-2);
+  font-size: calc(var(--fs-base) - 3px);
+}
+
+.picker-row .pbadge {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-left: auto;
+}
+
+.pbadge.sev-info { background: var(--sev-info); }
+.pbadge.sev-warn { background: var(--sev-warn); }
+.pbadge.sev-error { background: var(--sev-error); }
+
+.picker-row .pnonfinite {
+  flex: 0 0 auto;
+  color: var(--sev-warn);
+  font-size: calc(var(--fs-base) - 3px);
+}
+
+/* ---------------------------------------------------------- hier picker (v1.3) */
+
+.picker-row .pindent { flex: 0 0 auto; white-space: pre; }
+
+.picker-row .ptwisty {
+  flex: 0 0 auto;
+  width: 12px;
+  color: var(--text-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.picker-row .plabel {
+  margin-left: 6px; color: var(--text-1); font-size: 0.9em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.picker-row.group-row .pname { color: var(--text-1); }
+/* A "hybrid" row (item 5): a tree node that is BOTH a signal and the
+ * parent of other signals (e.g. a device that also has .id/.rd children).
+ * It renders as one group-row (twisty + count) but its label should read
+ * like a real leaf, not a dim organizational label. */
+.picker-row.hybrid-row .pname { color: var(--text-0); }
+.picker-row .pcount {
+  flex: 0 0 auto;
+  color: var(--text-2);
+  font-size: calc(var(--fs-base) - 3px);
+  margin-left: auto;
+  padding-right: 2px;
+}
+
+.picker-row.focused-row {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.picker-row.flat-header {
+  color: var(--text-2);
+  font-size: calc(var(--fs-base) - 3px);
+  cursor: default;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--border-soft);
+}
+.picker-row.flat-header:hover { background: var(--bg-1); }
+
+/* Explorer file target; internal signal drags use text/plain. */
+:scope.view-drop-active::after {
+  content: 'drop .raw to open waveforms or .silkview.json to load a view';
+  position: absolute;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--drop-overlay);
+  color: var(--accent);
+  font-size: calc(var(--fs-base) + 6px);
+  font-family: var(--mono);
+  pointer-events: none;
+  border: 3px dashed var(--accent);
+}
+
+/* -------------------------------------------------------------------- main */
+
+[data-silk="main"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+[data-silk="empty-hint"], [data-silk="zero-point-hint"] {
+  color: var(--text-2);
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+[data-silk="panels"] {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+[data-silk="panels"].cols-2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.panel {
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.panel.focused {
+  border-color: var(--accent-dim);
+  box-shadow: 0 0 0 1px var(--accent-dim);
+}
+
+.panel.panel-dragging {
+  opacity: 0.45;
+}
+
+.panel.panel-reorder-target {
+  outline: 2px dashed var(--amber);
+  outline-offset: -2px;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.panel-drag-handle {
+  flex: 0 0 auto;
+  color: var(--text-2);
+  cursor: grab;
+  padding: 0 2px;
+  font-size: 13px;
+  line-height: 1;
+  user-select: none;
+}
+.panel-drag-handle:hover { color: var(--text-0); }
+.panel-drag-handle:active { cursor: grabbing; }
+
+.panel-chips {
+  flex: 1 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-3);
+  border-radius: 10px;
+  padding: 2px 6px 2px 4px;
+  font-family: var(--mono);
+  font-size: calc(var(--fs-base) - 2px);
+  max-width: 240px;
+}
+
+.chip .swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+
+.chip .cname {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chip .cremove {
+  cursor: pointer;
+  color: var(--text-2);
+  font-weight: bold;
+  padding: 0 2px;
+}
+.chip .cremove:hover { color: var(--sev-error); }
+
+.chip .cnote {
+  width: 6px; height: 6px; border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.panel-header select.panel-ymode { flex: 0 0 auto; }
+
+.panel-close {
+  flex: 0 0 auto;
+  color: var(--text-2);
+  border: none;
+  background: transparent;
+  font-size: 15px;
+  line-height: 1;
+  padding: 2px 4px;
+}
+.panel-close:hover { color: var(--sev-error); background: var(--bg-3); }
+
+.panel-drop-target {
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+}
+
+.panel-chart {
+  height: var(--panel-chart-h);
+  padding: 6px 6px 0 6px;
+}
+
+.panel-chart .uplot {
+  width: 100% !important;
+}
+
+.panel-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: calc(var(--fs-base) - 2px);
+}
+
+.panel-table th, .panel-table td {
+  padding: 2px 6px;
+  text-align: right;
+  white-space: nowrap;
+  border-top: 1px solid var(--border-soft);
+}
+
+.panel-table th {
+  color: var(--text-2);
+  font-weight: 500;
+  text-align: right;
+}
+
+.panel-table td.sig-name {
+  text-align: left;
+  color: var(--text-0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 22ch;
+}
+
+.panel-table .swatch-inline {
+  display: inline-block;
+  width: 8px; height: 8px; border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+.panel-cursor-row, .panel-monitor-row {
+  padding: 0 4px 4px 4px;
+  overflow-x: auto;
+}
+
+/* Item 2: per-panel Y-range readout (reuses the cursorRowEl slot that
+ * already sat between the chart and the monitor table, previously unused). */
+.panel-yrange-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: calc(var(--fs-base) - 2px);
+  color: var(--text-2);
+}
+.panel-multi-yrange { flex-direction: column; align-items: flex-start; }
+.panel-axis-range { display: flex; align-items: center; gap: 6px; }
+.panel-yrange-row .editable-value { color: var(--text-1); }
+.panel-yrange-dash { color: var(--text-2); }
+
+/* ------------------------------------------------------------- cursor badges */
+
+.cursor-badge {
+  position: absolute;
+  top: 0;
+  transform: translate(-50%, -100%);
+  font-family: var(--mono);
+  font-size: calc(var(--fs-base) - 3px);
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 3px 3px 3px 0;
+  cursor: grab;
+  pointer-events: auto;
+  color: var(--tag-text);
+  z-index: 5;
+  box-shadow: 0 1px 3px var(--shadow-color);
+}
+.cursor-badge:active { cursor: grabbing; }
+.cursor-badge-a { background: var(--cursor-a); }
+.cursor-badge-b { background: var(--cursor-b); }
+
+.cursor-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 10px;
+  font-family: var(--mono);
+}
+.cursor-chip-label {
+  color: var(--tag-text);
+  border-radius: 3px;
+  padding: 0 4px;
+  font-weight: 700;
+  font-size: calc(var(--fs-base) - 3px);
+}
+.cursor-chip-a .cursor-chip-label { background: var(--cursor-a); }
+.cursor-chip-b .cursor-chip-label { background: var(--cursor-b); }
+.cursor-readout-extra { color: var(--text-1); }
+
+.panel-monitor-row { border-top: 1px dashed var(--border-soft); }
+
+/* --------------------------------------------------------------- constants */
+
+[data-silk="constants-view"] {
+  overflow: auto;
+}
+
+[data-silk="constants-view"] table {
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: calc(var(--fs-base) - 1px);
+  min-width: 320px;
+}
+
+[data-silk="constants-view"] th, [data-silk="constants-view"] td {
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  text-align: left;
+}
+
+[data-silk="constants-view"] th {
+  background: var(--bg-2);
+  color: var(--text-1);
+}
+
+[data-silk="constants-view"] td.val { text-align: right; }
+
+/* TASK-591: operating point as dot-plot strips inside ordinary panels.
+   Colours are theme variables only; a dot's fill is set from colorFor. */
+.panel-op .panel-monitor-row, .panel-op .panel-cursor-row { display: none; }
+.panel-chart.op-strips { height: auto; min-height: 0; overflow: auto; }
+.op-heading { color: var(--text-1); margin: 8px 0 4px; font-size: var(--fs-base); }
+.op-empty { color: var(--text-2); padding: 12px 4px; }
+.op-strip { position: relative; }
+.op-svg { display: block; font-family: var(--mono); font-size: calc(var(--fs-base) - 2px); }
+.op-svg text { fill: var(--text-1); }
+.op-grid { stroke: var(--border-soft); }
+.op-stem { stroke: var(--border); }
+.op-ref { stroke: var(--amber); stroke-dasharray: 4 3; }
+.op-marker { stroke-dasharray: 2 2; stroke-width: 1; }
+.op-svg text.op-reftext { fill: var(--amber); }
+.op-svg text.op-tick { fill: var(--text-2); }
+.op-svg text.op-name, .op-svg text.op-value { fill: var(--text-0); }
+.op-svg text.op-added { fill: var(--accent); }
+.op-band { fill: var(--accent); opacity: 0; }
+.op-row.op-hover .op-band { opacity: 0.18; }
+.op-row.op-fresh .op-band { opacity: 0.35; }
+.panel-sort { background: var(--bg-2); color: var(--text-0); border: 1px solid var(--border); border-radius: 4px; }
+.op-marker-badge { top: 2px; bottom: auto; transform: translateX(-50%); border: 1px solid var(--border); }
+.op-marker-badge:not(.is-ref) { background: var(--bg-2); }
+.picker-row.op-hover { outline: 1px solid var(--accent); outline-offset: -1px; }
+
+/* -------------------------------------------------------------------- misc */
+
+[data-silk="toast-container"] {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 50;
+}
+
+.toast {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  padding: 7px 12px;
+  font-size: calc(var(--fs-base) - 1px);
+  box-shadow: 0 2px 10px var(--shadow-soft);
+  max-width: 360px;
+}
+
+.toast-action {
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.toast-action:hover { color: var(--text-0); }
+
+/* Base rule intentionally omits `display` so the `[hidden]` UA rule
+ * (display:none) keeps winning while hidden; only the un-hidden state
+ * switches it to a full-root flex overlay. Putting `display:flex` in this
+ * base rule would out-specificity `[hidden]` and paint an opaque overlay over
+ * the whole app even while "hidden". */
+[data-silk="fatal-banner"] {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-0);
+  color: var(--sev-error);
+  padding: 40px;
+  font-family: var(--mono);
+  font-size: var(--fs-base);
+  text-align: center;
+  z-index: 100;
+  white-space: pre-wrap;
+}
+[data-silk="fatal-banner"]:not([hidden]) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+[data-silk="shortcuts-help"] {
+  position: absolute;
+  inset: 0;
+  z-index: 90;
+  background: var(--overlay-backdrop);
+}
+[data-silk="shortcuts-help"]:not([hidden]) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.help-inner {
+  position: relative;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px 20px;
+  min-width: 280px;
+  box-shadow: 0 8px 30px var(--shadow-color);
+}
+[data-silk="shortcuts-close"] {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-1);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+[data-silk="shortcuts-close"]:hover { background: var(--bg-2); color: var(--text-0); }
+.help-inner h3 {
+  margin: 0 0 10px 0;
+  color: var(--accent);
+  font-size: var(--fs-base);
+}
+.help-inner table { border-collapse: collapse; font-size: calc(var(--fs-base) - 1px); }
+.help-inner td { padding: 3px 10px 3px 0; color: var(--text-1); }
+.help-inner td:first-child {
+  font-family: var(--mono);
+  color: var(--text-0);
+  white-space: nowrap;
+}
+
+/* uPlot tint -- keep uPlot's own layout, just match the dark theme */
+.uplot { color: var(--text-1); }
+.u-axis { color: var(--text-2); }
+/* The outline is an inset shadow, not a border: uPlot leaves an empty
+ * selection as a 0x0 box at the plot's top-left, and a border on a
+ * border-box element cannot shrink below 2x2 px (TASK-347). */
+.u-select {
+  background: var(--selection-fill);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+/* ------------------------------------------------------------- Y zoom (item 2) */
+
+/* Full-width band drawn while a shift/ctrl-drag Y-zoom is in progress --
+ * same visual language as uPlot's own .u-select X-zoom box, just spanning
+ * the panel's full width since only Y is changing. */
+.y-zoom-box {
+  position: absolute;
+  background: var(--selection-fill);
+  border-top: 1px solid var(--accent);
+  border-bottom: 1px solid var(--accent);
+  pointer-events: none;
+  z-index: 4;
+}
+
+/* --------------------------------------------------------- series style (item 3) */
+
+/* Root-appended outside .panel, whose rounded corners clip overflow, and
+ * positioned from root-relative coordinates supplied by the renderer. */
+.style-popover {
+  position: absolute;
+  min-width: 190px;
+  max-width: 230px;
+  left: 0;
+  right: auto;
+  top: 0;
+}
+
+.style-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 2px 4px 4px;
+}
+
+.style-swatch-opt {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  padding: 0;
+}
+.style-swatch-opt.active { border-color: var(--text-0); }
+
+.style-btn-row {
+  display: flex;
+  gap: 3px;
+  padding: 2px 4px 4px;
+  flex-wrap: wrap;
+}
+
+/* Override the generic `.dropdown-menu button` block/full-width rule --
+ * these are small inline pills in a flex row, not menu list items. */
+.style-popover .style-opt-btn {
+  display: inline-block;
+  width: auto;
+  text-align: center;
+  flex: 0 0 auto;
+  font-size: calc(var(--fs-base) - 3px);
+  padding: 2px 7px;
+}
+.style-popover .style-opt-btn.active {
+  color: var(--accent);
+  border-color: var(--accent-dim);
+  background: var(--bg-3);
+}
+.style-popover > button:not(.style-opt-btn) { margin-top: 2px; }
+
+/* Sample-dots toggle: colour only, so pressing it never changes the toolbar's size. */
+[data-silk="samples-toggle"][aria-pressed="true"] {
+  color: var(--accent);
+  border-color: var(--accent-dim);
+  background: var(--bg-3);
+}
+
+/* ------------------------------------------------------------ responsive */
+
+[data-silk="sidebar-toggle"] { display: none; }
+
+@container silk-explorer (max-width: 900px) {
+  [data-silk="sidebar-toggle"] {
+    display: inline-flex;
+  }
+  [data-silk="sidebar"] {
+    position: absolute;
+    top: 34px;
+    bottom: 0;
+    left: 0;
+    width: 260px;
+    z-index: 40;
+    transform: translateX(-100%);
+    transition: transform 0.15s ease-out;
+    box-shadow: 2px 0 14px var(--shadow-color);
+  }
+  :scope.sidebar-open [data-silk="sidebar"] {
+    transform: translateX(0);
+  }
+  [data-silk="toolbar-center"] { display: none; }
+}
+
+/* TASK-341: below this, full-mode chrome (picker-controls 107px + the
+ * picker-count row's 24px = 131px) would leave less than 5 full rows in
+ * picker-list (120px) -- derived, not chosen by feel: compact mode is
+ * exactly the sidebar heights where 131 + 120 = 251px doesn't fit, i.e.
+ * max-height: 250px. Collapses picker-actions/picker-tree-actions (six
+ * controls) into the picker-more-btn dropdown, and moves picker-count's
+ * text inline into the filter row -- see explorer.mjs's
+ * fillPickerMoreMenu/installPickerMoreMenu and the picker-count-inline
+ * setText call in Picker.rebuild(). Both re-measured against the mount-
+ * height table in the task description; see the task notes for the
+ * before/after numbers. */
+@container silk-sidebar (max-height: 250px) {
+  [data-silk="picker-controls"] {
+    padding: 2px;
+    gap: 4px;
+    border-bottom: none;
+  }
+  [data-silk="picker-actions"],
+  [data-silk="picker-tree-actions"] {
+    display: none;
+  }
+  [data-silk="picker-count-inline"],
+  [data-silk="picker-more-wrap"] {
+    display: flex;
+  }
+  [data-silk="picker-count"] {
+    display: none;
+  }
+}
+
+@container silk-explorer (max-width: 640px) {
+  .panel-header { flex-wrap: wrap; }
+}
+
+/* The scope key is a full hierarchy path (`onoise.m.xdut.xmm1`), which made
+ * the button the widest control in the toolbar and starved the run title.
+ * Truncate here; the full path stays in the menu and in the title tooltip. */
+[data-silk="scope-btn"] {
+  max-width: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Title and subtitle share one shrinkable slot, so on a normal 1440px
+ * screen both ellipsized to nothing once the scope + text-size controls
+ * joined the toolbar. The subtitle is secondary and is repeated verbatim
+ * in the info popover, so it yields first and the title keeps the room. */
+@container silk-explorer (max-width: 1600px) {
+  [data-silk="run-subtitle"] { display: none; }
+}
+
+} /* @scope (.silk-explorer) */

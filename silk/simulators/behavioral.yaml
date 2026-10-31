@@ -1,0 +1,20 @@
+# Behavioural backend configuration (see ngspice.yaml for the schema).
+#
+# The 'behavioral' backend (TASK-448.1) runs silk's own numpy engine on the
+# Module: there is no SPICE deck and no simulator binary, so there are no
+# options to emit. `accepts_options: false` makes set_simulator_options(...)
+# raise for every key, instead of storing options that nothing would ever read.
+#
+# The portable preset names are kept, each empty, so a bench that asks for
+# preset='tight' runs unchanged when only its simulator setting moves to
+# 'behavioral' (owner rule D1): a fixed-grid numpy evaluation has no solver
+# tolerance to tighten.
+
+name: behavioral
+
+accepts_options: false
+
+presets:
+  default: {}
+  tight: {}
+  fast: {}

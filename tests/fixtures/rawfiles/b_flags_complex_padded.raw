@@ -1,0 +1,14 @@
+Title: b flags complex padded
+Date: Mon Jul 20 00:00:00 2026
+Plotname: AC Analysis
+Flags: complex padded
+No. Variables: 2
+No. Points: 2
+Variables:
+	0	frequency	frequency
+	1	v(1)	voltage
+Values:
+ 0	1.000000000000000e+03,0.000000000000000e+00
+	1.000000000000000e+00,5.000000000000000e-01
+ 1	2.000000000000000e+03,0.000000000000000e+00
+	2.000000000000000e+00,1.000000000000000e+00

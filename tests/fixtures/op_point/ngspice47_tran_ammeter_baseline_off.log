@@ -1,0 +1,35 @@
+
+Note: No compatibility mode selected!
+
+
+Circuit: * task-330.3 probe: same ammeter bench, switch off -- baseline for diffing tran1.
+
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using SPARSE 1.3 as Direct Linear Solver
+
+Initial Transient Solution
+--------------------------
+
+Node                                   Voltage
+----                                   -------
+vd                                           1
+xdut.xmmm1.d_i                               1
+vg                                           1
+xdut.xmmm1.g_i                               1
+vs                                           0
+xdut.xmmm1.s_i                               0
+xdut.xmmm1.b_i                               0
+vvs#branch                         6.94215e-05
+vvg#branch                                   0
+vvd#branch                        -6.94215e-05
+v.xdut.xmmm1.vamm_b#branch         -4.6001e-12
+v.xdut.xmmm1.vamm_s#branch        -6.94215e-05
+v.xdut.xmmm1.vamm_g#branch                   0
+v.xdut.xmmm1.vamm_d#branch         6.94215e-05
+
+
+No. of Data Rows : 59
+Warning from checkvalid: vector @m.xdut.xmmm1.xmdev.msky130_fd_pr__nfet_01v8[ib] is not available or has zero length.
+Error during 'write': no writable vector found.
+ngspice-47 done

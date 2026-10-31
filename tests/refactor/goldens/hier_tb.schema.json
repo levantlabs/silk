@@ -1,0 +1,14 @@
+{
+  "category": "module",
+  "code_template": "from silk.circuit.circuit_elements import PortDir\nmod = Module(..., module_name='unnamed_module')\nmod.define_module_ports({})",
+  "devices": [
+    "xbuf",
+    "cload"
+  ],
+  "is_pdk_device": false,
+  "name": "unnamed_module",
+  "pdk_model": null,
+  "pins": [],
+  "spice_prefix": "X",
+  "type": "module"
+}

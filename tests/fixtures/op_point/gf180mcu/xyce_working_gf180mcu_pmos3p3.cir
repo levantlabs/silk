@@ -1,0 +1,17 @@
+* TASK-339 fix evidence. Same bench as the committed
+* xyce_probe_gf180mcu_pmos3p3.cir (which reproduces the bug), but pointed
+* at the PDK's Xyce-native model set (libs.tech/xyce/sm141064.xyce +
+* design.xyce) instead of the ngspice one. Real Xyce 7.10 run.
+
+.include "$PDK_ROOT/gf180mcuD/libs.tech/xyce/design.xyce"
+.lib "$PDK_ROOT/gf180mcuD/libs.tech/xyce/sm141064.xyce" typical
+
+XMM1 vd vg 0 0 pfet_03v3 m=1 w=10u l=0.28u
+
+Vvd vd 0 DC -1.5
+Vvg vg 0 DC -1.5
+
+.dc vvd -1.5 -1.5 1
+
+.print dc format=raw file=xyce_working_gf180mcu_pmos3p3.raw v(vd) v(vg) N(XMM1:M0:GM) N(XMM1:M0:GDS) N(XMM1:M0:VTH) N(XMM1:M0:VDSAT) N(XMM1:M0:VGS) N(XMM1:M0:VDS) N(XMM1:M0:VBS) ID(XMM1:M0)
+.end

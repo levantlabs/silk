@@ -1,0 +1,19 @@
+
+Note: No compatibility mode selected!
+
+
+Circuit: * isolates whether cgso/cgdo/cgbo's 42-vs-47 divergence (found in
+
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using SPARSE 1.3 as Direct Linear Solver
+ Reference value :  0.00000e+00
+No. of Data Rows : 1
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using SPARSE 1.3 as Direct Linear Solver
+@m.xm1.msky130_fd_pr__nfet_01v8[cgso] = 2.463135e-16
+@m.xm1.msky130_fd_pr__nfet_01v8[cgdo] = 2.463135e-16
+@m.xm1.msky130_fd_pr__nfet_01v8[cgbo] = 1.302418e-20
+@m.xm1.msky130_fd_pr__nfet_01v8[gm] = 3.825087e-04
+ngspice-47 done

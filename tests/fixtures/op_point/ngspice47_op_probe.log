@@ -1,0 +1,99 @@
+
+Note: No compatibility mode selected!
+
+
+Circuit: * task-330.1 verification deck: operating-point device-parameter '@' vectors.
+
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using SPARSE 1.3 as Direct Linear Solver
+ Reference value :  0.00000e+00
+No. of Data Rows : 1
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using SPARSE 1.3 as Direct Linear Solver
+Here are the vectors currently active:
+
+Title: * task-330.1 verification deck: operating-point device-parameter '@' vectors.
+Name: op1 (Operating Point)
+Date: Sun Sep 27 14:11:23  2026
+
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[cgd]: capacitance, real, 1 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[cgdo]: capacitance, real, 1 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[cgg]: capacitance, real, 1 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[cgs]: capacitance, real, 1 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[cgso]: capacitance, real, 1 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[gds]: admittance, real, 1 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[gm]: admittance, real, 1 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[gmbs]: admittance, real, 1 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[id]: current, real, 1 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[vbs]: voltage, real, 1 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[vds]: voltage, real, 1 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[vdsat]: voltage, real, 1 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[vgs]: voltage, real, 1 long
+    @m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[vth]: voltage, real, 1 long
+    @m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[cgd]: capacitance, real, 1 long
+    @m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[cgg]: capacitance, real, 1 long
+    @m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[cgs]: capacitance, real, 1 long
+    @m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[gds]: admittance, real, 1 long
+    @m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[gm]: admittance, real, 1 long
+    @m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[id]: current, real, 1 long
+    @m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[vbs]: voltage, real, 1 long
+    @m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[vds]: voltage, real, 1 long
+    @m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[vdsat]: voltage, real, 1 long
+    @m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[vgs]: voltage, real, 1 long
+    @m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[vth]: voltage, real, 1 long
+    m.xdut.xmmmn.msky130_fd_pr__nfet_01v8#body: voltage, real, 1 long
+    m.xdut.xmmmn.msky130_fd_pr__nfet_01v8#dbody: voltage, real, 1 long
+    m.xdut.xmmmn.msky130_fd_pr__nfet_01v8#sbody: voltage, real, 1 long
+    m.xdut.xmmmp.msky130_fd_pr__pfet_01v8#body: voltage, real, 1 long
+    m.xdut.xmmmp.msky130_fd_pr__pfet_01v8#dbody: voltage, real, 1 long
+    m.xdut.xmmmp.msky130_fd_pr__pfet_01v8#sbody: voltage, real, 1 long
+    vdn                 : voltage, real, 1 long [default scale]
+    vdn#branch          : current, real, 1 long
+    vdp                 : voltage, real, 1 long
+    vdp#branch          : current, real, 1 long
+    vgn                 : voltage, real, 1 long
+    vgn#branch          : current, real, 1 long
+    vgp                 : voltage, real, 1 long
+    vgp#branch          : current, real, 1 long
+    vsp                 : voltage, real, 1 long
+    vsp#branch          : current, real, 1 long
+m.xdut.xmmmn.msky130_fd_pr__nfet_01v8:
+    model              = xdut.xmmmn:sky130_fd_pr__nfet_01v8__model.71
+         gm           0.000382509
+        gds           2.46322e-05
+       gmbs           6.60582e-05
+        vth              0.769391
+      vdsat              0.171507
+         id           6.94215e-05
+        vgs                     0
+        vds                     0
+        vbs                     0
+        cgg           7.99018e-16
+        cgs          -6.02238e-16
+        cgd           2.34684e-19
+m.xdut.xmmmp.msky130_fd_pr__pfet_01v8:
+    model              = xdut.xmmmp:sky130_fd_pr__pfet_01v8__model.80
+         gm           0.000231176
+        gds           3.10787e-05
+       gmbs           3.85787e-05
+        vth              0.510025
+      vdsat               0.69562
+         id           0.000129383
+        vgs                     0
+        vds                     0
+        vbs                     0
+        cgg           1.01316e-15
+        cgs          -7.74974e-16
+        cgd           6.64896e-17
+@m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[vgs] = 1.000000e+00
+@m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[vds] = 1.000000e+00
+@m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[vbs] = 1.023774e-10
+@m.xdut.xmmmn.msky130_fd_pr__nfet_01v8[id] = 6.942150e-05
+@m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[vgs] = 1.500000e+00
+@m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[vds] = 1.800000e+00
+@m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[vbs] = 2.969692e-09
+@m.xdut.xmmmp.msky130_fd_pr__pfet_01v8[id] = 1.293831e-04
+binary raw file "op_probe.raw"
+ngspice-47 done
