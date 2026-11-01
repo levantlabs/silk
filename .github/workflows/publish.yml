@@ -3,22 +3,37 @@ name: Publish to PyPI
 on:
   push:
     tags:
-      - "v*"          # triggers on v0.1.0, v0.2.0, etc.
+      - "v*"          # triggers on v0.2.1, v0.3.0rc1, etc.
+
+# Publishing uses PyPI Trusted Publishing: each publish job exchanges a
+# short-lived GitHub OIDC token for an upload token, so the repository holds
+# no PyPI credential. Only the two publish jobs may request that token.
+permissions:
+  contents: read
 
 jobs:
   # The tag IS the version claim — make divergence a hard failure, not a
-  # convention. Both tests and build depend on this.
+  # convention. Both tests and build depend on this. Anything other than a
+  # plain final version (rc, alpha, beta, dev) counts as a pre-release and
+  # goes to TestPyPI only.
   verify-tag:
     runs-on: ubuntu-latest
+    outputs:
+      prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v4
       - name: Tag matches pyproject version
+        id: version
         run: |
           python3 - <<'EOF'
-          import os, sys, tomllib
+          import os, re, sys, tomllib
           tag = os.environ['GITHUB_REF_NAME'].removeprefix('v')
           ver = tomllib.load(open('pyproject.toml', 'rb'))['project']['version']
-          sys.exit(f'tag v{tag} != pyproject version {ver}' if tag != ver else 0)
+          if tag != ver:
+              sys.exit(f'tag v{tag} != pyproject version {ver}')
+          final = re.fullmatch(r'\d+(\.\d+)*(\.post\d+)?', ver) is not None
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+              out.write(f'prerelease={str(not final).lower()}\n')
           EOF
 
   # A release must not go out on a red suite. publish.yml used to build and
@@ -30,6 +45,7 @@ jobs:
     with:
       run_slow: true
 
+  # Built once: both publishers upload these exact files.
   build:
     needs: [verify-tag, tests]
     runs-on: ubuntu-latest
@@ -49,15 +65,45 @@ jobs:
       - name: Check distributions
         run: twine check --strict dist/*
 
-      - name: Upload to TestPyPI
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }}
-        run: twine upload --repository testpypi dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
 
-      - name: Upload to PyPI
-        if: ${{ !contains(github.ref, 'rc') && !contains(github.ref, 'alpha') && !contains(github.ref, 'beta') }}
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-        run: twine upload dist/*
+  publish-testpypi:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/circuitsilk
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  # The pypi environment requires a maintainer's approval, which is the
+  # moment to install the TestPyPI upload in a fresh environment and check it.
+  publish-pypi:
+    needs: [verify-tag, publish-testpypi]
+    if: needs.verify-tag.outputs.prerelease == 'false'
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/circuitsilk
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
