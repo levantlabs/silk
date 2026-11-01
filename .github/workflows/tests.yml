@@ -183,7 +183,7 @@ jobs:
 
       # The core slow profile drives ngspice and validates the built wheel.
       # Capability-marked Xyce tests are separate optional profiles.
-      # GF180MCU and SG13G2 are preview/catalog integrations for 0.2.0; neither
+      # GF180MCU and SG13G2 are preview/catalog integrations; neither
       # is a release-gating simulation target. An unavailable dependency or a
       # preview check must not become a green support claim.
       # The core profile is worth running on main, but not on every PR.

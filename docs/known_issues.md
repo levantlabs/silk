@@ -344,8 +344,8 @@ version advice; simulations can still run.
 
 ## Simulator backends
 
-**ngspice is the release-validated simulator. Xyce is a preview backend in
-0.2.0.** Select it with `mod.simulator = 'xyce'`. Its optional
+**ngspice is the release-validated simulator. Xyce is a preview
+backend.** Select it with `mod.simulator = 'xyce'`. Its optional
 integration tests do not establish full parity with ngspice.
 
 **Covered by Xyce integration tests:**
@@ -379,8 +379,8 @@ A registered backend is not a support guarantee.
 
 ## Testbench report cache
 
-`ModuleTestbench(cache=True)` is disabled in
-0.2.0. Its fingerprint hashes device NAMES, specs
+`ModuleTestbench(cache=True)` is disabled.
+Its fingerprint hashes device NAMES, specs
 and the simulator only, so it cannot detect a changed device value, metric or
 analysis — a cache hit could return a stale `SpecReport` for a circuit that
 has since changed. Passing `cache=True` only emits a `UserWarning` naming
@@ -400,8 +400,8 @@ See [the generator contract](codegen-contract.md#submodules).
 
 | # | Issue | Notes |
 |---|-------|-------|
-| P1 | **GF180MCU and SG13G2 are preview/catalog integrations in 0.2.0** | Their manifests, device catalogs, corner/include assembly, and unit conversion remain available. They are not release-validated simulation targets: GF180MCU and SG13G2 have optional integration profiles. SG13G2 transistor simulation is limited to MOSFETs and needs compiled OSDI plugins and ngspice ≥ 44; ngspice 42 cannot load those plugins. Only sky130 is exercised by the release-gating SPICE profile. `silk.pdk.available()` means “registered catalog,” and a doctor's `[ ok ] pdk ...` means “installed files found”; neither is a broader support guarantee. |
-| P2 | **sky130 MOS factories expose no fingers or junction geometry** | The accepted device parameters are `w`, `l` and `m`. Passing `nf`, `ad`, `as`, `pd`, `ps`, `nrd`, `nrs`, `sa`, `sb`, `sd` or `mult` raises `TypeError`. The ordinary 1.8 V NMOS and PMOS wrappers default `ad`, `as`, `pd` and `ps` to zero, underestimating junction capacitance and making timing optimistic relative to a circuit with its junction geometry included; gate-edge junction capacitance remains modelled. Extended-drain wrappers can supply internal junction geometry. The GF180MCU catalog declares `nf`; SG13G2 declares `ng`. |
+| P1 | **GF180MCU and SG13G2 are preview/catalog integrations** | Their manifests, device catalogs, corner/include assembly, and unit conversion remain available. They are not release-validated simulation targets: GF180MCU and SG13G2 have optional integration profiles. SG13G2 transistor simulation is limited to MOSFETs and needs compiled OSDI plugins and ngspice ≥ 44; ngspice 42 cannot load those plugins. Only sky130 is exercised by the release-gating SPICE profile. `silk.pdk.available()` means “registered catalog,” and a doctor's `[ ok ] pdk ...` means “installed files found”; neither is a broader support guarantee. |
+| P2 | **sky130 MOS geometry support is partial** | The nine ordinary MOS families accept optional `nf` (total `w`, finger width `w/nf`) and derive read-only `mult=m` when `m` differs from 1. ESD and 20 V families retain their previous interfaces. `ad/as/pd/ps/nrd/nrs/sa/sb/sd` remain unsupported; ordinary 1.8 V NMOS and PMOS wrappers default `ad`, `as`, `pd` and `ps` to zero, underestimating junction capacitance and making timing optimistic relative to a circuit with its junction geometry included. Gate-edge junction capacitance remains modelled, and extended-drain wrappers can supply internal junction geometry. The W·L·m layout estimate does not model fingers or diffusion. The GF180MCU catalog declares `nf`; SG13G2 declares `ng`. Explicit `nf` adds ngspice `wnflag=1` only if the caller has not set it; the option affects other multifinger devices in the deck. Xyce refuses `nf>1` or unprovable counts because it bins by total width. Existing `m>1` decks have deliberately changed mismatch spread through derived `mult` (see the changelog). |
 
 ## Database tracking
 

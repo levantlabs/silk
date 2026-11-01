@@ -430,8 +430,8 @@ default for the embedded-testbench pattern: `block.set_temperature(85)` before
 `block.run_all_tests()` runs all of that block's tests hot, and a test that set
 its own still wins. Only a subcircuit that owns no tests refuses the setter,
 because there nothing would apply it. The same holds for
-`set_supply_voltage`. Test result caching (`cache=True`) is disabled in
-0.2.0 — every `run()` simulates regardless.
+`set_supply_voltage`. Test result caching (`cache=True`) is disabled —
+every `run()` simulates regardless.
 
 **Declared operating grid:** keep conditions in the ordinary run plan,
 using plural setters on a block or its test:
@@ -1084,7 +1084,7 @@ backend. Xyce needs its CLI on `PATH` or `$SILK_XYCE_BIN`; a missing selected
 executable raises an actionable error without fallback.
 
 Selection itself leaves files untouched. Runs retain the configured output
-mode and freshness checks. The report cache is disabled in 0.2.0, so every run simulates against the currently selected backend.
+mode and freshness checks. The report cache is disabled, so every run simulates against the currently selected backend.
 Explicit `tb.evaluate(rawfile=...)`
 continues to read disk without running. See the [API reference](api-reference.md#selecting-a-simulator)
 for the override example and full contract. Metrics, specs and

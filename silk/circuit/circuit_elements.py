@@ -1012,6 +1012,12 @@ class CircuitGraph:
         if elemName not in self.elem_dict.keys() and not _skipCheck:
             raise CircuitError('ERROR: Element does not exist. Run add_element first.')
 
+        if len(paramValues) < len(params):
+            device = self.elem_dict[elemName]['device']
+            constraints = getattr(device, 'param_list', {})
+            trailing = params[len(paramValues):]
+            if all(p in constraints and constraints[p].emit_if_supplied for p in trailing):
+                params = params[:len(paramValues)]
         if len(params) != len(paramValues):
             raise CircuitError(f'ERROR: params length ({len(params)}) does not match paramValues length ({len(paramValues)})')
 
@@ -1019,6 +1025,10 @@ class CircuitGraph:
         entry = self.elem_dict[elemName]
         elemType = entry['type']
         elemDevice = entry['device']
+        derived = getattr(elemDevice, '_emission_spec', {}).get('derivedParams', {})
+        readonly = set(params).intersection(derived)
+        if readonly:
+            raise TypeError(f'{elemName}: derived parameters {sorted(readonly)} are read-only')
 
         # AnalogElement instances store parameters in a `.params` dict;
         # legacy PDKDevice stores them in `.param_list[p].value`. Dispatch
@@ -1162,6 +1172,9 @@ def _apply_parameters(circuit, elemName, parameters):
     else:
         params = list(elemDevice.param_list.keys())
         param_values = list(parameters)
+        trailing = params[len(param_values):]
+        if all(elemDevice.param_list[p].emit_if_supplied for p in trailing):
+            params = params[:len(param_values)]
 
     circuit.update_element(elemName, params, param_values, _skipCheck=True)
 

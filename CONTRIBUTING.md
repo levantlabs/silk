@@ -89,7 +89,7 @@ SILK_NGSPICE_BIN=/path/to/ngspice-44-or-newer \
 ```
 
 Xyce is an optional preview backend and non-gating. GF180MCU and SG13G2 are
-preview/catalog integrations for 0.2.0; the GF180 capability profile requires
+preview/catalog integrations; the GF180 capability profile requires
 its PDK and is deliberately non-gating, and so is the SG13G2 one, which also
 needs compiled OSDI plugins and an ngspice ≥ 44 that loads them (see
 [installing-the-pdk.md](docs/installing-the-pdk.md)). Any future release that promotes one

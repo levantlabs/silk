@@ -78,7 +78,10 @@ def _expected(taps, main_mul, rl, pd_rl):
                 ('M', MODEL, 1, '80', '0.5', (pd + 'tail', 'IBIAS', 'VSS', 'VSS')),
                 ('M', MODEL, 1, '16', '0.15', (t + 'gn', f'{nm.upper()}P', pd + 'tail', 'VSS')),
                 ('M', MODEL, 1, '16', '0.15', (t + 'gp', f'{nm.upper()}N', pd + 'tail', 'VSS'))):
-            exp.append((kind, mod_, _nm(mod_, m_, w_, l_)[2], nets))
+            params = list(_nm(mod_, m_, w_, l_)[2])
+            if m_ != 1:
+                params.append(('mult', str(m_)))
+            exp.append((kind, mod_, tuple(sorted(params)), nets))
         exp.append(('R', str(pd_rl), ('VDD', t + 'gp')))
         exp.append(('R', str(pd_rl), ('VDD', t + 'gn')))
     return exp

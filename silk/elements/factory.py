@@ -145,7 +145,10 @@ class ParamDescriptor:
         # Instance-level access: return current value from params dict
         # (sources store values in __dict__ and shadow this descriptor automatically)
         if hasattr(obj, 'params') and isinstance(getattr(obj, 'params', None), dict):
-            return obj.params.get(self._param)
+            rule = getattr(type(obj), '_emission_spec', {}).get('paramList', {}).get(self._param, {})
+            default = (getattr(self._constraint, 'default', None)
+                       if rule.get('emit_if_supplied') else None)
+            return obj.params.get(self._param, default)
         return obj.__dict__.get(self._param)
 
     def __repr__(self):
@@ -396,6 +399,8 @@ def make_device_class(device_name: str, spec: dict, is_pdk: bool = True,
     pin_names         = _build_pin_names(spec)
     pin_descriptions  = _build_pin_descriptions(spec)
     param_constraints = _build_constraints(spec)
+    from silk.elements._pdk_emission import validate_emission_spec
+    emission_spec = validate_emission_spec(device_name, spec)
     param_names       = tuple(param_constraints.keys())
     param_defaults    = {p: c.default for p, c in param_constraints.items()}
     # Alternate spellings for a pin or parameter name (e.g. 'pos' -> 'p',
@@ -486,7 +491,8 @@ def make_device_class(device_name: str, spec: dict, is_pdk: bool = True,
                     kwargs.pop(p), who=param_context(self, p))
                 self._caller_supplied.add(p)
             elif constraint.default is not None:
-                self.params[p] = constraint.default
+                if not emission_spec['paramList'].get(p, {}).get('emit_if_supplied'):
+                    self.params[p] = constraint.default
             else:
                 raise TypeError(
                     f"{self.__class__.__name__}() missing required parameter '{p}'"
@@ -536,10 +542,16 @@ def make_device_class(device_name: str, spec: dict, is_pdk: bool = True,
         # legacy add_element path keeps its historical warn-and-proceed
         # behavior via ParameterConstraint.validate_value.)
         if pdk_dev:
+            from silk.elements._pdk_emission import (
+                validate_strict, refuse_derived_inputs, validate_required_parameters)
+            refuse_derived_inputs(set(self.params) | vars(self).keys(), emission_spec, self.name)
+            validate_required_parameters(self.params, emission_spec, self.name)
+            for p, value in self.params.items():
+                validate_strict(value, p, emission_spec['paramList'].get(p, {}), self.name)
             problems = []
             constraints = getattr(self.__class__, '_param_constraints', {}) or {}
             for p in self.__class__._param_names:
-                if p not in supplied:
+                if p not in supplied or p not in self.params:
                     continue
                 c = constraints.get(p)
                 if c is None:
@@ -566,7 +578,8 @@ def make_device_class(device_name: str, spec: dict, is_pdk: bool = True,
             return render_pdk_device_line(
                 prefix, self.name, nets, pdk_dev,
                 [(p, self.params[p], scales.get(p, 1.0) if p in supplied else 1.0)
-                 for p in self.__class__._param_names])
+                 for p in self.__class__._param_names if p in self.params],
+                derived_params=emission_spec['derivedParams'])
         from silk.circuit.emitted_names import emitted_component
         from silk.utils.deck_text import card_text
         instance = (card_text(prefix, who=f'{self.name!r} SPICE prefix')
@@ -601,6 +614,7 @@ def make_device_class(device_name: str, spec: dict, is_pdk: bool = True,
         '_pin_names':          pin_names,
         '_pin_descriptions':   pin_descriptions,
         '_param_names':        param_names,
+        '_emission_spec':      emission_spec,
         '_param_defaults':     param_defaults,
         '_param_constraints':  param_constraints,
         '_spice_prefix':       spice_prefix,

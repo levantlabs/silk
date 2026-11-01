@@ -57,7 +57,7 @@ Each row has a status:
   warnings. An installed catalog does not imply working simulation models.
 - `[skip]`: an optional component or policy is not selected or available.
 
-Only sky130 is release-validated for transistor simulation in 0.2.0;
+Only sky130 is release-validated for transistor simulation;
 GF180MCU and SG13G2 are preview integrations. A PDK's `[ ok ]` reports
 installation completeness, not release support.
 

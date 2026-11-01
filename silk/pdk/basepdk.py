@@ -220,6 +220,9 @@ class ParameterConstraint:
     #: an omitted parameter with the same number.
     default: Optional[object] = None
 
+    emit_if_supplied: bool = False
+    emission_set: bool = False
+
     def __post_init__(self):
         self.minval = self._normalize(self.minval)
         self.maxval = self._normalize(self.maxval)
@@ -581,6 +584,19 @@ class PDKDevice:
     #: undeclared.
     op_backends: Optional[Tuple[str, ...]] = None
 
+    _emission_spec: dict = field(default_factory=dict, repr=False)
+
+    def __post_init__(self):
+        self.param_list = self.param_list
+
+    def __setattr__(self, name, value):
+        from silk.elements._pdk_emission import parameter_values, refuse_derived_inputs
+        spec = vars(self).get('_emission_spec', {})
+        refuse_derived_inputs((name,), spec, vars(self).get('device_name', 'device'))
+        if name == 'param_list':
+            value = parameter_values(value, spec)
+        object.__setattr__(self, name, value)
+
     @classmethod
     def from_dict(cls, name: str, data: dict) -> 'PDKDevice':
         """Create a PDKDevice from one entry of the standard silk YAML schema.
@@ -622,6 +638,11 @@ class PDKDevice:
             A ``junction_ratings`` entry is neither a number nor a
             ``{min, max}`` mapping of numbers.
         """
+        from silk.elements._pdk_emission import validate_emission_spec
+        try:
+            emission_spec = validate_emission_spec(name, data)
+        except (ValueError, TypeError) as exc:
+            raise ValidationError(str(exc)) from exc
         param_list = {}
         for param_name, constraints in data['paramList'].items():
             param_list[param_name] = ParameterConstraint(
@@ -634,7 +655,8 @@ class PDKDevice:
                 # cannot drift apart again.
                 default=(constraints['default'] if constraints.get('default') is not None
                          else constraints.get('minval')),
-                value=None
+                value=None,
+                emit_if_supplied=constraints.get('emit_if_supplied', False),
             )
         pin_list = {}
         for pin_short, pin_full in data['pinList'].items():
@@ -680,6 +702,7 @@ class PDKDevice:
             device_name=name,
             pdk_device=data['PDKDevice'],
             param_list=param_list,
+            _emission_spec=emission_spec,
             pin_list=pin_list,
             junction_ratings=junction_ratings,
             junction_ranges=junction_ranges,
@@ -1407,6 +1430,10 @@ class BasePDK:
         # trailing space after every token, so the same device built the two
         # ways differed by one byte at end of line.
         device = details['device']
+        from silk.elements._pdk_emission import refuse_derived_inputs, validate_required_parameters
+        refuse_derived_inputs(set(device.param_list) | vars(device).keys(),
+                              device._emission_spec, name)
+        validate_required_parameters(device.param_list, device._emission_spec, name)
         # Final structural guard, the twin of AnalogElement.to_spice's: exactly
         # one node token per pin, in pin order. add_element and connect_element
         # already reject anything else, so this only fires when pin_list was
@@ -1425,6 +1452,11 @@ class BasePDK:
                 print(p)
 
             raw = constraint.value
+            if raw is None and constraint.emit_if_supplied and not constraint.emission_set:
+                continue
+            from silk.elements._pdk_emission import validate_strict
+            validate_strict(constraint.default if raw is None else raw, p,
+                            device._emission_spec.get('paramList', {}).get(p, {}), name)
             if raw is None:
                 # Caller omitted it. Fill from the catalog, and do NOT scale:
                 # a `default:` is already in the PDK's own unit and is a fixed
@@ -1448,7 +1480,8 @@ class BasePDK:
 
         # The one writer, shared with AnalogElement.to_spice (TASK-416).
         str_netlist = render_pdk_device_line(
-            device.spice_prefix, name, pins, device.pdk_device, params)
+            device.spice_prefix, name, pins, device.pdk_device, params,
+            derived_params=device._emission_spec.get('derivedParams'))
         if self.debug:
             print(str_netlist, end='')
 

@@ -283,7 +283,7 @@ def test_device_warning_handles_legacy_argument_forms(pdk, empty_netlist, parame
     if parameter_form == 'pairs':
         parameters = list(values.items())
     elif parameter_form == 'positional':
-        parameters = [values[key] for key in pdk._devices['nmos1p8'].param_list]
+        parameters = [2, 3.0, 0.5]  # legacy m/w/l list omits optional trailing fields
     else:
         parameters = None
     with pytest.warns(DeprecationWarning) as caught:
@@ -302,7 +302,7 @@ def test_device_warning_uses_target_catalog_positional_order(pdk, empty_netlist)
         _param_names = ('l', 'w', 'm')
 
     values = {'m': 2, 'w': 3.0, 'l': 0.5}
-    parameters = [values[key] for key in pdk._devices['nmos1p8'].param_list]
+    parameters = [2, 3.0, 0.5]  # legacy m/w/l list omits optional trailing fields
     with pytest.warns(DeprecationWarning) as caught:
         empty_netlist.add_element(Reordered, 'M1',
                                   nets={'d': 'out', 'g': 'in', 's': 'gnd', 'b': 'gnd'},

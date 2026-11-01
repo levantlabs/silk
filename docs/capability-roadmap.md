@@ -24,7 +24,7 @@ The [agent guide](agent-guide.md) shows how to use it in a circuit design.
 
 - **SPICE analyses** — `Transient`, `AC`, `DC`, and `Noise` via
   `Module.simulate` or registered testbenches. ngspice is release-validated;
-  Xyce is a preview backend in 0.2.0. See
+  Xyce is a preview backend. See
   [backend coverage and limits](known_issues.md#simulator-backends).
 - **Behavioral simulation** — `set_behavioral_model` and the behavioral backend
   provide functional transient and DC checks without an external simulator or

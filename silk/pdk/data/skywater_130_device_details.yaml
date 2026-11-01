@@ -1,5 +1,7 @@
 nmos1p8:
   PDKDevice: sky130_fd_pr__nfet_01v8
+  derivedParams:
+    mult: {from: m, omit_when: 1}
   paramList:
     m:
       maxval: -1
@@ -17,6 +19,16 @@ nmos1p8:
       default: 0.15
       pdk_unit: u
       resolution: 0.005
+    nf:
+      minval: 1
+      maxval: -1
+      default: 1
+      resolution: 1
+      emit_if_supplied: true
+      strict: true
+      simulator_options:
+        ngspice: {wnflag: 1}
+      backend_max: {xyce: 1}
   fault_params:
     w:
       kind: continuous
@@ -107,6 +119,8 @@ nmos1p8_lvt:
   op_internal_name: msky130_fd_pr__nfet_01v8_lvt
   op_backends: [ngspice, xyce]
   polarity: n
+  derivedParams:
+    mult: {from: m, omit_when: 1}
   paramList:
     m:
       maxval: -1
@@ -122,6 +136,16 @@ nmos1p8_lvt:
       minval: 0.15
       pdk_unit: u
       resolution: 0.005
+    nf:
+      minval: 1
+      maxval: -1
+      default: 1
+      resolution: 1
+      emit_if_supplied: true
+      strict: true
+      simulator_options:
+        ngspice: {wnflag: 1}
+      backend_max: {xyce: 1}
   pinList:
     d: drain
     g: gate
@@ -169,6 +193,8 @@ nmos3p3_native:
   op_internal_name: msky130_fd_pr__nfet_03v3_nvt
   op_backends: [ngspice, xyce]
   polarity: n
+  derivedParams:
+    mult: {from: m, omit_when: 1}
   paramList:
     m:
       maxval: -1
@@ -184,6 +210,16 @@ nmos3p3_native:
       minval: 0.5
       pdk_unit: u
       resolution: 0.005
+    nf:
+      minval: 1
+      maxval: -1
+      default: 1
+      resolution: 1
+      emit_if_supplied: true
+      strict: true
+      simulator_options:
+        ngspice: {wnflag: 1}
+      backend_max: {xyce: 1}
   pinList:
     d: drain
     g: gate
@@ -228,6 +264,8 @@ nmos5v:
   op_internal_name: msky130_fd_pr__nfet_g5v0d10v5
   op_backends: [ngspice, xyce]
   polarity: n
+  derivedParams:
+    mult: {from: m, omit_when: 1}
   paramList:
     m:
       maxval: -1
@@ -243,6 +281,16 @@ nmos5v:
       minval: 0.5
       pdk_unit: u
       resolution: 0.005
+    nf:
+      minval: 1
+      maxval: -1
+      default: 1
+      resolution: 1
+      emit_if_supplied: true
+      strict: true
+      simulator_options:
+        ngspice: {wnflag: 1}
+      backend_max: {xyce: 1}
   pinList:
     d: drain
     g: gate
@@ -286,6 +334,8 @@ nmos5v_native:
   op_internal_name: msky130_fd_pr__nfet_05v0_nvt
   op_backends: [ngspice, xyce]
   polarity: n
+  derivedParams:
+    mult: {from: m, omit_when: 1}
   paramList:
     m:
       maxval: -1
@@ -301,6 +351,16 @@ nmos5v_native:
       minval: 0.9
       pdk_unit: u
       resolution: 0.005
+    nf:
+      minval: 1
+      maxval: -1
+      default: 1
+      resolution: 1
+      emit_if_supplied: true
+      strict: true
+      simulator_options:
+        ngspice: {wnflag: 1}
+      backend_max: {xyce: 1}
   pinList:
     d: drain
     g: gate
@@ -651,6 +711,8 @@ nmos_esd:
       b: bulk
 pmos1p8:
   PDKDevice: sky130_fd_pr__pfet_01v8
+  derivedParams:
+    mult: {from: m, omit_when: 1}
   paramList:
     m:
       maxval: -1
@@ -666,6 +728,16 @@ pmos1p8:
       minval: 0.15
       pdk_unit: u
       resolution: 0.005
+    nf:
+      minval: 1
+      maxval: -1
+      default: 1
+      resolution: 1
+      emit_if_supplied: true
+      strict: true
+      simulator_options:
+        ngspice: {wnflag: 1}
+      backend_max: {xyce: 1}
   fault_params:
     w:
       kind: continuous
@@ -739,6 +811,8 @@ pmos1p8_lvt:
   op_internal_name: msky130_fd_pr__pfet_01v8_lvt
   op_backends: [ngspice, xyce]
   polarity: p
+  derivedParams:
+    mult: {from: m, omit_when: 1}
   paramList:
     m:
       maxval: -1
@@ -754,6 +828,16 @@ pmos1p8_lvt:
       minval: 0.35
       pdk_unit: u
       resolution: 0.005
+    nf:
+      minval: 1
+      maxval: -1
+      default: 1
+      resolution: 1
+      emit_if_supplied: true
+      strict: true
+      simulator_options:
+        ngspice: {wnflag: 1}
+      backend_max: {xyce: 1}
   pinList:
     d: drain
     g: gate
@@ -804,6 +888,8 @@ pmos1p8_hvt:
   op_internal_name: msky130_fd_pr__pfet_01v8_hvt
   op_backends: [ngspice, xyce]
   polarity: p
+  derivedParams:
+    mult: {from: m, omit_when: 1}
   paramList:
     m:
       maxval: -1
@@ -819,6 +905,16 @@ pmos1p8_hvt:
       minval: 0.15
       pdk_unit: u
       resolution: 0.005
+    nf:
+      minval: 1
+      maxval: -1
+      default: 1
+      resolution: 1
+      emit_if_supplied: true
+      strict: true
+      simulator_options:
+        ngspice: {wnflag: 1}
+      backend_max: {xyce: 1}
   pinList:
     d: drain
     g: gate
@@ -869,6 +965,8 @@ pmos5v:
   op_internal_name: msky130_fd_pr__pfet_g5v0d10v5
   op_backends: [ngspice, xyce]
   polarity: p
+  derivedParams:
+    mult: {from: m, omit_when: 1}
   paramList:
     m:
       maxval: -1
@@ -884,6 +982,16 @@ pmos5v:
       minval: 0.5
       pdk_unit: u
       resolution: 0.005
+    nf:
+      minval: 1
+      maxval: -1
+      default: 1
+      resolution: 1
+      emit_if_supplied: true
+      strict: true
+      simulator_options:
+        ngspice: {wnflag: 1}
+      backend_max: {xyce: 1}
   pinList:
     d: drain
     g: gate

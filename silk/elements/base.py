@@ -263,7 +263,8 @@ class AnalogElement:
         # Use object.__setattr__ to bypass our custom __setattr__ during init
         object.__setattr__(self, 'name', name)
         object.__setattr__(self, 'nets', {})
-        object.__setattr__(self, 'params', {})
+        from silk.elements._pdk_emission import parameter_values, emission_spec
+        object.__setattr__(self, 'params', parameter_values({}, emission_spec(self)))
         # Parameter names the CALLER has set — at construction or by later
         # attribute assignment. Emission unit-converts exactly these; a
         # catalog default is already in the PDK's own unit and never scales.
@@ -304,6 +305,12 @@ class AnalogElement:
         attribute, both Nets' pins and the reverse index exactly as they
         were. ``SourceBase.__setattr__`` uses the same order.
         """
+        from silk.elements._pdk_emission import (
+            emission_spec, parameter_values, refuse_derived_inputs)
+        spec = emission_spec(self)
+        refuse_derived_inputs((name,), spec, getattr(self, 'name', type(self).__name__))
+        if name == 'params':
+            value = parameter_values(value, spec)
         if name == 'name' and getattr(self, '_name_locked', False):
             from silk.exceptions import CircuitError
             raise CircuitError(f"Instance {self.name!r} is placed: its name is read-only. "

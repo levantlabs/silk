@@ -363,7 +363,15 @@ def _declared_params(device):
     param_names = getattr(type(device), '_param_names', None)
     params = getattr(device, 'params', None)
     if param_names and isinstance(params, dict):
-        return [(p, _param_value(params.get(p))) for p in param_names]
+        rules = getattr(type(device), '_emission_spec', {}).get('paramList', {})
+        defaults = getattr(type(device), '_param_defaults', {})
+        values = []
+        for p in param_names:
+            value = params.get(p)
+            if p not in params and rules.get(p, {}).get('emit_if_supplied'):
+                value = defaults.get(p)
+            values.append((p, _param_value(value)))
+        return values
 
     param_list = getattr(device, 'param_list', None)
     if isinstance(param_list, dict):
