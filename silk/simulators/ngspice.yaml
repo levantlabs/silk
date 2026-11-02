@@ -82,6 +82,7 @@ known_options:
   - noinit
   - savecurrents
   - seed
+  - wnflag
 
 # Release tokens are strings, compared numerically by simulation._ngspice_compat.
 # since: first release with a feature; bugs use since (null = all known

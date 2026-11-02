@@ -1926,7 +1926,7 @@ class ModuleTestbench:
         Name for this test; unique within ``module``. Default
         ``'default_test'``.
     cache : bool, optional
-        Disabled for 0.2.0. Passing True emits one
+        Disabled. Passing True emits one
         ``UserWarning`` at construction and the testbench then behaves
         exactly like ``cache=False``: every ``run()`` simulates. The
         parameter and ``clear_cache()`` are kept so existing code does not

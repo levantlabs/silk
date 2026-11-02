@@ -1,6 +1,7 @@
 # Shared formatting utilities for silk
 
 import re
+from numbers import Real
 
 # An SI prefix earns its place only when it removes exponent noise. Below this
 # band we emit u/n/p/f, above it k/Meg/G/T; inside it, a bare decimal.
@@ -312,7 +313,8 @@ def _render_param(val, scale=1.0, *, who='parameter value') -> str:
     return card_text(val, who=who)
 
 
-def render_pdk_device_line(prefix, name, pins, pdk_device, params) -> str:
+def render_pdk_device_line(prefix, name, pins, pdk_device, params, *,
+                           derived_params=None) -> str:
     """The ONE PDK device-line writer.
 
     ``<prefix><name> <pin nets…> <pdk_device> <p>=<v> …`` with a trailing
@@ -333,6 +335,13 @@ def render_pdk_device_line(prefix, name, pins, pdk_device, params) -> str:
     tokens = [card_text(prefix, who=f'{name!r} SPICE prefix')
               + emitted_component(name), *pins,
               card_text(pdk_device, who=f'{name!r} PDK device name')]
+    params = list(params)
+    sources = {p: (v, sc) for p, v, sc in params}
+    for dest, rule in (derived_params or {}).items():
+        value, scale = sources[rule['from']]
+        effective = value.value if hasattr(value, 'value') else value
+        if not isinstance(effective, Real) or effective != rule['omit_when']:
+            params.append((dest, value, scale))
     tokens.extend(
         f'{card_text(p, who=f"{name!r} parameter name")}='
         f'{_render_param(v, sc, who=f"{name!r} parameter {p!r}")}'

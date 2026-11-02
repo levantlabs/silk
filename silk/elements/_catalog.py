@@ -27,6 +27,11 @@ def _device_name_errors(name, spec, path):
 
 def _validate_device_names(name, spec, path, error_type):
     """Validate both PDK and ideal-element spellings before creating classes."""
+    from silk.elements._pdk_emission import validate_emission_spec
+    try:
+        validate_emission_spec(name, spec)
+    except (ValueError, TypeError) as exc:
+        raise error_type(f'{path}: device {name!r}: {exc}') from exc
     error = next(_device_name_errors(name, spec, path), None)
     if error is not None:
         raise error_type(str(error)) from error

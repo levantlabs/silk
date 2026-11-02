@@ -16,6 +16,39 @@ from silk.exceptions import CircuitError, DuplicateNameError, UndeclaredNetError
 from silk.simulation.analysis import AC, DC, Noise, Op, Transient
 
 
+def _spice_fields(card, prefix_fields):
+    """Split fixed card fields and grouped parameter literals without evaluation."""
+    fields = card.strip().split(maxsplit=prefix_fields)
+    if len(fields) <= prefix_fields:
+        return fields
+    tail = fields.pop()
+    start, depth, quote, escaped = None, 0, None, False
+    for index, char in enumerate(tail):
+        if start is None:
+            if char.isspace():
+                continue
+            start = index
+        if quote is not None:
+            if escaped:
+                escaped = False
+            elif char == '\\':
+                escaped = True
+            elif char == quote:
+                quote = None
+        elif char in "\"'":
+            quote = char
+        elif char == '{':
+            depth += 1
+        elif char == '}':
+            depth = max(0, depth - 1)
+        elif char.isspace() and depth == 0:
+            fields.append(tail[start:index])
+            start = None
+    if start is not None:
+        fields.append(tail[start:])
+    return fields
+
+
 def _source_maps(sig_sources_dict):
     """Build the shared physical source-name maps for DC, Noise and notices."""
     _src_names = {name: getattr(src, 'instance_name', name)
@@ -447,7 +480,7 @@ class PySpiceNetlister:
             saved = {name: getattr(sub.netlister, name, unset) for name in (
                 '_terminal_current_method', '_ammeter_wrappers',
                 '_emitted_subckts', '_mc_sample', '_subckt_name',
-                '_source_backend')}
+                '_source_backend', '_required_device_options')}
             str_netlist = '\n*** subckt definition for {}\n'.format(canonical)
             try:
                 sub.netlister._terminal_current_method = (
@@ -459,6 +492,7 @@ class PySpiceNetlister:
                 sub.netlister._mc_sample = mc_sample
                 sub.netlister._subckt_name = canonical
                 sub.netlister._source_backend = self._source_backend
+                sub.netlister._required_device_options = getattr(self, '_required_device_options', {})
                 with _fault_body(child_node):
                     str_netlist += sub.generate_netlist(subckt=True)
             finally:
@@ -545,13 +579,15 @@ class PySpiceNetlister:
         (``add_element(pdk.cls, ...)``): the PDK's own
         ``generate_netlist_entry``, wrapped in terminal ammeters in ammeter
         mode. A faulted device's instances go through here too."""
+        from silk.elements._pdk_emission import wrapper_defaults
+        self._collect_device_requirements(entry['device'])
         line = self.pdk_details.generate_netlist_entry(name, entry)
         if getattr(self, '_terminal_current_method', 'savecurrents') == 'ammeter_wrapper':
             # Wrap the device in a subckt with 0 V terminal ammeters, so
             # terminal currents are readable as i(v.x<inst>.vamm_*) —
             # simulator-independent, no drain-only/polarity limitation.
             return self._ammeter_wrap_line(
-                list(entry['device'].pin_list.keys()), line)
+                list(entry['device'].pin_list.keys()), line, wrapper_defaults(entry['device']))
         return line
 
     def _emit_analog_element(self, device):
@@ -560,14 +596,22 @@ class PySpiceNetlister:
         it is an ideal passive. Faulted devices and the elements a fault
         adds go through here too."""
         from silk.circuit.modules_results import _is_ideal_passive
+        from silk.elements._pdk_emission import wrapper_defaults
+        self._collect_device_requirements(device)
 
         if (getattr(self, '_terminal_current_method', 'savecurrents') == 'ammeter_wrapper'
                 and not _is_ideal_passive(device)):
             return self._ammeter_wrap_line(
-                list(device._pin_names), device.to_spice())
+                list(device._pin_names), device.to_spice(), wrapper_defaults(device))
         return device.to_spice()
 
-    def _ammeter_wrap_line(self, terms, raw_line):
+    def _collect_device_requirements(self, device):
+        from silk.elements._pdk_emission import collect_requirements
+        if not hasattr(self, '_required_device_options'):
+            self._required_device_options = {}
+        collect_requirements(device, self._source_backend, self._required_device_options)
+
+    def _ammeter_wrap_line(self, terms, raw_line, defaults=None):
         """Wrap an already-emitted device line ``XM<name> <nets> <model>
         <params>`` in a 0 V-ammeter subckt and return the instance line.
         Registers the wrapper def (once per model) in ``self._ammeter_wrappers``.
@@ -580,16 +624,32 @@ class PySpiceNetlister:
         list and the raw line, so the device physics stays byte-identical.
         """
         nterms = len(terms)
-        toks = raw_line.strip().split()
+        toks = _spice_fields(raw_line, nterms + 2)
         inst_name = toks[0]                              # 'XM'+name
         nets = toks[1:1 + nterms]
         model = toks[1 + nterms]
         param_toks = toks[2 + nterms:]                   # ['m=1','w=1.0',...]
         key = 'amm_' + model
 
-        if key not in self._ammeter_wrappers:
-            self._ammeter_wrappers[key] = self._build_ammeter_wrapper(
-                key, terms, model, param_toks)
+        # Keep old wrapper bytes until optional tokens are actually emitted.
+        # Grow the shared interface when later instances need more parameters;
+        # every new default comes from the catalog, never the first instance.
+        previous = self._ammeter_wrappers.get(key)
+        wrapper_params = (_spice_fields(previous.splitlines()[0], nterms + 2)[2 + nterms:]
+                          if previous else list(param_toks))
+        names = {p.split('=', 1)[0] for p in wrapper_params}
+        for token in param_toks:
+            param = token.split('=', 1)[0]
+            if param not in names:
+                wrapper_params.append(token)
+                names.add(param)
+        from silk.utils._utils import _render_param
+        wrapper_params = [
+            f'{p.split("=", 1)[0]}={_render_param(defaults[p.split("=", 1)[0]])}'
+            if p.split('=', 1)[0] in (defaults or {}) else p
+            for p in wrapper_params]
+        self._ammeter_wrappers[key] = self._build_ammeter_wrapper(
+            key, terms, model, wrapper_params)
 
         return (inst_name + ' ' + ' '.join(nets) + ' ' + key
                 + (' ' + ' '.join(param_toks) if param_toks else '') + '\n')
@@ -1440,6 +1500,7 @@ class PySpiceNetlister:
         self._terminal_current_method = (
             terminal_current_method if save_device_currents else 'savecurrents')
         self._ammeter_wrappers = {}      # shared accumulator, deduped by model
+        self._required_device_options = {}
 
         # Emit devices + module bodies FIRST so every ammeter wrapper (top-level
         # and inside module subckts, at any depth) is collected into the shared
@@ -1502,6 +1563,11 @@ class PySpiceNetlister:
 
         # Simulator options (tolerances, method, …) — rendered per the
         # active simulator's YAML config.
+        # Explicit caller options win, including a deliberate parser policy.
+        explicit_keys = {str(k).lower() for k in (simulator_options or {})}
+        defaults = {k: v for k, v in self._required_device_options.items()
+                    if k.lower() not in explicit_keys}
+        simulator_options = {**defaults, **(simulator_options or {})}
         if mc_sample is not None and self._MC_SEED_AS_OPTION:
             simulator_options = {**(simulator_options or {}),
                                  'seed': mc_sample.seed}
@@ -1594,7 +1660,8 @@ class _PDKDeviceView:
         self.name = name
         self.nets = {p: pin.net for p, pin in device.pin_list.items()}
         self.params = {p: (c.value if c.value is not None else c.default)
-                       for p, c in device.param_list.items()}
+                       for p, c in device.param_list.items()
+                       if not c.emit_if_supplied or c.value is not None or c.emission_set}
         self._caller_supplied = {p for p, c in device.param_list.items()
                                  if c.value is not None}
         self._param_scales = {
@@ -1624,6 +1691,7 @@ def _derive_faulted_pdk_device(device, instance):
         if p in instance.params:
             params[p].value = None
             params[p].default = instance.params[p]
+            params[p].emission_set = True
     derived.param_list = params
     return derived
 

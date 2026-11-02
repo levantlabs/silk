@@ -17,7 +17,7 @@ circuitsilk (`import silk`) is a framework for custom IC design. A circuit is on
 
 The whole loop, from system intent to sizing, characterization, reports, database, rebuild and layout feedback, runs in one worked example: `python -m silk.examples.design_loop_walkthrough`.
 
-**PDKs.** The PDK layer is pluggable: a new PDK is two data files, not code. For 0.2.0, SkyWater 130nm is the only release-validated transistor-simulation PDK; GF180MCU and SG13G2 ship as preview integrations. Install open-source PDKs with [pdksetup](https://github.com/levantlabs/pdksetup) (`pdk install sky130`).
+**PDKs.** The PDK layer is pluggable: a new PDK is two data files, not code. SkyWater 130nm is the only release-validated transistor-simulation PDK; GF180MCU and SG13G2 ship as preview integrations. Install open-source PDKs with [pdksetup](https://github.com/levantlabs/pdksetup) (`pdk install sky130`).
 
 **No PDK yet?** Create and activate a virtual environment, install silk, then
 run a behavioral simulation with no PDK and no ngspice:

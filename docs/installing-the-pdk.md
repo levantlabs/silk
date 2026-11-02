@@ -8,7 +8,7 @@ silk includes the device catalogs and manifests for three PDKs in
 Registration means `silk.pdk.available()` can discover
 the catalog; it is not, by itself, a simulation-support claim:
 
-| silk name | Foundry / node | Registered catalog | 0.2.0 simulation status |
+| silk name | Foundry / node | Registered catalog | Simulation status |
 |---|---|---|---|
 | `sky130` | SkyWater 130nm bulk CMOS | yes | **Release-validated** with ngspice and installed models |
 | `gf180mcu` | GlobalFoundries 180nm bulk CMOS | yes | **Preview/catalog**; not release-gated |

@@ -341,8 +341,10 @@ def _device_add_replacement(device, name, nets, parameters, ports, pdk):
             template = pdk._devices.get(device.device_name)
             if template is None:
                 return 'add(device)'
-            names = template.param_list
-            if len(names) != len(parameters):
+            names = list(template.param_list)
+            trailing = names[len(parameters):]
+            if (len(parameters) > len(names)
+                    or any(not template.param_list[p].emit_if_supplied for p in trailing)):
                 return 'add(device)'
             values.update(zip(names, parameters))
         else:

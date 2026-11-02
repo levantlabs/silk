@@ -4,7 +4,7 @@ Use `silk.pdk.validate` to compare catalog names, terminal counts and emission
 prefixes with installed models. `--simulate` also builds and runs a small
 circuit per device; neither pass verifies performance or pin order.
 
-Only sky130 is release-validated for transistor simulation in 0.2.0.
+Only sky130 is release-validated for transistor simulation.
 GF180MCU and SG13G2 are registered preview/catalog integrations; a local
 validation result does not change that support boundary.
 

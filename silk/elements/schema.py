@@ -1,5 +1,10 @@
 """Device schema export — machine-readable device specs for tools that inspect devices or generate silk code.
 
+Optional caller parameters expose ``emit_if_supplied: true`` and are omitted
+from the default code template. Device-level ``derivedParams`` is read-only
+emission metadata, outside the caller parameter list.
+
+
 Usage
 -----
 From a PDK::
@@ -172,6 +177,9 @@ def device_schema(cls) -> dict:
             entry["unit"]    = None
             entry["min"]     = None
             entry["max"]     = None
+        rule = getattr(cls, '_emission_spec', {}).get('paramList', {}).get(param_name, {})
+        if rule.get('emit_if_supplied'):
+            entry['emit_if_supplied'] = True
         parameters.append(entry)
 
     category = getattr(cls, '_category', None) or _infer_category(cls)
@@ -187,7 +195,8 @@ def device_schema(cls) -> dict:
         return f'{n}={{param_{n}}}'
 
     pin_args   = ', '.join(_pin_placeholder(p) for p in pins)
-    param_args = ', '.join(_param_placeholder(p) for p in parameters)
+    param_args = ', '.join(_param_placeholder(p) for p in parameters
+                           if not p.get('emit_if_supplied'))
     all_args   = ', '.join(filter(None, [pin_args, param_args]))
     source     = 'pdk' if cls._is_pdk_device else 'elements'
     code_template = (
@@ -206,6 +215,9 @@ def device_schema(cls) -> dict:
         "code_template":  code_template,
         "source_class":   getattr(cls, '_source_class', None),
     }
+    derived = getattr(cls, '_emission_spec', {}).get('derivedParams')
+    if derived:
+        result['derivedParams'] = derived
     if result["source_class"]:
         result.update(_source_catalog_fields(result["source_class"], pins))
     return result

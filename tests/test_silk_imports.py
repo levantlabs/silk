@@ -10,7 +10,8 @@ class TestTopLevelImports:
         import silk
         # Don't hardcode the release number here — pyproject agreement is
         # guarded by tests/test_packaging.py::test_version_matches_pyproject.
-        assert re.fullmatch(r"\d+\.\d+\.\d+", silk.__version__)
+        # A release candidate (0.3.0rc1) or alpha/beta is a valid version.
+        assert re.fullmatch(r"\d+\.\d+\.\d+(?:(?:a|b|rc)\d+)?", silk.__version__)
 
     def test_module(self):
         from silk import Module

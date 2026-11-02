@@ -1149,7 +1149,7 @@ existing measurement history and committed DB rows remain unchanged.
 Invalid labels, corners, output/context configuration and failed deck generation
 do not trigger cleanup. Pure path resolution, explicit file evaluation/readback
 and behavioral simulation also perform no launch cleanup (the report cache is
-disabled in 0.2.0 — so a cache hit is no longer one of these cases).
+disabled — so a cache hit is no longer one of these cases).
 Subcircuit text generation and mere path reads also allocate no run directory.
 Behavioral runs write a rawfile, then hand readers the in-memory result
 without rereading that file. Unique directories isolate files; they do not make
@@ -1308,7 +1308,7 @@ values. Existing declaration, provenance and report consistency checks apply.
 | `test_name`, `module_name`, `owner_path`, `parameters`, `characterization_context` | Identity of the run: which test on which module, its declared parameters, and the PVT context (`None` when unscoped). |
 | `rawfile_path` | `str` or `None` — the rawfile these metrics were extracted from (`Module.results_file` at extraction time). Behavioral runs also write a rawfile; `None` means no rawfile path was recorded. After `run_corners()` this is how a script finds the waveforms behind a per-corner number, use this saved path rather than assuming the bench's current results still select that corner. |
 | `corner` | `str` — the run's **label**: the corner that was requested (the PDK's `default_corner` when none was passed). It is **not evidence** of what ran: a PDK-free deck simulates no corner, and external evidence with no declared corner has `None`. Read `operating_conditions.corner_kind` / `.scalar('corner')` for the evidence, and never fill a `None` from this label ([consumer contract](#operating-conditions-none-unknown-and-the-consumer-contract)). `None` on a hand-built `SpecReport` and on undeclared external evidence. `store_report()` files an unscoped report under the evidence scalar from the snapshot (see [database.md](database.md)). |
-| `storage` | `dict` or `None` — the receipt of the most recent `Module.run_test(..., store=True)` that persisted this report: `store_report()`'s `metrics_stored`/`specs_stored`/`skipped` plus `cached` (always `False` in 0.2.0 — the report cache is disabled). `None` otherwise — including after a `ReportStorageError` and on a report stored only through an explicit `store_report(report)` call. |
+| `storage` | `dict` or `None` — the receipt of the most recent `Module.run_test(..., store=True)` that persisted this report: `store_report()`'s `metrics_stored`/`specs_stored`/`skipped` plus `cached` (always `False` — the report cache is disabled). `None` otherwise — including after a `ReportStorageError` and on a report stored only through an explicit `store_report(report)` call. |
 
 ---
 
@@ -1589,6 +1589,28 @@ for net_name, net in ckt.net_dict.items():
     for b in net.pins:
         print(f"  [{b.kind}] {b.instance}.{b.port}")
 ```
+
+**sky130 fingers and multiplicity:** The nine ordinary families (`nmos1p8`,
+`nmos1p8_lvt`, `nmos3p3_native`, `nmos5v`, `nmos5v_native`, `pmos1p8`,
+`pmos1p8_lvt`, `pmos1p8_hvt`, `pmos5v`) accept optional dimensionless
+positive-integer `nf`, default 1. Omitted `nf` is not emitted; explicit 1 is.
+Width `w` is total width, so a finger uses `w/nf`. Invalid numeric counts
+(including bool and nonfinite values) raise `CircuitError` at emission;
+Variables use their current values and ngspice strings remain SPICE literals.
+Explicit `nf` anywhere in a deck adds ngspice `wnflag=1` unless the caller
+set `wnflag`; this option also affects other multifinger devices in the deck.
+Xyce refuses counts above 1 or unprovable counts with `NotSupportedError`.
+
+**Compatibility change:** These families derive `mult=m` when `m` differs
+from 1; passing `mult=` raises `TypeError`. Existing `m>1` decks and seeded
+Monte Carlo mismatch spread change (smaller spread); mismatch-off results
+remain unchanged. With `m=1` and omitted `nf`, old deck bytes remain unchanged.
+`export_schema()` lists optional `nf` with `emit_if_supplied: true` and
+read-only `derivedParams` separately; its default code template omits optional
+parameters. Layout still estimates W·L·m, with no finger placement or junction
+geometry derivation. ESD/20 V families retain their interfaces;
+`ad/as/pd/ps/nrd/nrs/sa/sb/sd` remain unsupported.
+See [the catalog guide](adding-a-pdk.md#optional-and-derived-instance-parameters).
 
 **Rewiring a device pin (attribute assignment):**
 
@@ -2231,8 +2253,8 @@ they do not select a backend. A missing selected executable raises
 
 Selection alone does not launch, prepare or delete files. Actual runs retain
 [the output lifecycle](#testbench-output-directories-and-run-labels), including
-exact-file freshness and failure invalidation. The report cache is disabled
-in 0.2.0: `cache=True` warns, and every `run()` simulates. Explicit
+exact-file freshness and failure invalidation. The report cache is disabled:
+`cache=True` warns, and every `run()` simulates. Explicit
 `evaluate(rawfile=...)` continues to read disk afresh without running or
 preparing a simulation.
 

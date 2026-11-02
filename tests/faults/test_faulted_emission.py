@@ -111,13 +111,16 @@ def _clean(pdk_name, tmp_path, **kw):
 # --- every fault type, every PDK: unchanged params byte-identical ---------
 
 @pytest.mark.parametrize('pdk_name', _PDKS)
-def test_stuck_open_per_finger_changes_only_m(pdk_name, api, tmp_path):
+def test_stuck_open_per_finger_updates_m_and_derived_parameters(pdk_name, api, tmp_path):
     clean = _params(_instance_lines(_clean(pdk_name, tmp_path, api=api))['XMmn'])
     faulted = _instance_lines(
         _deck(pdk_name, tmp_path, stuck_open('mn'), api=api))
     assert list(faulted) == ['XMmn']
     got = _params(faulted['XMmn'])
     assert got['m'] == '1'
+    if pdk_name == 'sky130':
+        assert clean.pop('mult') == '2'
+        assert 'mult' not in got
     assert {k: v for k, v in got.items() if k != 'm'} == \
         {k: v for k, v in clean.items() if k != 'm'}
 
@@ -150,6 +153,9 @@ def test_short_per_finger_decomposes_with_clean_params(
     assert set(lines) == {'XMmn', 'XM__silk_fault_bad_6d6e'}
     good, bad = _params(lines['XMmn']), _params(lines['XM__silk_fault_bad_6d6e'])
     assert (good['m'], bad['m']) == ('1', '1')
+    if pdk_name == 'sky130':
+        assert clean.pop('mult') == '2'
+        assert 'mult' not in good and 'mult' not in bad
     for got in (good, bad):
         assert {k: v for k, v in got.items() if k != 'm'} == \
             {k: v for k, v in clean.items() if k != 'm'}
@@ -332,6 +338,9 @@ def test_shared_faulted_definition_preserves_device_writer_units(
     gp, bp = _params(good), _params(bad)
     assert gp.pop('m') == '2'
     assert bp.pop('m') == '1'
+    if pdk_name == 'sky130':
+        assert gp.pop('mult') == '2'
+        assert 'mult' not in bp
     assert gp == bp
     scale = factory._param_scales['w']
     assert gp['w'] == _fmt(w * scale)

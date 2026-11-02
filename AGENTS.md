@@ -72,7 +72,7 @@ simulator. Use it to sanity-check an install:
 Install sky130 with [pdksetup](https://github.com/levantlabs/pdksetup)
 (`pdk install sky130`). PDK setup is documented in [docs/installing-the-pdk.md](docs/installing-the-pdk.md).
 
-**The 0.2.0 PDK support boundary is explicit:** sky130 is the only
+**The PDK support boundary is explicit:** sky130 is the only
 release-validated transistor-simulation PDK. GF180MCU and SG13G2 remain
 registered preview/catalog integrations. `silk.pdk.available()` means the
 catalog ships, not that its real-model simulation is release-gated.
@@ -111,8 +111,8 @@ install it in the selected environment before running the doctor. There is no `s
 | `.venv/bin/python -m pytest -q` | Fast suite — no simulator required; external-dependency tests skip when unavailable | Must pass in bare and configured profiles |
 | `.venv/bin/python -m pytest -m "slow and not requires_xyce and not requires_gf180 and not requires_sg13g2" -q` | Core integration + wheel | Needs ngspice + sky130 (the `PDK_ROOT` setting, as above) |
 | `.venv/bin/python -m pytest -m "slow and requires_xyce" -q` | Optional Xyce integration | Non-gating, but **required when changing Xyce paths**. Needs the `SILK_XYCE_BIN` setting or Xyce on `PATH` (the doctor shows which) |
-| `.venv/bin/python -m pytest -m "slow and requires_gf180" -q` | GF180 preview integration | Needs ngspice + GF180MCU; non-gating for 0.2.0 |
-| `SILK_NGSPICE_BIN=<ngspice 44 or newer> .venv/bin/python -m pytest -m "slow and requires_sg13g2" -q` | SG13G2 preview integration | Needs compatible ngspice + compiled OSDI models; non-gating for 0.2.0. The newer ngspice is a per-command override, never the settings file (that would change ngspice for every run); the owner's settings file names it in a comment |
+| `.venv/bin/python -m pytest -m "slow and requires_gf180" -q` | GF180 preview integration | Needs ngspice + GF180MCU; non-gating |
+| `SILK_NGSPICE_BIN=<ngspice 44 or newer> .venv/bin/python -m pytest -m "slow and requires_sg13g2" -q` | SG13G2 preview integration | Needs compatible ngspice + compiled OSDI models; non-gating. The newer ngspice is a per-command override, never the settings file (that would change ngspice for every run); the owner's settings file names it in a comment |
 
 Test counts change as work lands; they are not a fixed baseline in this contract.
 Record the commit, environment, command and actual pass/skip/deselection counts

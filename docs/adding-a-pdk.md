@@ -31,7 +31,7 @@ designer policy, separate from device model parameters. See
 [operating-point.md](operating-point.md#project-and-customer-threshold-files)
 for the schema and customer overrides.
 
-Registration is catalog availability, not a release support tier. For 0.2.0,
+Registration is catalog availability, not a release support tier:
 sky130 is the only release-validated simulation PDK; the registered GF180MCU
 and SG13G2 catalogs are preview integrations. Promoting a PDK requires a gated
 real-model profile covering its major families, result readback, and a
@@ -303,6 +303,66 @@ also needs checking independently of the device address.
 `polarity: n` or `polarity: p` independently declares the channel type used by
 `SpecReport.op_table()`. It does not require the other three fields. See
 [operating-point.md](operating-point.md) for save requests and table behavior.
+
+### Optional and derived instance parameters
+
+A `paramList` entry may declare `emit_if_supplied: true`: its default remains
+available to the factory, but an omitted value adds no instance token or
+structure-fingerprint parameter. Explicit values, including an explicit default,
+are emitted. Optional parameters belong last in the catalog so legacy positional
+parameter lists retain their old bindings. `strict: true` opts into finite
+integer validation at emission (including assigned Variables); booleans,
+nonfinite values and out-of-range numbers raise `CircuitError`. SPICE strings
+remain literal expressions whose numeric validity is checked by the simulator.
+These flags leave other catalog parameters' validation unchanged.
+
+A separate device-level mapping derives read-only emitted parameters:
+
+```yaml
+derivedParams:
+  mult: {from: m, omit_when: 1}
+```
+
+The destination is outside `paramList` and cannot be passed to the factory.
+The source must name a declared, always-emitted parameter; optional sources
+are refused at catalog loading. The destination cannot collide with a caller
+parameter or its alias. Emission copies the current effective source value,
+including a Variable's current value, and omits a proven numeric `omit_when`.
+No expression evaluator is involved. `export_schema()` reports this mapping
+separately as `derivedParams`; optional caller parameters carry
+`emit_if_supplied: true` and are excluded from the default `code_template`.
+Code that consumes the schema should pass optional parameters only when its
+input supplied them, preserving omission through a round trip.
+
+Per-parameter `simulator_options: {ngspice: {wnflag: 1}}` declares a default
+deck option required when that parameter is present anywhere in the emitted
+hierarchy. Explicit caller options take precedence. `backend_max: {xyce: 1}`
+refuses larger or unprovable effective values with `NotSupportedError` before
+simulation. These small declarations describe emission requirements rather
+than operating-point addressing; `op_backends` remains unrelated.
+
+For sky130 this applies to `nmos1p8`, `nmos1p8_lvt`, `nmos3p3_native`,
+`nmos5v`, `nmos5v_native`, `pmos1p8`, `pmos1p8_lvt`, `pmos1p8_hvt` and
+`pmos5v`. They accept dimensionless positive-integer `nf`, default 1, emitted
+only when supplied. `w` is total width before parallel multiplicity `m`, and
+each finger uses `w/nf`. On ngspice an explicit `nf` (including 1) adds one
+`wnflag=1` option unless the caller set `wnflag`; that deck-wide option can
+also affect other multifinger devices in the same deck. Xyce's bin selection
+uses total width, so silk refuses `nf>1` and unprovable symbolic counts there.
+
+On these nine families `mult` is derived from `m`, emitted when `m` differs
+from 1, and is never caller-settable. This is a compatibility change for old
+`m>1` decks: mismatch-enabled model perturbations scale with
+`1/sqrt(l*w*mult)`, so their spread decreases. It approximates the aggregation
+of independent devices; it does not produce independent per-device draws.
+Mismatch-off results are unchanged. Omitted `nf` with `m=1` preserves deck
+bytes and seeded mismatch behavior. The ESD and 20 V families retain their
+previous parameter interfaces.
+
+The layout estimate and placement remain unchanged: channel area uses W·L·m,
+without another factor of `nf`. Finger-dependent diffusion, contacts and stress
+are not estimated; `ad/as/pd/ps/nrd/nrs/sa/sb/sd` remain unsupported. The model's
+zero junction defaults are retained. GF180MCU/SG13G2 catalogs are unchanged.
 
 ## 4. When you need a `BasePDK` subclass
 

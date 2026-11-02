@@ -560,6 +560,10 @@ class CircuitStructureTracker:
             # immediate owner is essential: ancestors may use another PDK.
             elif hasattr(device, 'param_list'):
                 for param_name, constraint in device.param_list.items():
+                    if (getattr(constraint, 'emit_if_supplied', False)
+                            and constraint.value is None
+                            and not getattr(constraint, 'emission_set', False)):
+                        continue
                     raw = constraint.value
                     if raw is None:
                         value = constraint.default

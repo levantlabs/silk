@@ -392,5 +392,5 @@ class TestOpTableDeclarationsExcludedFromExportSchema:
             'name', 'is_pdk_device', 'pdk_model', 'spice_prefix', 'category',
             'pins', 'parameters', 'code_template', 'source_class',
         }
-        assert set(schema['nmos1p8']) == expected_keys
-        assert set(schema['pmos1p8']) == expected_keys
+        assert set(schema['nmos1p8']) == expected_keys | {'derivedParams'}
+        assert set(schema['pmos1p8']) == expected_keys | {'derivedParams'}
