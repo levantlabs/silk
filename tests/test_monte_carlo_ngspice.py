@@ -158,3 +158,108 @@ def test_record_draws_ranks_the_offset_as_task_300(pair_tb):
         rows = list(csv.DictReader(f))
     assert len(rows) == n
     assert float(rows[0]['dut.m1:vth0']) == mc.draws.values[('tt', 0)][0]
+
+
+@pytest.mark.parametrize('monte_carlo', [False, True])
+def test_prepare_external_plan_readback(pair_tb, tmp_path, monte_carlo):
+    import subprocess
+    from pathlib import Path
+    from silk import settings
+    tb = pair_tb.set_corners(['tt', 'ss'])
+    if monte_carlo:
+        tb.set_monte_carlo(3, seed=11)
+    reports = {}
+    for corner in ('tt', 'ss'):
+        for index in ((0, 2) if monte_carlo else (None,)):
+            deck = Path(tb.prepare(corner=corner, sample=index))
+            remote = tmp_path / 'remote' / corner / str(index)
+            remote.mkdir(parents=True)
+            # The documented relocation workaround until output relocation lands.
+            text = re.sub(r'^write .*$', 'write returned.raw', deck.read_text(),
+                          flags=re.M)
+            (remote / 'deck.cir').write_text(text)
+            completed = subprocess.run(
+                [settings.get('SILK_NGSPICE_BIN'), '-b', 'deck.cir'],
+                cwd=remote, capture_output=True, text=True, timeout=60)
+            assert completed.returncode == 0, completed.stdout + completed.stderr
+            report = tb.evaluate(corner, rawfile=remote / 'returned.raw')
+            reports[(corner, index)] = report
+            assert report.operating_conditions.origin == 'external'
+            assert report.provenance.run_origin == 'external-rawfile'
+            assert report.provenance.seed is None
+            assert report.corner == corner
+            spec = tb._specs[0]['spec']
+            assert spec.latest(source='spice').value == report.metrics['offset']
+            assert math.isfinite(report.metrics['offset'])
+            if monte_carlo:
+                assert abs(report.metrics['offset']) > 1e-5
+            else:
+                assert report.metrics['offset'] == pytest.approx(0, abs=1e-12)
+    if monte_carlo:
+        assert reports[('tt', 0)].metrics != reports[('tt', 2)].metrics
+
+
+def build_resistor_bench(tmp_path, simulator='ngspice', mixed=False):
+    from silk import load_pdk, sources
+    from silk.circuit.circuit_elements import PortDir
+    from silk.circuit.modules import Module
+    from silk.simulation import DC
+    pdk = load_pdk('sky130')
+    mod = Module('sky130', str(tmp_path), 'resistors.cir', pdk, module_name='resistors')
+    mod.simulator = simulator
+    mod.define_module_ports({'a': PortDir.INOUT, 'vss': PortDir.GROUND})
+    for name in ('r1', 'r[0]'):
+        mod.add(pdk.res_hpo(name, a='a', b='vss', c='vss', w=1, l=2))
+    if mixed:
+        mod.add(pdk.nmos1p8('m', d='a', g='a', s='vss', b='vss', w=5, l=2))
+    tb = mod.create_test('draws')
+    tb.add_module_under_test({'a': 'a', 'vss': '0'})
+    tb.add(sources.vdc('bias', positive='a', negative='0', value=1))
+    tb.add_sim_type(DC('bias', 1, 1, .1))
+    from silk.metrics import final_value
+    tb.add_metric('current', final_value, sig=tb.probe('i(bias)'))
+    return tb
+
+
+@pytest.mark.parametrize('variation', ['mismatch', 'process', 'both'])
+def test_resistor_draws_match_sample_logs_and_do_not_change_metrics(tmp_path, variation):
+    from pathlib import Path
+    from silk.circuit.monte_carlo import draw_devices, showmod_requests
+    from silk.circuit.monte_carlo_draws import parse_showmod
+    tb = build_resistor_bench(tmp_path)
+    off = tb.run_monte_carlo(1, seed=9, variation=variation, output_mode='new')
+    on = tb.run_monte_carlo(2, seed=9, variation=variation, record_draws=True, output_mode='new')
+    again = (tb.run_monte_carlo(1, seed=9, variation=variation, record_draws=True, output_mode='new')
+             if variation == 'mismatch' else on)
+    assert not on.failed
+    assert on.draws.raw is True
+    assert on.draws.columns == tuple((name, label) for name in ('dut.r1', 'dut.r[0]')
+                                    for label in ('rbody.rsh', 'rhead.rsh'))
+    devices, _ = draw_devices(tb.netlist.elem_dict, tb.module.pdk_details.statistical)
+    _, requests = showmod_requests(devices)
+    for key, report in on.reports.items():
+        if key in off.reports:
+            assert report.metrics == off.reports[key].metrics
+            np.testing.assert_array_equal(
+                report.sim_results.load_signal('i(vbias)', 'I').y,
+                off.reports[key].sim_results.load_signal('i(vbias)', 'I').y)
+        if key in again.reports:
+            assert report.metrics == again.reports[key].metrics
+            np.testing.assert_array_equal(on.draws.values[key], again.draws.values[key])
+        directory = Path(report.rawfile_path).parent
+        logs = list(directory.glob('*.log'))
+        assert logs
+        expected = parse_showmod(logs[0].read_text(), requests)
+        assert report._mc_draws == expected
+    assert on.seeds[('tt', 0)] != on.seeds[('tt', 1)]
+    assert np.any(on.draws.values[('tt', 0)] != on.draws.values[('tt', 1)])
+    from silk.circuit import spec_report as codec
+    restored = codec.results_from_dict(codec.results_to_dict(on))
+    assert restored.draws.columns == on.draws.columns
+    assert restored.draws.raw is on.draws.raw
+    for key in on.draws.values:
+        np.testing.assert_array_equal(restored.draws.values[key], on.draws.values[key])
+    with pytest.warns(UserWarning):
+        fitted = restored.sensitivity('current', by='device')
+    assert fitted.method == 'correlation'
+    assert {row.name for row in fitted.rows} == {'dut.r1', 'dut.r[0]'}

@@ -515,7 +515,7 @@ def test_unwired_bench_raises_typed_error(tmp_path):
         tb.validate_simulation_setup()
 
 
-# -- codex review controls (P2-1..P2-4) ---------------------------------------
+# -- setup-check controls (P2-1..P2-4) ------------------------------------------
 
 from silk import Variable                                       # noqa: E402
 from silk.circuit import placement_reference                    # noqa: E402
@@ -757,7 +757,7 @@ def test_spies_variable_and_provenance_untouched(tmp_path):
     assert {p: p.read_bytes() for p in tmp_path.rglob('*') if p.is_file()} == files
 
 
-# -- codex re-review controls: live graph purity, sweep-source parity ---------
+# -- controls: live graph purity, sweep-source parity ------------------------
 
 from silk.exceptions import SweepSourceError  # noqa: E402
 

@@ -16,44 +16,80 @@ class _AddressRecord:
     physical: tuple
     currents: tuple = ()
     logical_currents: tuple = ()
+    devices: tuple = ()
+
+
+def _device_facts(module):
+    """Facts for each device-parameter probe pending in this run: (designer
+    label, probe spelling, parameter, backend, physical address, polarity).
+
+    Only explicit probes qualify. Bulk saves never widen this set."""
+    pending = getattr(module, '_pending_device_probes', None) or ()
+    backend = module.simulator
+    if not pending or backend not in ('ngspice', 'xyce'):
+        return ()
+    from silk.circuit.modules_results import (
+        DUT_ELEMENT_NAME, dut_module_from_elem_dict, ngspice_device_op_line,
+        resolve_device_probe_address, xyce_device_op_term)
+    dut = dut_module_from_elem_dict(module.elem_dict)
+    facts = []
+    for designer, param in dict.fromkeys(pending):
+        try:
+            address = resolve_device_probe_address(dut, designer, param)
+        except ValueError:
+            continue
+        args = (address.instance_path, address.leaf, address.internal, param)
+        physical = (xyce_device_op_term(*args) if backend == 'xyce'
+                    else ngspice_device_op_line(*args))
+        facts.append((f'{DUT_ELEMENT_NAME}.{designer}:{param}', f'{designer}:{param}',
+                      param, backend, physical, address.polarity))
+    return tuple(facts)
 
 
 def _capture_addresses(module):
     from silk.circuit.modules_netlist import _save_list_inventory
     try:
-        records = node_candidates(module)
+        records = node_candidates(module, sources=None)
         physical = tuple(_save_list_inventory(module))
         candidates = []
         for record in records:
+            if record.source is not None:
+                continue
             address = record.address
             candidates.append((record.designer, record.components, record.leaf,
                                str(address), tuple(address._hierarchy)))
         from silk.circuit.module_test import _branch_vector_name
-        from silk.sources._layout import source_instances
         from silk.sources.classes import CurrentSource, VoltageSource
         from silk.spice_names import to_designer_name, to_spice_name
         currents = []
         logical_currents = []
-        for authored, source, prefix in source_instances(module.sig_sources_dict, module.elem_dict):
+        for record in records:
+            source = record.source
             if not isinstance(source, (CurrentSource, VoltageSource)):
                 continue
+            from silk.circuit.placement_reference import _resolve_path
+            prefix = _resolve_path(record.chain, '', follow_ports=False)
+            authored = '.'.join((*('x' + name for name in record.components), record.leaf))
             cards = list(source.physical_instance_names())
             if isinstance(source, CurrentSource) and module.simulator == 'behavioral':
                 if source.instance_name not in cards:
                     cards.append(source.instance_name)
-            if len(source.physical_instance_names()) > 1:
+            terms = record.address
+            expected = terms[0][0] if len(terms) == 1 else terms
+            for logical in dict.fromkeys((authored, record.designer)):
                 try:
-                    resolved = _branch_vector_name(module.sig_sources_dict, authored, module.elem_dict)
+                    # Inventory checks do not represent a requested current.
+                    with warnings.catch_warnings():
+                        warnings.simplefilter('ignore', UserWarning)
+                        resolved = _branch_vector_name(module.sig_sources_dict, logical, module=module)
                 except CircuitError:
-                    resolved = None
-                terms = tuple((prefix + card, sign) for card, sign in source.physical_layout().current_terms)
-                expected = terms[0][0] if len(terms) == 1 else terms
+                    continue
                 if resolved == expected:
                     aliases = tuple((to_designer_name(
                         ('v.' if isinstance(source, VoltageSource) and prefix
                          and module.simulator == 'ngspice' else '') + card,
                         kind='branch'), sign) for card, sign in terms)
-                    logical_currents.append((authored, aliases))
+                    logical_currents.append((logical, aliases, len(source.physical_instance_names()) == 1))
             for card in cards:
                 emitted = prefix + card
                 branch = emitted
@@ -61,7 +97,10 @@ def _capture_addresses(module):
                     branch = 'v.' + emitted
                 alias = to_designer_name(branch, kind='branch')
                 try:
-                    resolved = _branch_vector_name(module.sig_sources_dict, alias, module.elem_dict)
+                    # Inventory checks do not represent a requested current.
+                    with warnings.catch_warnings():
+                        warnings.simplefilter('ignore', UserWarning)
+                        resolved = _branch_vector_name(module.sig_sources_dict, alias, module=module)
                 except CircuitError:
                     continue
                 if (not isinstance(resolved, str)
@@ -77,13 +116,77 @@ def _capture_addresses(module):
                     # reading; the collector treats ':' and '.' alike.
                     probe_request = request
                 currents.append((alias, request, isinstance(source, CurrentSource), probe_request))
-        return _AddressRecord(tuple(candidates), physical, tuple(currents), tuple(logical_currents))
+        return _AddressRecord(tuple(candidates), physical, tuple(currents), tuple(logical_currents),
+                              _device_facts(module))
     except CircuitError:
         # Optional viewer proof cannot make an otherwise supported run fail.
         return None
 
 
-def _proof(raw, frozen):
+def _device_proof(raw, frozen, first_id, refused, warned):
+    """Per-plot device paths and (row, label, probe) proofs.
+
+    A record is live only if, in every plot, its physical address names at most
+    one row, and where it names one the row is populated. Ambiguous rows,
+    shared labels, rows shared by two records and refused/warned vectors never
+    get a label."""
+    records = [r for r in frozen.devices if (r[1].rsplit(':', 1)[0], r[2]) not in refused]
+    labels = {}
+    for record in records:
+        labels.setdefault(record[0], set()).add(record[4].casefold())
+    records = [r for r in records if len(labels[r[0]]) == 1]
+
+    def forms(record):
+        wanted = record[4].casefold()
+        return {wanted} if record[3] == 'xyce' else {wanted, f'v({wanted})', f'i({wanted})'}
+
+    found = {}
+    for record in records:
+        accepted = forms(record)
+        per_plot = []
+        for plot in raw.plots:
+            rows = [i for i in range(first_row(plot), len(plot.vectors))
+                    if plot.vectors[i].name.casefold() in accepted]
+            per_plot.append(rows)
+        found[record] = per_plot
+    live = []
+    for record, per_plot in found.items():
+        if any(len(rows) > 1 for rows in per_plot):
+            continue
+        if any(rows and (not len(raw.plots[pi].vectors[rows[0]].data)
+                         or warned(raw.plots[pi].vectors[rows[0]].name))
+               for pi, rows in enumerate(per_plot)):
+            continue
+        live.append(record)
+    for pi in range(len(raw.plots)):
+        claimed = {}
+        for record in live:
+            for row in found[record][pi]:
+                claimed.setdefault(row, []).append(record)
+        live = [r for r in live if all(len(claimed[row]) == 1 for row in found[r][pi])]
+    paths, proofs = [], []
+    for pi, plot in enumerate(raw.plots):
+        plot_paths, plot_proofs = [], []
+        for offset, record in enumerate(live):
+            rows = found[record][pi]
+            plot_paths.append({'name': record[0], 'kind': 'device',
+                               'targets': [{'id': first_id + offset, 'rows': rows}]})
+            if not rows:
+                continue
+            _, spelling, param, backend, _, polarity = record
+            # Copy-as-code must read the same samples the viewer shows.
+            if (backend == 'xyce' and param == 'id' and polarity == 'p') or \
+                    (backend == 'ngspice' and plot.real is False):
+                probe = None
+            else:
+                probe = ('device', spelling)
+            plot_proofs.append((rows[0], record[0], probe))
+        paths.append(plot_paths)
+        proofs.append(plot_proofs)
+    return paths, proofs
+
+
+def _proof(raw, frozen, refused=frozenset(), warned=lambda name: False):
     records = [SimpleNamespace(designer=name, components=components, leaf=leaf,
                                address=LiteralVoltageName(address, hierarchy=hierarchy))
                for name, components, leaf, address, hierarchy in frozen.candidates]
@@ -117,13 +220,17 @@ def _proof(raw, frozen):
             return False
 
     metadata, proofs = [], []
+    device_paths, device_proofs = (_device_proof(raw, frozen, len(addresses), refused, warned)
+                                   if frozen.devices else ([[]] * len(raw.plots),
+                                                           [[]] * len(raw.plots)))
     for pi, plot in enumerate(raw.plots):
         from silk.signals.view.emit import _signal_start
         vectors = [{'name': v.name, 'selectable': i >= _signal_start(plot)}
                    for i, v in enumerate(plot.vectors)]
         metadata.append({'version': 1, 'vectors': vectors,
                          'paths': [{'name': name, 'targets': [{'id': t, 'rows': matches[pi][t]}
-                                    for t in sorted(targets)]} for name, targets in paths.items()]})
+                                    for t in sorted(targets)]} for name, targets in paths.items()]
+                                  + device_paths[pi]})
         row_targets = {}
         for target, rows in enumerate(matches[pi]):
             for row in rows:
@@ -177,12 +284,12 @@ def _proof(raw, frozen):
             if len(names) == 1:
                 name, = names
                 plot_proof.append((row, name, name))
-        proofs.append(tuple(plot_proof))
+        proofs.append(tuple(plot_proof) + tuple(device_proofs[pi]))
     return metadata, proofs
 
 
 def _source_current_proofs(raw, frozen, proofs):
-    """Retain checked terms and genuinely missing saved cards separately."""
+    """Checked currents, with compound/missing entries before single-card aliases."""
     from silk.signals.analysis_kind import plot_silk_analysis
     from silk.simulation.behavioral_backend import BEHAVIORAL_COMMAND
     from silk.signals.view.emit import _plot_kind
@@ -190,15 +297,20 @@ def _source_current_proofs(raw, frozen, proofs):
              for alias, request, current_source, _ in frozen.currents}
     out = []
     for plot, proof in zip(raw.plots, proofs):
-        if _plot_kind(plot) == 'constants':
-            out.append(())
-            continue
         checked = {probe: row for row, _, probe in proof if probe}
-        sources = []
-        for name, terms in frozen.logical_currents:
-            probe = f'i({name})'
-            if any(v.name.casefold() == probe.casefold() for p in raw.plots for v in p.vectors):
+        sources, aliases = [], []
+        for name, terms, single_card in frozen.logical_currents:
+            if _plot_kind(plot) == 'constants' and not single_card:
                 continue
+            probe = f'i({name})'
+            if all(alias in cards for alias, _ in terms):
+                addresses = tuple((cards[alias][0], sign) for alias, sign in terms)
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore', UserWarning)
+                    resolved = resolve_node_inventory(plot, name,
+                        [SimpleNamespace(designer=name, address=addresses)], tuple(cards), signal_type='I')
+                if resolved != addresses:
+                    continue
             rows, missing = [], []
             for alias, sign in terms:
                 if alias not in cards:
@@ -215,8 +327,9 @@ def _source_current_proofs(raw, frozen, proofs):
                     # Present but ambiguous/unproved is not a missing operand.
                     break
             else:
-                sources.append((probe, tuple(rows), tuple(missing)))
-        out.append(tuple(sources))
+                target = aliases if single_card and not missing else sources
+                target.append((probe, tuple(rows), tuple(missing), single_card))
+        out.append(tuple(sources + aliases))
     return tuple(out)
 
 
@@ -275,6 +388,14 @@ def _view_node_context(owner, checked_source=None):
     checked = checked_source if checked_source is not None else read_retained(owner)
     if checked._content_sha256 != fingerprint:
         return None
-    metadata, proofs = _proof(checked, record)
+    from silk.simulation.backend import _checkvalid_warned
+    # Same lookup as the reader: the run's own record, else the netlister's.
+    refused = getattr(raw, '_preflight_unavailable_params', None)
+    if refused is None:
+        refused = getattr(getattr(reader, 'netlister', None),
+                          '_preflight_unavailable_params', None) or {}
+    refused = frozenset(refused)
+    metadata, proofs = _proof(checked, record, refused,
+                              lambda name: _checkvalid_warned(raw, name))
     return ViewNodeContext._checked(checked, metadata, proofs,
                                     _source_current_proofs(checked, record, proofs))

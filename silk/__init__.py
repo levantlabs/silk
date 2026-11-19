@@ -65,7 +65,7 @@ from silk.exceptions import (
     PDKError,
 )
 
-__version__ = "0.3.0"
+__version__ = "0.4.0rc1"
 
 
 def view(source, out_path=None, *, open=True, **kwargs):

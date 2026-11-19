@@ -68,7 +68,7 @@ def _execution_nodes(module, *, recursive, ambient=None, supply=None):
 
 def _check_process_sources(nodes, *, standalone=None, corner=None):
     """One invocation promises one chip: reject conflicting process sources first."""
-    from silk.exceptions import SimulationError, VariationError
+    from silk.exceptions import VariationError
     from silk.simulation._behavioral_variation import resolve_test
     from contextlib import nullcontext
     processes = {}
@@ -81,15 +81,21 @@ def _check_process_sources(nodes, *, standalone=None, corner=None):
                     or test._effective_simulator() != 'behavioral'):
                 continue
             from silk.circuit.module_test import _planned_conditions
-            planned = test._plan_runs(corner=corner, _deterministic=True) if (test._variable_lists or test._groups) else None
+            try:
+                planned = test._plan_runs(corner=corner, _deterministic=True) if (test._variable_lists or test._groups) else None
+            except ConfigurationError:
+                raise
+            except Exception:
+                # Leave this test's failure to the normal run path.
+                continue
             for point in planned or (None,):
                 try:
                     with _planned_conditions(test, point):
                         records = resolve_test(test).records
                 except ConfigurationError:
                     raise
-                except SimulationError:
-                    # Preserve the normal walk's per-test simulation failure policy.
+                except Exception:
+                    # Leave this point's failure to the normal run path.
                     continue
                 for record in records:
                     resolved = record.resolved
@@ -624,7 +630,8 @@ class _TestbenchMethods(_Base):
             including unknown temperature or supply.
         **config
             Forwarded to ``ModuleTestbench.run`` (``corner='ff'``,
-            ``run_label='baseline'``, and ``temperature=``/``voltage=``
+            ``run_label='baseline'``, ``n_workers=2`` for declared conditions
+            or Monte Carlo samples, and ``temperature=``/``voltage=``
             as deprecated TEMP / supply assertions). Use
             test.set_temperature() and test.set_supply_voltage() to
             configure them. Verified fixed temperature plus an established

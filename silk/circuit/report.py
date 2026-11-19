@@ -2068,12 +2068,18 @@ class CircuitReport:
         return '\n'.join(out)
 
     def _grid_results(self):
-        """Collections with declared operating axes, in supplied test order."""
-        from silk.circuit.spec_report import CornerResults
+        """Display collections and individual test runs in supplied test order."""
+        from silk.circuit.spec_report import CornerResults, SpecReport
         evidence = self.test_results
-        values = evidence.items() if type(evidence) is dict else [('', evidence)]
-        return [(name, value) for name, value in values
-                if isinstance(value, CornerResults) and value._is_grid()]
+        if type(evidence) is not dict:
+            return [('', evidence)] if isinstance(evidence, CornerResults) else []
+        collections = []
+        for name, value in evidence.items():
+            if isinstance(value, SpecReport):
+                value = CornerResults({value.corner if value.corner is not None else '—': value})
+            if isinstance(value, CornerResults):
+                collections.append((name, value))
+        return collections
 
     def _reconciliation_title(self):
         return 'Spec Reconciliation'
@@ -2112,8 +2118,16 @@ class CircuitReport:
         """Render recorded deterministic and Monte Carlo grids in test order."""
         from silk.circuit.monte_carlo import MonteCarloResults
         from silk.circuit.monte_carlo_report import build_grid_section, render_grid_section
+        from silk.specs.report import _single_line
         parts = []
         for name, collection in self._grid_results():
+            if not collection.reports:
+                # Failed-only collections can only name the test via the dictionary key.
+                owner, separator, qualified_test = name.partition(':')
+                if separator and owner.startswith('$/'):
+                    placement = owner[2:].replace('/', '.')
+                    name = f"{qualified_test.rsplit('.', 1)[-1]} (instance {placement})"
+                name = _single_line(name)
             if isinstance(collection, MonteCarloResults):
                 parts.append(render_grid_section(build_grid_section(collection), name=name, mode=mode))
             else:
@@ -2123,12 +2137,19 @@ class CircuitReport:
     def _render_pvt_grid(self, name, collection, mode):
         """Render recorded checks and runs without changing collection evidence."""
         from copy import copy
-        from silk.circuit.spec_report import CornerResults
+        from silk.circuit.spec_report import CornerResults, metric_warning_text
+        from silk.specs.report import _single_line
         reports = collection.reports
-        if not name:
-            name = next((report.test_name for report in reports.values()), 'unnamed')
-        heading = f"PVT Grid: {name} — {'PASS' if collection.passed else 'FAIL'}"
+        record = next(iter(reports.values()), None)
+        if record is not None:
+            name = record.test_name
+            if record.owner_path not in (None, '$'):
+                placement = record.owner_path.removeprefix('$/').replace('/', '.')
+                name += f' (instance {placement})'
         rows = collection.table()
+        prefix = '' if len(rows) == 1 else 'PVT Grid: '
+        heading = f"{prefix}{_single_line(name or 'unnamed')} — {'PASS' if collection.passed else 'FAIL'}"
+
         # Counts remain owned by the result collection; only their presentation changes.
         import re
         counts = re.fullmatch(r'planned=(\d+): (\d+) reports \((\d+) PASS, (\d+) FAIL\), '
@@ -2150,11 +2171,17 @@ class CircuitReport:
             except (TypeError, ValueError):
                 extrema[metric] = [None, None]
         spec_rows = []
+        warning_cells = []
         checked_metrics = set()
         for declaration in collection._check_declarations:
             metric = declaration['metric']
             checked_metrics.add(metric)
             key = declaration['key']
+            owner = declaration.get('owner_path')
+            label = declaration['name']
+            if owner not in (None, '$'):
+                label = _single_line(f'{label} (instance {owner.removeprefix("$/").replace("/", ".")})')
+            warning_notes = []
             cells = [row.get('check.' + key, 'UNAVAILABLE') for row in rows]
             status = ('FAIL' if 'FAIL' in cells else
                       'PASS' if cells and all(cell == 'PASS' for cell in cells) else 'UNAVAILABLE')
@@ -2168,6 +2195,12 @@ class CircuitReport:
                     (declaration.get('owner_path') is None or
                      result.owner_path == declaration['owner_path'])]
                 selected[point] = view
+                if any(result.owner_path == owner and not result.passed for result in view._results):
+                    where = _single_line(_pvt_point(point))
+                    location_prefix = f'{where}: ' if where != '—' else ''
+                    warning_notes.extend(f'{location_prefix}{metric_warning_text(warning)}'
+                                         for warning in report.metric_warnings.get(metric, ()))
+            warning_cells.append(' / '.join(warning_notes))
             view = CornerResults(selected, failed=collection.failed,
                                  skip_unavailable=collection._skip_unavailable)
             try:
@@ -2177,7 +2210,7 @@ class CircuitReport:
             value = worst.value if worst is not None and worst.corner is not None else None
             margin = abs(value - declaration['target']) if value is not None else None
             low, high = extrema.get(metric, (None, None))
-            spec_rows.append([status, declaration['name'], declaration['op'],
+            spec_rows.append([status, label, declaration['op'],
                 _pvt_number(declaration['target']), _pvt_number(value),
                 _pvt_point(worst.corner) if worst is not None else '—',
                 _pvt_number(margin), _pvt_number(low), _pvt_number(high)])
@@ -2186,13 +2219,18 @@ class CircuitReport:
                 spec_rows.append(['—', metric, '—', '—', '—', '—', '—',
                                   *(_pvt_number(value) for value in extrema[metric])])
         spec_columns = ['Status', 'Spec', 'Op', 'Target', 'Worst', 'Worst at', 'Margin', 'Min', 'Max']
+        if any(warning_cells):
+            spec_columns.append('Metric warnings')
+            for index, row in enumerate(spec_rows):
+                row.append(warning_cells[index] if index < len(warning_cells) else '')
         variables = collection._variable_names()
         run_columns = ['Corner', 'Temp (°C)', 'Supply (V)', *('run.' + name for name in variables), 'Status', *metrics]
         run_rows = [[_pvt_number(row['run.corner']), _pvt_number(row['run.temperature']),
                      _pvt_number(row['run.supply']),
                      *(repr(row['run.' + name]) for name in variables),
                      'NO REPORT' if row['run.status'] == 'failed' else row['run.status'],
-                     *(_pvt_number(row['metric.' + metric], missing='') for metric in metrics)]
+                     *('' if value is None else _pvt_number(value, missing='not measured')
+                       for value in (row['metric.' + metric] for metric in metrics))]
                     for row in rows]
         errors = [_pvt_point((row['run.corner'], row['run.temperature'], row['run.supply'])
                              + ((tuple((name, row['run.' + name]) for name in variables),) if variables else ()))
@@ -3162,7 +3200,7 @@ def _run_detail_lines(records):
 
 def _pvt_number(value, *, missing='—'):
     from numbers import Real
-    if value is None:
+    if value is None or (isinstance(value, Real) and value != value):
         return missing
     return f'{value:g}' if isinstance(value, Real) else str(value)
 
@@ -3199,7 +3237,10 @@ def _pvt_table(columns, rows, mode, *, specs=False):
         return '\n'.join(out)
     return '\n'.join(['| ' + ' | '.join(_pvt_text(c, mode) for c in columns) + ' |',
                        '|' + '---|' * len(columns), *(
-                       '| ' + ' | '.join(_pvt_text(cell, mode) for cell in row) + ' |' for row in rows)])
+                       '| ' + ' | '.join(
+                           str(cell) if column == 'Op' and cell in ('<', '<=', '>', '>=', '==')
+                           else _pvt_text(cell, mode)
+                           for column, cell in zip(columns, row)) + ' |' for row in rows)])
 
 
 def _provenance_html(records, esc) -> List[str]:

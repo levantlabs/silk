@@ -17,6 +17,7 @@ from silk.circuit.monte_carlo_draws import (DrawTable, Sensitivity,
                                             showmod_lines)
 from silk.exceptions import SimulationError
 from silk.metrics.diagnostics import MetricWarning
+from tests._env import needs_pdk
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROBES = os.path.join(ROOT, 'tests', 'data')
@@ -31,7 +32,7 @@ def _probe_log():
 # --- showmod -----------------------------------------------------------------
 
 def test_showmod_lines_use_the_verified_form():
-    [line] = showmod_lines([('xm1', 'sky130_fd_pr__nfet_01v8', ('vth0', 'toxe', 'voff'))])
+    [line] = showmod_lines([('xm1', 'msky130_fd_pr__nfet_01v8', ('vth0', 'toxe', 'voff'))])
     assert line == "showmod 'm.xm1.msky130_fd_pr__nfet_01v8' : vth0 toxe voff"
 
 
@@ -39,8 +40,8 @@ def test_showmod_lines_preserve_saved_probe_selectors_and_parameters():
     with open(os.path.join(PROBES, 'ng_showmod_draws.sp')) as fh:
         deck = fh.read().splitlines()
     lines = showmod_lines([
-        ('xm1', 'sky130_fd_pr__nfet_01v8', ('vth0', 'toxe', 'voff')),
-        ('xm2', 'sky130_fd_pr__nfet_01v8', ('vth0', 'toxe', 'voff')),
+        ('xm1', 'msky130_fd_pr__nfet_01v8', ('vth0', 'toxe', 'voff')),
+        ('xm2', 'msky130_fd_pr__nfet_01v8', ('vth0', 'toxe', 'voff')),
     ])
     assert [' '.join(shlex.split(line)) for line in lines] == deck[10:12]
 
@@ -558,6 +559,10 @@ def test_a_run_holding_both_kinds_of_draws_raises(sky130_tb, showmod_sim):
 
 def test_xyce_draws_make_a_normalised_table(sky130_tb, showmod_sim):
     from silk.circuit.module_test import ModuleTestbench
+    from silk import load_pdk
+    pdk = load_pdk('sky130')
+    for kind in ('res_xhpo', 'res_hpo'):
+        sky130_tb.module.add(getattr(pdk, kind)(kind, a='d', b='s', c='s', w=1, l=1))
     original = ModuleTestbench._evaluate_run
 
     def evaluate(self, result):
@@ -568,6 +573,7 @@ def test_xyce_draws_make_a_normalised_table(sky130_tb, showmod_sim):
         mp.setattr(ModuleTestbench, '_evaluate_run', evaluate)
         mc = sky130_tb.run_monte_carlo(2, record_draws=True)
     assert mc.draws.raw is False
+    assert mc.draws.skipped_types == ('res_xhpo',)
 
 
 def test_xyce_record_draws_is_not_refused_at_planning(sky130_tb):
@@ -635,3 +641,279 @@ def test_variable_coordinates_have_matching_draw_csv_columns(tmp_path):
     assert list(rows[0]) == ['corner', 'temperature', 'supply', 'trim', 'f_clk', 'sample', 'seed', 'M1:vth']
     assert [row['trim'] for row in rows] == ['1', '3']
     assert [row['M1:vth'] for row in rows] == ['0.1', '1.1']
+
+
+@pytest.mark.parametrize('legacy', [False, True])
+def test_recorders_inventory_all_non_mos_catalog_types_without_recording_them(legacy):
+    from dataclasses import replace
+    from silk import load_pdk, sources
+    from silk.circuit.circuit_elements import ElementType
+    from silk.circuit.modules_results import xyce_draw_name_map
+    from silk.elements import elements
+    from types import SimpleNamespace
+
+    pdk = load_pdk('sky130')
+    # Reverse catalog order distinguishes encounter ordering from sorted metadata.
+    kinds = [k for k, d in reversed(list(pdk._devices.items()))
+             if not set(d.pin_list) >= {'d', 'g', 's', 'b'}]
+    assert 'res_hpo' in kinds
+    entries = {}
+    for kind in ['nmos1p8', *kinds, 'nmos1p8']:
+        device = (pdk._devices[kind] if legacy else
+                  getattr(pdk, kind)(f'd{len(entries)}',
+                                    **{pin: '0' for pin in pdk._devices[kind].pin_list}))
+        entries[f'd{len(entries)}'] = dict(type=ElementType.DEVICE, device=device)
+    # Neither ordinary ideal elements nor PDK-looking custom objects are PDK types.
+    excluded = [elements.resistor('r', p='0', n='0', value=1),
+                elements.capacitor('c', p='0', n='0', value=1e-12),
+                elements.inductor('l', p='0', n='0', value=1e-9),
+                sources.vdc('v', positive='a', negative='0', value=1),
+                SimpleNamespace(device_name='custom', _pin_names=('p', 'n'))]
+    for i, device in enumerate(excluded):
+        entries[f'excluded{i}'] = dict(type=ElementType.DEVICE, device=device)
+    hierarchy = {name: dict(type=ElementType.MODULE,
+                           device=SimpleNamespace(elem_dict={
+                               'cell[0]': dict(type=ElementType.MODULE,
+                                               device=SimpleNamespace(elem_dict=entries))}))
+                 for name in ('bank[0]', 'bank[1]')}
+    st = pdk.statistical
+    # Even explicit non-MOS record entries must not enable resistor/etc capture.
+    st = replace(st, record={**st.record, **{k: ('vth0',) for k in kinds}})
+    mos_only = {name: entry for name, entry in entries.items()
+                if name in ('d0', f'd{len(kinds) + 1}')}
+    baseline = {name: dict(type=ElementType.MODULE,
+                          device=SimpleNamespace(elem_dict={
+                              'cell[0]': dict(type=ElementType.MODULE,
+                                              device=SimpleNamespace(elem_dict=mos_only))}))
+                for name in ('bank[0]', 'bank[1]')}
+    recorded_before, before_skipped = draw_devices(baseline, st)
+    map_before, params_before, xy_before_skipped = xyce_draw_name_map(baseline, st.record)
+    devices, skipped = draw_devices(hierarchy, st)
+    from silk.circuit.monte_carlo import showmod_requests
+    assert devices == recorded_before
+    assert showmod_requests(devices) == showmod_requests(recorded_before)
+    assert before_skipped == xy_before_skipped == ()
+    mapping, params, xy_skipped = xyce_draw_name_map(hierarchy, st.record)
+    names = [f'{bank}.cell[0].d{i}' for bank in ('bank[0]', 'bank[1]')
+             for i in (0, len(kinds) + 1)]
+    assert [d.name for d in devices] == names
+    assert mapping == map_before
+    assert params == params_before
+    assert list(mapping.values()) == names
+    assert list(params) == names
+    assert all(d.params == RECORDED for d in devices)
+    assert all(p == RECORDED for p in params.values())
+    assert skipped == tuple(sorted(kinds))
+    assert xy_skipped == tuple(kinds)
+    assert len(mapping) == 4
+
+
+@pytest.mark.parametrize('simulator', ['ngspice', 'xyce'])
+def test_resistor_only_recording_refuses_before_deck_with_type(tmp_path, events, simulator):
+    tb = _bench(tmp_path, 'sky130', None)
+    from silk import load_pdk
+    tb.module.add(load_pdk('sky130').res_xhpo('r', a='d', b='s', c='s', w=1, l=1))
+    tb.module.simulator = simulator
+    tb.set_monte_carlo(n=2, record_draws=True)
+    with pytest.raises(MonteCarloError, match='res_xhpo'):
+        tb.run()
+    assert _sample_dirs(tb) == []
+    assert not any(e[0] in ('prepare', 'sim') for e in events)
+
+
+def test_mixed_run_skipped_metadata_preserves_draws_csv_and_sensitivity(sky130_tb, showmod_sim, tmp_path):
+    from silk import load_pdk
+    before = sky130_tb.run_monte_carlo(6, record_draws=True)
+    sky130_tb.module.add(load_pdk('sky130').res_xhpo('r', a='d', b='s', c='s', w=1, l=1))
+    after = sky130_tb.run_monte_carlo(6, record_draws=True)
+    assert before.draws.skipped_types == ()
+    assert after.draws.skipped_types == ('res_xhpo',)
+    assert after.corner('tt').draws.skipped_types == ('res_xhpo',)
+    assert after.draws.columns == before.draws.columns
+    assert after.draws.raw == before.draws.raw
+    for key in before.draws.values:
+        np.testing.assert_array_equal(after.draws.values[key], before.draws.values[key])
+    first, second = before.sensitivity('gain'), after.sensitivity('gain')
+    assert (first.metric, first.method, first.n, first.p, first.r_squared) == (
+        second.metric, second.method, second.n, second.p, second.r_squared)
+    assert first.correlated == second.correlated == []
+    assert [r.name for r in first.rows] == [r.name for r in second.rows]
+    for left, right in zip(first.rows, second.rows):
+        assert left.effect_per_sigma == right.effect_per_sigma
+        np.testing.assert_allclose([left.share, left.correlation],
+                                   [right.share, right.correlation], equal_nan=True)
+    for name, mc in [('before', before), ('after', after)]:
+        write_draws_csv(tmp_path / name, mc.draws, mc.seeds)
+    assert (tmp_path / 'before').read_bytes() == (tmp_path / 'after').read_bytes()
+
+
+def test_unrecorded_resistor_does_not_mask_mos_recording_refusals():
+    from dataclasses import replace
+    from silk import load_pdk
+    from silk.circuit.circuit_elements import ElementType
+    from silk.circuit.monte_carlo import showmod_requests
+    pdk = load_pdk('sky130')
+    entries = {'r': dict(type=ElementType.DEVICE, device=pdk._devices['res_xhpo']),
+               'm': dict(type=ElementType.DEVICE,
+                         device=replace(pdk._devices['nmos1p8'], op_internal_name=None))}
+    with pytest.raises(MonteCarloError, match='op_internal_name'):
+        draw_devices(entries, pdk.statistical)
+    entries['m']['device'] = replace(pdk._devices['nmos1p8'], op_internal_name='invalid')
+    devices, skipped = draw_devices(entries, pdk.statistical)
+    assert skipped == ('res_xhpo',)
+    with pytest.raises(MonteCarloError, match='must start'):
+        showmod_requests(devices)
+
+
+@pytest.mark.parametrize('pdk_name,device', [('gf180mcu', 'nmos3p3'), ('sg13g2', 'nmos_lv')])
+@pytest.mark.parametrize('simulator', ['ngspice', 'xyce'])
+def test_record_draws_keeps_preview_pdk_statistical_refusal(tmp_path, events, pdk_name, device, simulator):
+    tb = _bench(tmp_path, pdk_name, device)
+    tb.module.simulator = simulator
+    tb.set_monte_carlo(n=2, record_draws=True)
+    with pytest.raises(NotSupportedError, match='library.statistical'):
+        tb.run()
+    assert _sample_dirs(tb) == []
+    assert not any(e[0] in ('prepare', 'sim') for e in events)
+
+
+@pytest.mark.parametrize('legacy', [False, True])
+def test_resistor_targets_keep_device_and_parameter_identity(legacy):
+    from silk import load_pdk
+    from silk.circuit.circuit_elements import ElementType
+    from silk.circuit.monte_carlo import showmod_requests
+    from silk.circuit.modules_results import xyce_draw_name_map
+    pdk = load_pdk('sky130')
+    entries = {name: dict(type=ElementType.DEVICE,
+        device=pdk._devices['res_hpo'] if legacy else
+        pdk.res_hpo(name, a='a', b='b', c='b', w=1, l=1))
+        for name in ('r1', 'r2')}
+    devices, skipped = draw_devices(entries, pdk.statistical)
+    lines, requests = showmod_requests(devices)
+    assert skipped == ()
+    assert lines == [f"showmod 'r.XM{name}.{target}' : rsh"
+                     for name in ('r1', 'r2') for target in ('rbody', 'rhead')]
+    parsed = parse_showmod('\n'.join(f'model truncated\n rsh {v}\n'
+                                   for v in (300, 310, 320, 330)), requests)
+    assert list(parsed.items()) == [((name, target + '.rsh'), value)
+        for name, target, value in [('r1', 'rbody', 300), ('r1', 'rhead', 310),
+                                    ('r2', 'rbody', 320), ('r2', 'rhead', 330)]]
+    mapping, params, skipped = xyce_draw_name_map(entries, pdk.statistical.record)
+    assert mapping == {f'XM{name.upper()}:{target.upper()}_MODEL:RSH': (name, target + '.rsh')
+                       for name in ('r1', 'r2') for target in ('rbody', 'rhead')}
+    assert params == {name: ('rbody.rsh', 'rhead.rsh') for name in ('r1', 'r2')}
+    assert skipped == ()
+
+
+def test_explicit_xyce_targets_use_full_identity_and_header_order(tmp_path):
+    path = tmp_path / 'draw.res'
+    path.write_text('STEP XDUT:XMR1:RHEAD_MODEL:RSH unrelated:bad:RSH '
+                    'xdut:xmr1:rbody_model:rsh\n0 0.25 99 -0.5\n')
+    mapping = {'XDUT:XMR1:RBODY_MODEL:RSH': ('dut.r1', 'rbody.rsh'),
+               'XDUT:XMR1:RHEAD_MODEL:RSH': ('dut.r1', 'rhead.rsh')}
+    assert list(parse_xyce_res(path, mapping).items()) == [
+        (('dut.r1', 'rhead.rsh'), .25), (('dut.r1', 'rbody.rsh'), -.5)]
+
+
+@pytest.mark.parametrize('columns,values', [
+    ('XDUT:XMR1:OTHER:RSH', '1'),
+    ('XDUT:XMR1:RBODY_MODEL:RSH XDUT:XMR1:RBODY_MODEL:RSH', '1 2'),
+    ('XDUT:XMR1:RBODY_MODEL:RSH', 'bad')])
+def test_explicit_xyce_refuses_missing_duplicate_or_malformed(tmp_path, columns, values):
+    path = tmp_path / 'draw.res'
+    path.write_text(f'STEP {columns}\n0 {values}\n')
+    with pytest.raises(SimulationError, match='draw.res'):
+        parse_xyce_res(path, {'XDUT:XMR1:RBODY_MODEL:RSH': ('dut.r1', 'rbody.rsh')})
+
+
+def test_showmod_rejects_duplicate_output_keys():
+    with pytest.raises(SimulationError, match='duplicate'):
+        parse_showmod('model truncated\n rsh 1\nmodel truncated\n rsh 2',
+                      [('r1', ('rsh',), 'rbody'), ('r1', ('rsh',), 'rbody')])
+
+
+def test_resistor_sensitivity_groups_dotted_labels_and_ignores_constants(tmp_path):
+    rng = np.random.default_rng(72)
+    x = rng.normal(size=(40, 3))
+    x[:, 2] = 1
+    columns = (('dut.r1', 'rbody.rsh'), ('dut.r1', 'rhead.rsh'),
+               ('dut.r2', 'rbody.rsh'))
+    draws = DrawTable(columns, {('tt', i): row for i, row in enumerate(x)}, raw=True)
+    metric = _values(3 * x[:, 0] - 2 * x[:, 1])
+    fitted = rank_sensitivity('y', metric, draws)
+    assert fitted.p == 2 and fitted.r_squared == pytest.approx(1)
+    grouped = rank_sensitivity('y', metric, draws, by='device')
+    assert grouped.rows[0].name == 'dut.r1'
+    assert grouped.rows[0].share == pytest.approx(1)
+    write_draws_csv(tmp_path / 'draws.csv', draws, {key: i for i, key in enumerate(draws.values)})
+    lines = (tmp_path / 'draws.csv').read_text().splitlines()
+    assert lines[0].endswith('dut.r1:rbody.rsh,dut.r1:rhead.rsh,dut.r2:rbody.rsh')
+    np.testing.assert_allclose([float(v) for v in lines[1].split(',')[3:]], x[0])
+    equal = DrawTable(columns[:2], {('tt', i): row[:2] for i, row in enumerate(x[:2])}, raw=True)
+    with pytest.warns(MetricWarning, match='n=2.*p=2'):
+        fallback = rank_sensitivity('y', _values([1, 2]), equal)
+    assert fallback.method == 'correlation'
+
+
+@pytest.mark.parametrize('value', ['bad', None])
+def test_explicit_showmod_refuses_missing_or_nonnumeric(value):
+    text = 'model truncated\n' + (f' rsh {value}' if value is not None else ' other 1')
+    with pytest.raises(SimulationError, match='r1'):
+        parse_showmod(text, [('r1', ('rsh',), 'rhead')])
+
+
+def test_explicit_targets_do_not_admit_custom_objects_or_ideal_elements():
+    from types import SimpleNamespace
+    from silk import load_pdk
+    from silk.elements import ElementLibrary
+    elements = ElementLibrary()
+    from silk.circuit.circuit_elements import ElementType
+    from silk.circuit.modules_results import xyce_draw_name_map
+    pdk = load_pdk('sky130')
+    ideal = elements.resistor('r', p='a', n='b', value=1)
+    ideal.device_name = 'res_hpo'
+    entries = {str(i): dict(type=ElementType.DEVICE, device=device) for i, device in
+               enumerate([ideal, SimpleNamespace(device_name='res_hpo',
+                    _pin_names=('d', 'g', 's', 'b'), _op_internal_name='rbody')])}
+    assert draw_devices(entries, pdk.statistical) == ([], ())
+    assert xyce_draw_name_map(entries, pdk.statistical.record) == ({}, {}, ())
+
+
+def test_legacy_uppercase_internal_preserves_original_command_bytes():
+    from silk.circuit.monte_carlo import DrawDevice, showmod_requests
+    assert showmod_requests([DrawDevice('xdut.XMm1', 'Mcore', 'dut.m1', ('vth0',))]) == (
+        ["showmod 'm.xdut.XMm1.mcore' : vth0"], [('dut.m1', ('vth0',))])
+
+
+def test_mixed_xyce_explicit_and_legacy_columns_keep_header_alignment(tmp_path):
+    path = tmp_path / 'mixed.res'
+    path.write_text('STEP XDUT:XMR1:RHEAD_MODEL:RSH XDUT:XMM1:MOS_MODEL:VTH0 '
+                    'XDUT:XMR1:RBODY_MODEL:RSH\n0 .2 .4 -.1\n')
+    got = parse_xyce_res(path, {'XDUT:XMM1': 'dut.m1',
+        'XDUT:XMR1:RBODY_MODEL:RSH': ('dut.r1', 'rbody.rsh'),
+        'XDUT:XMR1:RHEAD_MODEL:RSH': ('dut.r1', 'rhead.rsh')})
+    assert list(got.items()) == [(('dut.r1', 'rhead.rsh'), .2),
+                                (('dut.m1', 'vth0'), .4),
+                                (('dut.r1', 'rbody.rsh'), -.1)]
+
+
+def test_explicit_xyce_refuses_two_columns_for_one_output_pair(tmp_path):
+    path = tmp_path / 'duplicate.res'
+    path.write_text('STEP X:R:BODY:RSH X:R:HEAD:RSH\n0 .2 .4\n')
+    with pytest.raises(SimulationError, match='duplicate.res.*duplicate target'):
+        parse_xyce_res(path, {'X:R:BODY:RSH': ('r', 'rbody.rsh'),
+                             'X:R:HEAD:RSH': ('r', 'rbody.rsh')})
+
+
+@needs_pdk
+@pytest.mark.parametrize('simulator', ['ngspice', 'xyce'])
+def test_resistor_only_recording_admission_retains_process_advisory(tmp_path, simulator):
+    from silk import load_pdk
+    tb = _bench(tmp_path, 'sky130', None)
+    tb.module.add(load_pdk('sky130').res_hpo('r', a='d', b='s', c='s', w=1, l=1))
+    tb.module.simulator = simulator
+    tb.set_monte_carlo(2, seed=23, variation='both', record_draws=True)
+    with pytest.warns(UserWarning, match='process-model advisory.*res_hpo') as caught:
+        planned = tb._plan_runs()
+    assert len(caught) == 1 and len(planned) == 2
+    assert all(run.sample.record_draws for run in planned)

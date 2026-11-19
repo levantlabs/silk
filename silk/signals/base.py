@@ -615,6 +615,12 @@ class Signal:
         # settled for the whole expression (TASK-212). With neither, the call
         # is the one a single-analysis run has always made.
         plot = self.__dict__.get('_analysis') or analysis
+        source_request = self.__dict__.get('_source_request')
+        if source_request is not None:
+            from silk.circuit.module_test import _load_metric_path
+            original, declared = source_request
+            select = {} if plot is None else {'analysis': plot}
+            return _load_metric_path(netlist, f'i({original})', _declared_source=declared, **select)
         if plot is None:
             return netlist.load_signal(self.name, self._selector)
         return netlist.load_signal(self.name, self._selector, analysis=plot)
@@ -658,10 +664,8 @@ class Signal:
     def corner(self, name, *, analysis=None):
         """Return this Signal as measured in one retained corner.
 
-        ``tb.run_corners(['tt', 'ff', 'ss'])`` runs three simulations, and the
-        reports it hands back reference ONE live netlist — the last corner's.
-        The earlier corners survive as files, and the bench remembers where
-        (``tb.sweep_corners``). This method reads one of them::
+        ``tb.run_corners(['tt', 'ff', 'ss'])`` runs three simulations and returns reports that
+        each read their own run. This method reads one retained corner::
 
             res = tb.run_corners(['tt', 'ff', 'ss'])
             vcm.corner('ff').y            # ff's samples
@@ -681,9 +685,11 @@ class Signal:
         Parameters
         ----------
         name : str
-            A corner of the latest sweep. Anything else raises, naming what
+            A retained corner name for a corner-only run; equivalent to
+            ``point(name)``. Condition and variable grids require ``point(key)``,
+            and Monte Carlo requires ``sample(key)``. Anything else raises, naming what
             was retained — including after a sweep in overwrite output mode,
-            which keeps only the last corner's file (see
+            which keeps a separate file for each corner (see
             :attr:`sweep_corners <silk.circuit.ModuleTestbench.sweep_corners>`).
         analysis : {'tran', 'ac', 'dc', 'noise'}, optional
             Which plot to read, for a corner file holding more than one; the same default-not-override rule
@@ -712,10 +718,13 @@ class Signal:
         return self.resolve(analysis=analysis, corner=str(name), _readers={})
 
     def point(self, key, *, analysis=None):
-        """Read one deterministic grid point (corner, Celsius, supply volts).
+        """Read one retained deterministic run using its exact results key.
 
-        Deferred expression leaves use the same point and shared readers.
-        Monte Carlo requires sample((point, index)); bound signals refuse.
+        Keys are corner strings for corner-only runs and full tuples for
+        condition or variable grids. Deferred expression leaves use the same
+        key and shared readers. Monte Carlo uses ``sample(key)``; bound signals
+        refuse. A scalar run also accepts its retained key from
+        ``tb.sweep_corners``; ``None`` does not select a default.
         """
         if not self._is_unbound():
             raise ValueError('Signal already carries data; .point() selects a deferred probe.')
@@ -728,10 +737,8 @@ class Signal:
     def sample(self, key, *, analysis=None):
         """Return this Signal as measured in one Monte Carlo sample.
 
-        After a Monte Carlo run (``tb.set_monte_carlo(...)`` then
-        ``tb.run()``, or ``tb.run_monte_carlo(...)``) every sample's files
-        stay in ``<testbench dir>/<corner>/mc_NNNN/``; this reads one of them
-        the way :meth:`corner` reads one corner of a sweep::
+        After a Monte Carlo run (``tb.set_monte_carlo(...)`` then ``tb.run()``, or
+        ``tb.run_monte_carlo(...)``), this reads one sample's retained result file::
 
             mc = tb.run_monte_carlo(n=200)
             vout.sample(('tt', 17)).y
@@ -1261,6 +1268,14 @@ class Signal:
                 other / self.y,
             )
         return NotImplemented
+
+    def __abs__(self):
+        """Return pointwise magnitudes, equivalent to :meth:`mag`."""
+        return self.mag()
+
+    def __pos__(self):
+        """Return this Signal without copying or reading results."""
+        return self
 
     def __neg__(self):
         if self._is_bus():

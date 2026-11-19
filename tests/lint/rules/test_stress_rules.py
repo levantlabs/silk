@@ -323,3 +323,25 @@ def test_non_catalog_type_is_out_of_stress_scope(tmp_path, monkeypatch, behavior
     coverage = junction_stress_coverage(m)
     assert coverage.devices == []
     assert coverage.summary() == {'total': 0, 'full': 0, 'partial': 0, 'none': 0, 'failed': 0}
+
+
+def test_retained_behavioral_stress_uses_its_raw_data(tmp_path, monkeypatch):
+    import numpy as np
+    from silk.circuit.test_placement import EvidenceResults
+    from silk.circuit.junction_check import check_junction_overrange
+    from silk.simulation.backend import RawResult
+    from silk.simulation.behavioral_backend import build_behavioral_rawfile
+    from silk.signals.rawfile import write_rawfile
+    m, waves = _coverage_module(tmp_path, monkeypatch, behavioral=True)
+    time = np.array([0., 1e-9])
+    original = build_behavioral_rawfile(m, {'out': waves['out'], 'inp': np.array([3., 3.])}, time)
+    path = str(tmp_path / 'stress.raw')
+    write_rawfile(path, original)
+    original.source_path = path
+    m._raw = RawResult(original, path)
+    m.simResultsAll, m.results_file, m.sim_results_loaded = original, path, True
+    held = EvidenceResults(m, _retained=True)
+    m.net_dict['inp'].voltage = np.array([0., 0.])
+    assert check_junction_overrange(held)
+    assert all(v.measured_v == pytest.approx(3.) for v in check_junction_overrange(held))
+    assert all(v._data is None for p in held.simResultsAll.plots for v in p.vectors)

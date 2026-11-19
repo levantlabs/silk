@@ -102,6 +102,9 @@ def test_public_probe_matches_logical_card_current(tmp_path, kind, letter, reada
         # cards add. Their signed currents also agree with the resistor load.
         expected = sum(measured) if letter == 'I' else measured[0]
         np.testing.assert_allclose(probe.y, expected, atol=1e-12)
+        logical = tb.netlist.load_signal(record.current_probe, 'I', analysis=analysis)
+        np.testing.assert_array_equal(logical.x, probe.x)
+        np.testing.assert_allclose(logical.y, expected, atol=1e-12)
         src = tb.netlist.sig_sources_dict[record.designer_name]
         out = getattr(src, 'positive', None) or src.out_pos
         voltage = tb.netlist.load_signal(out, analysis=analysis).y

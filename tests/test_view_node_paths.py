@@ -180,9 +180,9 @@ def test_proof_walk_counts_independent_of_alias_count(tmp_path, monkeypatch, cou
         mod.add_net(f'n{i}')
     calls = {'candidate': 0, 'physical': 0}
     candidates, physical = nodes.node_candidates, netlist._save_list_inventory
-    def counted_candidates(mod):
+    def counted_candidates(mod, **kwargs):
         calls['candidate'] += 1
-        return candidates(mod)
+        return candidates(mod, **kwargs)
     def counted_physical(mod):
         calls['physical'] += 1
         return physical(mod)
@@ -275,9 +275,14 @@ def test_checked_metadata_browser_state_copy_and_local_file(tmp_path):
     emit_view(ctx.source,tmp_path/'nodes.html',node_context=ctx,labels='designer',poll_ms=100)
     p = emit_view_data(ctx.source,node_context=ctx,labels='designer')
     (tmp_path/'nodes.json').write_text(json.dumps(p))
+    (tmp_path/'dev').mkdir()
+    tb, dev = device_associated(tmp_path/'dev', ['MN:gm'])
+    dctx = context(dev)
+    emit_view(dctx.source,tmp_path/'devices.html',node_context=dctx,labels='designer',poll_ms=100)
     result = subprocess.run(['node',str(Path(_BROWSER_DIR)/'node_paths_e2e.mjs'),
                              str(tmp_path/'nodes.html'),str(tmp_path/'nodes.json'),
-                             mod.results_file,_find_chrome()],cwd=_BROWSER_DIR,
+                             mod.results_file,_find_chrome(),str(tmp_path/'devices.html'),
+                             device_vector(tb, 'MN', 'gm')],cwd=_BROWSER_DIR,
                             capture_output=True,text=True,timeout=90)
     assert result.returncode == 0,result.stdout+result.stderr
 
@@ -448,3 +453,308 @@ def test_generated_copy_evaluates(tmp_path, dialect, mixed):
             expected = np.rad2deg(np.unwrap(np.angle(expected)))
         np.testing.assert_allclose(signal.y, expected)
         np.testing.assert_allclose(signal.x, source_plot.vectors[0].data.real)
+
+
+@pytest.mark.parametrize('options', [{'signals': ['i(Vone)']}, {'max_depth': 1},
+                                     {'exclude': ['i(split)']}])
+def test_existing_view_selection_does_not_walk_single_card_aliases(tmp_path, options, monkeypatch):
+    from unittest.mock import MagicMock
+    from silk import sources
+    from silk.circuit import view_node_context
+    from silk.circuit.view_nodes import _capture_addresses
+    from tests.test_raw_current_paths import _bench
+    tb = _bench(tmp_path, ['Vone', '@Isplit__silk_pwl[current]', '@Isplit__silk_dc[current]'],
+                [sources.VoltageSource('one', 'a', '0', dc=1),
+                 sources.CurrentSource('split', 'b', '0', dc=.2, pwl=[0, .5, 1, 1])])
+    mod = tb.netlist
+    mod.results_file = str(tmp_path / 's.raw')
+    mod._raw._view_addresses = _capture_addresses(mod)
+    ctx = view_node_context(mod)
+    assert ctx is not None
+    monkeypatch.setattr('silk.signals.view.emit._now_iso', lambda: '2000-01-01T00:00:00Z')
+    records = ctx._source_currents[0]
+    composites = [r for r in records if not r[3] or r[2]]
+    aliases = [r for r in records if r[3] and not r[2]]
+    assert composites and aliases
+    assert records == tuple(composites + aliases)
+    expected = emit_view_data(ctx.source, node_context=ctx, **options)
+    def prefix_only():
+        yield from composites
+        yield aliases[0]
+        raise AssertionError('selection unnecessarily traversed the single-card aliases')
+    guarded = MagicMock()
+    guarded.__iter__.side_effect = prefix_only
+    object.__setattr__(ctx, '_source_currents', (guarded,))
+    assert emit_view_data(ctx.source, node_context=ctx, **options) == expected
+
+
+# ---------------------------------------------------------------------------
+# Device-parameter vectors named by designer (requested probes only).
+# ---------------------------------------------------------------------------
+
+def device_bench(tmp_path, probes, simulator='ngspice'):
+    """A prepared (never simulated) bench holding several MOS devices."""
+    from silk import load_pdk, sources
+    from silk.circuit.circuit_elements import PortDir
+    from silk.simulation import Op
+    pdk = load_pdk('sky130')
+    ports = {'d': PortDir.OUT, 'g': PortDir.IN, 's': PortDir.GROUND}
+    core = Module('sky130', str(tmp_path), 'core.cir', pdk_details=pdk, module_name='core')
+    core.define_module_ports(ports)
+    core.add(pdk.nmos1p8('MN', d='d', g='g', s='s', b='s', w=1, l=.15))
+    dut = Module('sky130', str(tmp_path), 'dut.cir', pdk_details=pdk, module_name='dut')
+    dut.define_module_ports(ports)
+    for name in ('MN', 'MX', 'M1[0]'):
+        dut.add(pdk.nmos1p8(name, d='d', g='g', s='s', b='s', w=1, l=.15))
+    dut.add(pdk.pmos1p8('MP', d='d', g='g', s='s', b='s', w=1, l=.15))
+    dut.add_module(core, 'core', nets={'d': 'd', 'g': 'g', 's': 's'})
+    dut.simulator = simulator
+    tb = dut.create_test('v')
+    tb.add_module_under_test({'d': 'vd', 'g': 'vg', 's': '0'})
+    tb.add_source(sources.VoltageSource('vd', positive='vd', negative='0', dc=1))
+    tb.add_source(sources.VoltageSource('vg', positive='vg', negative='0', dc=1))
+    tb.add_sim_type(Op())
+    for probe in probes:
+        tb.probe(probe)
+    tb._prepare_run(corner='tt')
+    return tb
+
+
+def device_vector(tb, designer, param, *, wrapper=''):
+    """The simulator's own spelling of one device-parameter vector."""
+    from silk.circuit.modules_results import (
+        resolve_device_probe_address, ngspice_device_op_line, xyce_device_op_term)
+    from silk.circuit.modules_results import dut_module_from_elem_dict
+    address = resolve_device_probe_address(
+        dut_module_from_elem_dict(tb.netlist.elem_dict), designer, param)
+    args = (address.instance_path, address.leaf, address.internal, param)
+    if tb.netlist.simulator == 'xyce':
+        return xyce_device_op_term(*args)
+    line = ngspice_device_op_line(*args).lower()
+    return f'{wrapper}({line})' if wrapper else line
+
+
+def device_associated(tmp_path, probes, extra=(), *, simulator='ngspice', ac=False,
+                      wrapper_for=None):
+    from silk.circuit.view_nodes import _capture_addresses
+    from silk.simulation.backend import RawResult
+    tb = device_bench(tmp_path, probes, simulator)
+    wrapper_for = wrapper_for or {}
+    names = ['v(vd)'] + [device_vector(tb, *p.split(':'), wrapper=wrapper_for.get(p, ''))
+                         for p in probes]
+    names += list(extra)
+    raw = rawfile(tmp_path, tuple(names), ac=ac)
+    mod = tb.netlist
+    mod._raw = RawResult(raw, raw.source_path)
+    mod._raw._view_addresses = _capture_addresses(mod)
+    mod.results_file = raw.source_path
+    return tb, mod
+
+
+def sigs(p, plot=0):
+    return {s['name']: s for s in p['plots'][plot]['signals']}
+
+
+def test_requested_device_vector_labelled_and_selected_by_both_spellings(tmp_path):
+    tb, mod = device_associated(tmp_path, ['MN:gm'])
+    vector = device_vector(tb, 'MN', 'gm')
+    for selector in ('dut.MN:gm', 'MN:gm'):
+        p = payload(mod, signals=[selector])
+        sig, = p['plots'][0]['signals']
+        assert sig['name'] == vector
+        assert sig['label'] == 'dut.MN:gm'
+        assert sig['node_probe'] == {'name': 'MN:gm', 'type': 'D'}
+        assert sig['source_row'] == 2
+    path = next(x for x in p['plots'][0]['node_paths']['paths'] if x['name'] == 'dut.MN:gm')
+    assert path['kind'] == 'device' and path['targets'][0]['rows'] == [2]
+    net_ids = {t['id'] for x in p['plots'][0]['node_paths']['paths']
+               if x.get('kind') != 'device' for t in x['targets']}
+    assert path['targets'][0]['id'] not in net_ids
+    assert all('kind' not in x for x in p['plots'][0]['node_paths']['paths']
+               if x['name'] != 'dut.MN:gm')
+
+
+def test_device_label_applies_to_every_wrapper_form(tmp_path):
+    tb, mod = device_associated(tmp_path, ['MN:id'], wrapper_for={'MN:id': 'i'})
+    sig, = payload(mod, signals=['MN:id'])['plots'][0]['signals']
+    assert sig['name'].startswith('i(@m.') and sig['label'] == 'dut.MN:id'
+    assert sig['node_probe'] == {'name': 'MN:id', 'type': 'D'}
+
+
+def test_nested_and_arrayed_devices_use_probe_spelling(tmp_path):
+    tb, mod = device_associated(tmp_path, ['core.MN:gm', 'M1[0]:vth', 'MN:gm'])
+    p = payload(mod)
+    labels = {s['label']: s['node_probe']['name'] for s in p['plots'][0]['signals']
+              if s['node_probe'] and s['node_probe'].get('type') == 'D'}
+    assert labels == {'dut.core.MN:gm': 'core.MN:gm', 'dut.M1[0]:vth': 'M1[0]:vth',
+                      'dut.MN:gm': 'MN:gm'}
+    for selector in ('core.MN:gm', 'dut.core.MN:gm'):
+        sig, = payload(mod, signals=[selector])['plots'][0]['signals']
+        assert sig['label'] == 'dut.core.MN:gm'
+    for selector in ('M1[0]:vth', 'dut.M1[0]:vth'):
+        sig, = payload(mod, signals=[selector])['plots'][0]['signals']
+        assert sig['label'] == 'dut.M1[0]:vth'
+    # The bare name is exact for the top-level device, not the nested one.
+    sig, = payload(mod, signals=['dut.MN:gm'])['plots'][0]['signals']
+    assert sig['node_probe']['name'] == 'MN:gm'
+
+
+def test_exclusion_by_designer_device_name(tmp_path):
+    tb, mod = device_associated(tmp_path, ['MN:gm', 'MX:gm'])
+    names = [s['label'] for s in payload(mod, exclude=['dut.MN:gm'])['plots'][0]['signals']
+             if s.get('label', '').endswith(':gm')]
+    assert names == ['dut.MX:gm']
+
+
+def test_unrequested_device_vector_stays_raw(tmp_path):
+    tb, mod = device_associated(tmp_path, ['MN:gm'])
+    other = device_vector(tb, 'MX', 'gm')
+    mod._raw.native = rawfile(tmp_path, ('v(vd)', device_vector(tb, 'MN', 'gm'), other))
+    from silk.circuit.view_nodes import _capture_addresses
+    mod._raw._view_addresses = _capture_addresses(mod)
+    mod.results_file = mod._raw.native.source_path
+    p = payload(mod)
+    raw_row = sigs(p)[other]
+    assert raw_row.get('label') in (None, other) and 'dut.MX:gm' not in str(p['plots'][0]['signals'])
+    assert not (raw_row.get('node_probe') or {}).get('type') == 'D'
+    with pytest.raises(ViewError):
+        payload(mod, signals=['MX:gm'])
+    assert not any(x['name'] == 'dut.MX:gm' for x in p['plots'][0]['node_paths']['paths'])
+
+
+def test_bulk_device_saves_never_expand_eligibility(tmp_path):
+    tb, mod = device_associated(tmp_path, [])
+    tb.netlist.save_device_params = True
+    vector = device_vector(tb, 'MN', 'gm')
+    mod._raw.native = rawfile(tmp_path, ('v(vd)', vector))
+    from silk.circuit.view_nodes import _capture_addresses
+    mod._raw._view_addresses = _capture_addresses(mod)
+    mod.results_file = mod._raw.native.source_path
+    with pytest.raises(ViewError):
+        payload(mod, signals=['MN:gm'])
+
+
+def test_ambiguous_and_duplicate_rows_never_labelled(tmp_path):
+    tb, mod = device_associated(tmp_path, ['MN:gm'])
+    vector = device_vector(tb, 'MN', 'gm')
+    mod._raw.native = rawfile(tmp_path, ('v(vd)', vector, f'v({vector})'))
+    from silk.circuit.view_nodes import _capture_addresses
+    mod._raw._view_addresses = _capture_addresses(mod)
+    mod.results_file = mod._raw.native.source_path
+    p = payload(mod)
+    assert not any(s.get('label') == 'dut.MN:gm' for s in p['plots'][0]['signals'])
+    with pytest.raises(ViewError):
+        payload(mod, signals=['MN:gm'])
+
+
+def test_cross_plot_ambiguity_blocks_label_everywhere(tmp_path):
+    tb, mod = device_associated(tmp_path, ['MN:gm'], ac=True)
+    vector = device_vector(tb, 'MN', 'gm')
+    control = payload(mod)
+    assert all(any(s.get('label') == 'dut.MN:gm' for s in plot['signals'])
+               for plot in control['plots'][:1])
+    raw = mod._raw.native
+    extra = RawVector(f'i({vector})', 'current', data=np.array([1., 2.], dtype=complex))
+    raw.plots[1].vectors.append(extra)
+    write_rawfile(mod.results_file, raw)
+    mod._raw.native = read_rawfile(mod.results_file)
+    p = payload(mod)
+    for plot in p['plots']:
+        assert not any(s.get('label') == 'dut.MN:gm' for s in plot['signals'])
+
+
+def test_stale_overwritten_and_late_declared_device_get_no_context(tmp_path):
+    tb, mod = device_associated(tmp_path, ['MN:gm'])
+    assert context(mod) is not None
+    tb.probe('MX:gm')
+    tb._prepare_run(corner='tt')
+    assert context(mod) is None
+    (tmp_path / 'again').mkdir()
+    tb, mod = device_associated(tmp_path / 'again', ['MN:gm'])
+    path = Path(mod.results_file)
+    path.write_bytes(path.read_bytes().replace(b'msky130', b'msky131'))
+    assert context(mod) is None
+
+
+def test_ngspice_ac_device_probe_keeps_label_but_refuses_copy(tmp_path):
+    tb, mod = device_associated(tmp_path, ['MN:gm'], ac=True)
+    p = payload(mod)
+    for plot in p['plots']:
+        sig = next(s for s in plot['signals'] if s['name'] == device_vector(tb, 'MN', 'gm')
+                   or s.get('group') == device_vector(tb, 'MN', 'gm'))
+        assert sig['label'].startswith('dut.MN:gm')
+    ac_plot = p['plots'][1]
+    assert all(s['node_probe'] is None for s in ac_plot['signals']
+               if (s.get('group') or s['name']) == device_vector(tb, 'MN', 'gm'))
+    assert p['plots'][0]['signals'][1]['node_probe'] == {'name': 'MN:gm', 'type': 'D'}
+
+
+def test_xyce_device_terms_label_and_pmos_id_sign_caveat(tmp_path):
+    tb, mod = device_associated(tmp_path, ['MN:gm', 'MP:id', 'MP:gm'], simulator='xyce')
+    p = payload(mod)
+    by_label = {s['label']: s for s in p['plots'][0]['signals'] if 'label' in s}
+    assert by_label['dut.MN:gm']['node_probe'] == {'name': 'MN:gm', 'type': 'D'}
+    assert by_label['dut.MP:gm']['node_probe'] == {'name': 'MP:gm', 'type': 'D'}
+    # Silk's read negates a PMOS id; the raw row would not match: no copy.
+    assert by_label['dut.MP:id']['node_probe'] is None
+    sig, = payload(mod, signals=['MP:id'])['plots'][0]['signals']
+    assert sig['label'] == 'dut.MP:id'
+
+
+def test_payload_without_device_probes_carries_no_device_kind(tmp_path):
+    mod = associated(tmp_path)
+    p = payload(mod)
+    assert all(set(x) == {'name', 'targets'} for x in p['plots'][0]['node_paths']['paths'])
+    tb, mod = device_associated(tmp_path, [])
+    assert all(set(x) == {'name', 'targets'}
+               for x in payload(mod)['plots'][0]['node_paths']['paths'])
+
+
+def test_device_copy_as_code_in_explorer_module(tmp_path):
+    """The explorer module (run under Node) renders the checked device kind."""
+    from tests.test_view_trace_identity import _dump
+    tb, mod = device_associated(tmp_path, ['MN:gm', 'core.MN:gm'], ac=True)
+    p = payload(mod)
+    entries = _dump(p)
+    by = {(e['plot'], e['name']): e for e in entries}
+    top, nested = (device_vector(tb, n, 'gm') for n in ('MN', 'core.MN'))
+    assert by[(0, top)]['code'] == {'ok': True, 'code': "tb.probe('MN:gm', analysis='tran')"}
+    assert by[(0, nested)]['code']['code'].startswith("tb.probe('core.MN:gm'")
+    # AC copy would read the real part, not the displayed complex row.
+    ac = [e for e in entries if e['plot'] == 1 and e['name'].startswith(top)]
+    assert ac and all(not e['code']['ok'] for e in ac)
+    assert all('v(MN:gm)' not in e['code'].get('code', '') for e in entries)
+
+
+@pytest.mark.parametrize('where', ['raw', 'netlister'])
+def test_refused_device_parameter_gets_no_label_and_no_copy(tmp_path, where):
+    tb, mod = device_associated(tmp_path, ['MN:gm', 'MX:gm'])
+    refused = {('MN', 'gm'): object()}
+    if where == 'raw':
+        mod._raw._preflight_unavailable_params = refused
+    else:
+        mod.netlister._preflight_unavailable_params = refused
+    p = payload(mod)
+    labels = {s.get('label') for s in p['plots'][0]['signals']}
+    assert 'dut.MN:gm' not in labels and 'dut.MX:gm' in labels
+    refused_row = sigs(p)[device_vector(tb, 'MN', 'gm')]
+    assert (refused_row.get('node_probe') or {}).get('type') != 'D'
+    with pytest.raises(ViewError):
+        payload(mod, signals=['MN:gm'])
+    from tests.test_view_trace_identity import _dump
+    entries = {e['name']: e for e in _dump(p)}
+    assert "MN:gm" not in entries[device_vector(tb, 'MN', 'gm')]['code'].get('code', '')
+
+
+def test_device_selectors_use_existing_grammar_with_globs_and_brackets(tmp_path):
+    tb, mod = device_associated(tmp_path, ['MN:gm', 'core.MN:gm', 'M1[0]:vth'])
+    def labels(**kw):
+        return sorted(s['label'] for s in payload(mod, **kw)['plots'][0]['signals']
+                      if s.get('label', '').count(':') == 1)
+    assert labels(signals=['MN:gm']) == ['dut.MN:gm']
+    assert labels(signals=['*:gm']) == ['dut.MN:gm', 'dut.core.MN:gm']
+    assert labels(signals=['dut.*:gm']) == ['dut.MN:gm', 'dut.core.MN:gm']
+    assert labels(signals=['M1[0]:*']) == ['dut.M1[0]:vth']
+    assert labels(signals=['dut.M1[0]:vth']) == ['dut.M1[0]:vth']
+    assert 'dut.MN:gm' not in labels(exclude=['dut.*:gm'])
+    assert 'dut.core.MN:gm' not in labels(exclude=['core.MN:gm'])

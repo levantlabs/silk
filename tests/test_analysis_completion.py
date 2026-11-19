@@ -650,3 +650,38 @@ def test_generated_control_block_keeps_its_completion_certificate(terminator):
     deck = '* gen\nR1 a 0 1\n.tran 1n 1u\n' + control.replace('quit 0', terminator)
     requests = _requests(deck, 'ngspice')
     assert requests is not None and [r.kind for r in requests] == ['tran']
+
+
+@pytest.mark.parametrize('simulator', ['ngspice', 'xyce'])
+@pytest.mark.parametrize('step,count,end', [(.8022651269 / 100, 101, .8022651269), (.1, 9, .8)])
+def test_fractional_dc_emitted_grid_and_endpoint_query(tmp_path, monkeypatch, simulator, step, count, end):
+    import warnings
+    from pathlib import Path
+
+    import numpy as np
+    from silk.simulation import DC
+    from silk.metrics import value_at
+    from silk.metrics.diagnostics import MetricWarning
+    from silk.signals.spice import NgspiceSignal
+    from tests.test_run_files import _module
+
+    mod = _module(tmp_path, simulator, [DC('vin', 0, .8022651269, step)])
+    mod.generate_netlist()
+    request, = mod._run_files.completion.requests
+    assert request.count == count
+    assert request.stop == .8022651269
+    assert request.end == end
+    deck = Path(mod._run_files.netlist_path).read_text()
+    card = next(line for line in deck.splitlines() if line.startswith('.dc '))
+    trace = _plot('dc', request.end, points=request.count).replace('\n\t1\n', '\n\t7\n')
+    raw = _run(tmp_path, monkeypatch, simulator, card, trace)
+    sig = NgspiceSignal.from_rawfile(raw.native, 'out', 'V')
+    if count == 101:
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter('always')
+            assert value_at(sig, .8022651269) == 7.
+        assert not caught
+    else:
+        with pytest.warns(MetricWarning) as caught:
+            assert np.isnan(value_at(sig, .8022651269))
+        assert caught[0].message.code == 'point_outside_trace'

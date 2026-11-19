@@ -130,6 +130,13 @@ library:
       switch: mc_mm_switch                 # .param the section turns on
       record:                              # model params to record per device,
         nmos1p8: [vth0, toxe, voff]        # keyed by device-details YAML names
+        res_hpo:
+          rbody:
+            params: [rsh]
+            xyce_model: rbody_model
+          rhead:
+            params: [rsh]
+            xyce_model: rhead_model
     process:
       section: mc                          # one draw per sample, all devices
       corners: [tt]                        # corners it is valid at
@@ -137,6 +144,38 @@ library:
       includes:                            # PDK-relative; resolved to absolute
         - "sky130A/libs.tech/ngspice/parameters/critical.spice"
 ```
+
+The legacy parameter list records MOS parameters through the catalog's
+`op_internal_name`. The mapping form declares literal internal model-bearing
+instance names, each with exactly `params` and `xyce_model`. The internal
+instance's first letter selects its SPICE kind; the measured Xyce model token
+selects the exact `.res` model/parameter column. These facts belong in the
+manifest; silk does not extract them automatically from installed models.
+An explicit target contributes labels such as `rbody.rsh` under the outer
+designer device name.
+
+Malformed mappings raise `PDKError` naming the record device, target and field:
+targets and parameter lists must be nonempty, tokens must be single-component
+identifiers, targets and parameters must be distinct ignoring case, and no two
+targets may address the same Xyce model/parameter column. Missing or extra target
+fields are refused. At readback, every requested explicit column is required
+exactly once; missing, duplicate or nonnumeric records raise `SimulationError`.
+
+An optional addition under `library.statistical.process` is:
+
+```yaml
+process:
+  warnings:
+    - devices: [res_hpo, res_xhpo]
+      message: >-
+        Some installed sky130 models use 1.25*ic_res for these resistors'
+        process variation (125% relative standard deviation; negative
+        sheet resistance is possible). silk uses the installed models
+        unchanged. Check the model before using process yield or
+        sensitivity results; variation='mismatch' excludes this process term.
+```
+
+`process.warnings` is an optional list of `{devices: [...], message: ...}` entries. Each entry requires a nonempty list of distinct catalog device names and a nonblank message. Unknown names or malformed entries raise `PDKError` when loading the PDK and fail `python -m silk.pdk.validate --pdk <pdk>`. On a SPICE Monte Carlo plan with `variation='process'` or `'both'`, silk issues one `UserWarning` for each entry whose devices occur in the testbench hierarchy, before preparing samples. This also applies to `prepare(sample=...)`. It is independent of `record_draws` and subject to Python's warning filters. The message is an advisory declared by the manifest, not a check of the installed model expressions; phrase installation-dependent limitations accordingly. These warnings are not stored in reports.
 
 `silk.pdk.statistical.require_library_sections(pdk, sections)` raises
 `MissingLibrarySectionError` (a `PDKError` and a `ConfigurationError`) naming

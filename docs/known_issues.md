@@ -402,6 +402,7 @@ See [the generator contract](codegen-contract.md#submodules).
 |---|-------|-------|
 | P1 | **GF180MCU and SG13G2 are preview/catalog integrations** | Their manifests, device catalogs, corner/include assembly, and unit conversion remain available. They are not release-validated simulation targets: GF180MCU and SG13G2 have optional integration profiles. SG13G2 transistor simulation is limited to MOSFETs and needs compiled OSDI plugins and ngspice ≥ 44; ngspice 42 cannot load those plugins. Only sky130 is exercised by the release-gating SPICE profile. `silk.pdk.available()` means “registered catalog,” and a doctor's `[ ok ] pdk ...` means “installed files found”; neither is a broader support guarantee. |
 | P2 | **sky130 MOS geometry support is partial** | The nine ordinary MOS families accept optional `nf` (total `w`, finger width `w/nf`) and derive read-only `mult=m` when `m` differs from 1. ESD and 20 V families retain their previous interfaces. `ad/as/pd/ps/nrd/nrs/sa/sb/sd` remain unsupported; ordinary 1.8 V NMOS and PMOS wrappers default `ad`, `as`, `pd` and `ps` to zero, underestimating junction capacitance and making timing optimistic relative to a circuit with its junction geometry included. Gate-edge junction capacitance remains modelled, and extended-drain wrappers can supply internal junction geometry. The W·L·m layout estimate does not model fingers or diffusion. The GF180MCU catalog declares `nf`; SG13G2 declares `ng`. Explicit `nf` adds ngspice `wnflag=1` only if the caller has not set it; the option affects other multifinger devices in the deck. Xyce refuses `nf>1` or unprovable counts because it bins by total width. Existing `m>1` decks have deliberately changed mismatch spread through derived `mult` (see the changelog). |
+| P3 | **sky130 res_hpo simulates with no voltage dependence** | The installed `res_high_po` model sets `p2`, `q2`, `p3`, `q3`, `sw_et` and `isnoisy` on its resistor models. ngspice 42 and Xyce 7.10 do not support these parameters and ignore them, with run-log warnings such as `unrecognized parameter (sw_et) - ignored` (ngspice) and `No model parameter P2 found for model RHEAD_MODEL of type R, parameter ignored` (Xyce). In measured sweeps on ngspice 42 and Xyce 7.10, a `res_hpo` with `w=1 l=10` (µm) reads the same 3550.44 Ω from 0.5 V to 5 V across the device; on ngspice 42, a `res_xhpo` of the same dimensions changes from 21218.55 Ω to 20800.63 Ω (about 2 percent) over that range. The warnings come from the PDK model and the simulator; silk passes the device through unchanged. A design that depends on the voltage coefficient of a `res_hpo` resistor is not checked by these simulations. |
 
 ## Database tracking
 
@@ -656,7 +657,9 @@ lifecycle](api-reference.md#testbench-output-directories-and-run-labels). Standa
 `Module.simulate()` exposes its actual rawfile path as `results_file`; explicit
 overwrite mode writes `<dir_folder>/rawfile.raw`.
 
-### Fresh run folders; reports hold live Modules
+<a id="fresh-run-folders-reports-hold-live-modules"></a>
+
+### Fresh run folders and report readers
 
 Default `set_output_options(mode='new')` retains a persistent unique child per prepared
 deck, including standalone, corner and optimizer launches. Explicit `mode='overwrite'`
@@ -706,9 +709,10 @@ output lifecycle](api-reference.md#testbench-output-directories-and-run-labels).
 
 ### Lazy rawfile reads still need backing storage; default saves can be large
 
-SPICE run readback and `ModuleTestbench.evaluate(rawfile=...)` load vectors on first use
-and cache copied arrays per reader. Additional benches therefore retain the vectors they
-use, rather than a full private rawfile copy each. Managed reruns preserve leased old
+For a testbench used without selecting a placement, lazy rawfile reads through
+`tb.netlist` or a scalar `run()`/`evaluate(rawfile=...)` report cache each vector on
+first read. Collection member reports (after `run_corners()`, a grid or a Monte Carlo
+run) and selected-test results reread saved data without caching waveform arrays. Managed reruns preserve leased old
 artifacts on disk so held result readers can finish reading their generation; retained
 readers/reports can keep that disk space in use. Each failed attempt leaves a hidden
 `.silk-<id>.cir` deck and `.silk-generation-*` directory containing any unpublished
@@ -775,6 +779,8 @@ Explicit `run_corners` has a different partial-failure contract; see
 
 See [Monte Carlo](monte-carlo.md) for the supported workflow. The following
 limits apply; unsupported requests raise errors where described:
+
+- sky130 high-poly process variation. Some installed sky130 libraries use `1.25*ic_res` for `res_hpo` and `res_xhpo` process variation. The resulting resistance multiplier is `1 + 1.25*Z`, with `Z` a standard normal draw: 125% relative standard deviation and about 21% negative draws. This affects `variation='process'` and `'both'`; mismatch-only excludes this process term. silk uses the installed models unchanged and issues a manifest-declared advisory before an affected campaign on ngspice or Xyce. The advisory does not inspect the installed expressions, so it also appears with a corrected library. Verify the installed process model before interpreting yield or sensitivity results; increasing resistor area does not remove this process spread.
 
 - **Several samples per process is ngspice-only.** By default one simulator
   process runs per sample; `samples_per_process` ([monte-carlo.md](monte-carlo.md#several-samples-in-one-ngspice-process))
@@ -888,24 +894,6 @@ when a child has several distinct results. Shared calibration parameters cannot
 accept conflicting placement measurements; reconciliation raises before writing
 any parameter.
 
-## The netlist viewer of a selected placement shows the latest run
-
-A selected test from `top.get_test(name, instance=path)` keeps its own
-placement's probes, metrics, specs, reports and `results_file`. Its `netlist`
-attribute, however, is the module shared by every placement, so
-`selected.netlist.view()` and `selected.netlist.load_signal()` read that
-module's most recent run, which can belong to another placement. For example,
-if placement `right` runs and then placement `left` runs, `right.netlist.view()`
-shows `left`'s waveforms without a warning. View a selected placement through
-its own rawfile, and read its signals through its probes:
-
-```python
-from silk.signals.view import emit_view
-
-emit_view(right.results_file, 'right.html')
-vout = right.probe('out')
-```
-
 ## Running a prepared ngspice deck in another directory
 
 A deck from `tb.prepare()` usually ends with a `.control` block: `run`, a
@@ -918,3 +906,14 @@ its `write` line to the rawfile path you want, then pass that file to
 `tb.evaluate(corner, rawfile=path)`. A deck prepared with
 `save_device_currents` has no `.control` block; ngspice writes its rawfile to
 the path given with `-r`.
+
+
+`prepare(corner=..., sample=...)` can write one declared Monte Carlo sample,
+but importing its rawfile with `evaluate()` produces an ordinary external
+report, not a campaign import. It adds no sample provenance, draw table, yield
+or replay support, and successive evaluations may replace an attached Spec's
+live measurement. Xyce external execution requires `-randseed` using
+`derive_sample_seed(tb.monte_carlo.seed, sample)`; its deck alone has no seed.
+Preparation still refuses behavioral benches (no deck), ambiguous multi-point
+requests, and ngspice probes needing preflight simulation. Dependency transfer
+and the output-path workaround above also apply to sample decks.

@@ -1,7 +1,7 @@
 """Probes across corners (TASK-218).
 
 ``run_corners()`` runs one simulation per corner, and every report it returns
-references the ONE live netlist Module — whose results are the LAST corner's.
+retains a reader associated with that member's own run.
 Before this task a probe could therefore only ever show that last corner, and
 ``vcm.plot()`` after a three-corner sweep silently drew one of them.
 
@@ -47,7 +47,7 @@ import pytest
 from silk import sources
 from tests._env import needs_ngspice
 from silk.circuit.circuit_elements import PortDir
-from silk.circuit.module_test import _CornerRawfile, _retained_sweep
+from silk.circuit.module_test import _retained_sweep
 from silk.circuit.modules import Module
 from silk.elements import elements
 from silk.exceptions import UnboundSignalError
@@ -215,54 +215,33 @@ class TestTheTableAPI:
         assert pickle.loads(pickle.dumps(tb)).sweep_corners == {
             'tt': '/o/a.raw', 'ff': '/o/b.raw'}
 
-    def test_the_docstring_explains_every_corner_is_always_retained(self):
-        """TASK-301.3: the table's docstring has to say every corner of a
-        run_corners() sweep is retained regardless of output mode now."""
+    def test_the_docstring_explains_successful_corners_are_retained_in_both_modes(self):
+        """The sweep table's docstring says each successful run_corners() member keeps its result file in both output modes."""
         from silk.circuit.module_test import ModuleTestbench
         doc = ModuleTestbench.sweep_corners.__doc__
-        assert 'Every corner of a ``run_corners()`` sweep is always retained' in doc
+        assert 'Each successful ``run_corners()`` member retains its result file' in doc
+        assert "``mode='new'`` (the default) and ``mode='overwrite'``" in doc
 
 
 class TestTheCornerReader:
-    def test_it_reads_the_file_once_per_instance(self, tb):
-        """One .corner() call opens each corner's file exactly once, however
-        many leaves the expression has."""
-        calls = []
+    @pytest.mark.parametrize('state', [None, {}])
+    def test_missing_run_state_refuses_with_recovery(self, tb, state):
+        from silk.exceptions import ConfigurationError
+        tb._sweep_table = {'ff': '/o/b.raw'}
+        tb._sweep_states = {} if state is None else {'ff': state}
+        with pytest.raises(ConfigurationError, match="t.*ff.*Rerun.*reevaluate"):
+            tb._corner_netlist('ff')
+        with pytest.raises(ConfigurationError, match="t.*ff.*Rerun.*reevaluate"):
+            tb.probe('vout').point('ff')
 
-        class _Backend:
-            def load_raw(self, path, simulator=None):
-                calls.append(path)
-                return f'raw:{path}'
-
-            def load_signal(self, raw, name, type='V', analysis=None):
-                return (raw, name, type, analysis)
-
-        reader = _CornerRawfile('ff', '/o/b.raw', _Backend(), simulator='ngspice')
-        assert reader.load_signal('vout') == ('raw:/o/b.raw', 'vout', 'V', None)
-        assert reader.load_signal('vin') == ('raw:/o/b.raw', 'vin', 'V', None)
-        assert calls == ['/o/b.raw']
-
-    def test_the_analysis_word_is_passed_through(self, tb):
-        class _Backend:
-            def load_raw(self, path, simulator=None):
-                return 'raw'
-
-            def load_signal(self, raw, name, type='V', analysis=None):
-                return analysis
-
-        reader = _CornerRawfile('ff', '/o/b.raw', _Backend())
-        assert reader.load_signal('vout', analysis='ac') == 'ac'
-
-    def test_one_reader_is_shared_by_the_leaves_of_one_expression(self, tb):
-        tb._sweep_table = {'tt': '/o/a.raw', 'ff': '/o/b.raw'}
+    def test_one_reader_is_shared_by_the_leaves_of_one_expression(self, reference_grid):
+        tb, _, keys = reference_grid
         readers = {}
-        first = tb._corner_netlist('ff', readers)
-        assert tb._corner_netlist('ff', readers) is first
-        assert tb._corner_netlist('ff', None) is not first
-
-    def test_it_repr_names_the_corner_and_the_file(self, tb):
-        assert repr(_CornerRawfile('ff', '/o/b.raw', None)) == \
-            "<corner 'ff' results: /o/b.raw>"
+        first = tb._corner_netlist(keys[0], readers)
+        assert tb._corner_netlist(keys[0], readers) is first
+        assert tb._corner_netlist(keys[0], None) is not first
+        assert first.load_signal('vout', analysis='tran').y[-1] == 1
+        assert first.results_file == tb.sweep_corners[keys[0]]
 
 
 # ---------------------------------------------------------------------------
@@ -601,10 +580,10 @@ def test_point_probe_resolves_expression_with_exact_tuple_key(tb, monkeypatch):
     point = ('tt', 125.0, 1.62)
     tb._sweep_table = {point: '/retained/point.raw'}
     tb.netlist.sim_results_loaded = True
-    reader = object()
-    monkeypatch.setattr('silk.circuit.module_test._CornerRawfile', lambda *a, **k: reader)
-    assert tb._point_corner(point) == point
-    assert tb._corner_netlist(point) is reader
+    from silk.exceptions import ConfigurationError
+    assert tb._point_corner(point) is point
+    with pytest.raises(ConfigurationError, match='recorded run state'):
+        tb._corner_netlist(point)
     with pytest.raises(UnboundSignalError, match='point'):
         tb.probe('vout').corner('tt')
     from silk.signals import Signal
@@ -627,10 +606,10 @@ def test_grid_readers_are_scoped_to_bench(tb):
     tb._sweep_table={point:'/first.raw'}
     other._sweep_table={point:'/second.raw'}
     readers={}
-    first=tb._corner_netlist(point,readers)
-    second=other._corner_netlist(point,readers)
-    assert first is not second
-    assert first is tb._corner_netlist(point,readers)
+    from silk.exceptions import ConfigurationError
+    for bench in (tb, other):
+        with pytest.raises(ConfigurationError, match='recorded run state'):
+            bench._corner_netlist(point, readers)
 
 
 @pytest.mark.parametrize('other_name', ['out', 'other'])
@@ -652,7 +631,9 @@ def test_corner_expression_keeps_bench_readers_separate(tmp_path, other_name):
         for left, right, difference in [(a, b, -8), (b, a, 8)]:
             np.testing.assert_allclose((left.corner('tt') + right.corner('tt')).y, 10)
             np.testing.assert_allclose((left + right).corner('tt').y, 10)
+            np.testing.assert_allclose((left + right).point('tt').y, 10)
             np.testing.assert_allclose((left - right).corner('tt').y, difference)
+            np.testing.assert_allclose((left - right).point('tt').y, difference)
         readers = {}
         first = benches[0]._corner_netlist('tt', readers)
         assert benches[0]._corner_netlist('tt', readers) is first
@@ -661,6 +642,7 @@ def test_corner_expression_keeps_bench_readers_separate(tmp_path, other_name):
         # A new resolution must use the currently retained path.
         benches[0].evaluate(corner='tt', rawfile=tmp_path / 'second.raw')
         np.testing.assert_allclose((a + b).corner('tt').y, 18)
+        np.testing.assert_allclose((a + b).point('tt').y, 18)
     finally:
         for bench in benches:
             bench.module.close()
@@ -719,7 +701,16 @@ def reference_grid(tb, tmp_path, monkeypatch):
         raw = tmp_path / f'reference_{index}.raw'
         write_complete_rawfile(raw, 'test\n.tran 1n 10n\n.end\n',
                                values={'v(vout)': index + 1.0})
-        tb._sweep_table[key] = str(raw)
+        tb.evaluate(rawfile=str(raw))
+        from silk.circuit.test_placement import EvidenceResults
+        reader = EvidenceResults(tb.netlist, _retained=True)
+        if index == 0:
+            states, paths = {}, {}
+        states[key] = {name: value for name, value in vars(reader).items()
+                       if name not in {'_module', '_evidence_owner', 'backend'}}
+        paths[key] = str(raw)
+    tb._sweep_table = paths
+    tb._sweep_states = states
     monkeypatch.setattr(type(tb), '_simulate_run', staticmethod(
         lambda *a, **k: pytest.fail('selection launched a simulation')))
     reference = Signal('reference', 'voltage', 'time', 'voltage',
@@ -734,6 +725,8 @@ def test_reference_before_probe_selects_retained_data(reference_grid, selector):
         from silk.circuit.module_test import _sample_label
         keys = [(key, 0) for key in keys]
         tb._mc_samples = {key: path for key, path in zip(keys, tb._sweep_table.values())}
+        tb._sweep_states = {_sample_label((key, 0)): value
+                            for key, value in tb._sweep_states.items()}
         tb._sweep_table = {_sample_label(key): path for key, path in tb._mc_samples.items()}
     probe = tb.probe('vout')
     for expression, expected in [((reference + probe).mag(), 3),
@@ -791,9 +784,255 @@ def test_reference_mixed_benches_keep_leaf_owners(reference_grid):
     other = copy.deepcopy(tb)
     try:
         other._sweep_table = dict(zip(keys[::-1], tb._sweep_table.values()))
+        other._sweep_states = dict(zip(keys[::-1], tb._sweep_states.values()))
         expression = reference + tb.probe('vout') - other.probe('vout')
         assert expression._corners_to_draw(None) == keys
         assert (reference + other.probe('vout') - tb.probe('vout'))._corners_to_draw(None) == keys[::-1]
         np.testing.assert_allclose(expression.point(keys[0], analysis='tran').y, 1)
     finally:
         other.module.close()
+
+
+@pytest.mark.slow
+@needs_ngspice
+@pytest.mark.parametrize('declared', [False, True])
+def test_collection_members_keep_their_run_without_vector_caches(tmp_path, declared):
+    from silk.circuit.test_placement import EvidenceResults
+    tb = _rc_bench(str(tmp_path), 'overwrite')
+    authored_analyses = tb.netlist.sim_analysis_dict
+    authored_options = tb.netlist.simulator_options
+    authored_transient = authored_analyses['transient']
+    if declared:
+        tb.set_corners(['tt', 'ss'])
+        reports = tb.run()
+    else:
+        reports = tb.run_corners(['tt', 'ss'])
+    assert tb.netlist.sim_analysis_dict is authored_analyses
+    assert tb.netlist.simulator_options is authored_options
+    assert tb.netlist.sim_analysis_dict['transient'] is authored_transient
+    for key, report in reports.items():
+        reader = report.sim_results
+        assert type(reader) is EvidenceResults
+        assert reader.results_file == report.rawfile_path
+        expected = _direct_read(report.rawfile_path, 'vout', tb.netlist.backend)
+        np.testing.assert_array_equal(reader.load_signal('vout').y, expected.y)
+        assert reader._raw.native is reader.simResultsAll
+        assert all(vec._data is None for plot in reader.simResultsAll.plots
+                   for vec in plot.vectors)
+        assert reader.operating_conditions == report.operating_conditions
+
+
+@pytest.mark.slow
+@needs_ngspice
+@pytest.mark.parametrize('operation', ['pickle', 'copy'])
+def test_direct_collection_copy_pickle_preserves_run_associations(tmp_path, operation, monkeypatch):
+    from silk.signals.rawfile import read_rawfile
+    tb = _rc_bench(str(tmp_path), 'overwrite')
+    reports = tb.run_corners(['tt', 'ss'])
+    convert = (lambda obj: pickle.loads(pickle.dumps(obj))) if operation == 'pickle' else copy.copy
+    # Unpickling restores associations only; it must not perform artifact I/O.
+    with monkeypatch.context() as patch:
+        patch.setattr('silk.signals.rawfile.read_rawfile',
+                      lambda *a, **k: pytest.fail('copy/unpickle opened an artifact'))
+        copies = [convert(obj) for obj in (tb, tb.module, reports, reports['tt'])]
+    bench, module, collection, member = copies
+    for result in (collection['tt'], member):
+        np.testing.assert_array_equal(result.sim_results.load_signal('vout').y,
+                                      reports['tt'].sim_results.load_signal('vout').y)
+        assert result.sim_results.results_file == reports['tt'].rawfile_path
+    for restored in (bench, module.get_test('rc')):
+        np.testing.assert_array_equal(restored.probe('vout').corner('tt').y,
+                                      reports['tt'].sim_results.load_signal('vout').y)
+    deep = copy.deepcopy(tb)
+    assert deep.sweep_corners == deep._sweep_states == deep._sweep_generations == {}
+
+
+def test_external_replacement_and_extraction_select_current_state(tb, tmp_path):
+    from tests._mock_rawfile import write_complete_rawfile
+    selected = []
+    def extract(module):
+        reader = tb._corner_netlist('tt')
+        assert reader._retained is False
+        selected.append(float(tb.probe('vout').corner('tt').y[-1]))
+        return selected[-1]
+    tb.add_metric('during', extract)
+    for number in (1., 2.):
+        path = tmp_path / f'external_{number}.raw'
+        write_complete_rawfile(path, 'test\n.tran 1n 10n\n.end\n', values={'v(vout)': number})
+        report = tb.evaluate(rawfile=str(path), corner='tt')
+        assert report.sim_results is tb.netlist
+        assert report.metrics['during'] == number
+        assert tb.probe('vout').corner('tt').y[-1] == number
+    assert selected == [1., 2.]
+
+
+def test_scalar_execution_selector_accepts_memory_only_evidence(tb):
+    from silk.circuit.test_placement import EvidenceResults
+    from silk.signals.rawfile import RawFile, RawPlot, RawVector
+    from silk.simulation.backend import RawResult
+    native = RawFile([RawPlot({'plotname': 'Transient Analysis'}, [
+        RawVector('time', 'time', data=np.array([0., 1.])),
+        RawVector('v(vout)', 'voltage', data=np.array([4., 5.]))],
+        npoints=2, real=True, padded=True)])
+    tb.netlist._raw = RawResult(native, '<memory>')
+    tb.netlist.simResultsAll, tb.netlist.sim_results_loaded = native, True
+    tb.netlist.results_file = '<memory>'
+    reader = EvidenceResults(tb.netlist)
+    tb._sweep_table = {'tt': '<memory>'}
+    tb._sweep_states = {'tt': {name: value for name, value in vars(reader).items()
+                                if name not in {'_module', '_evidence_owner', 'backend'}}}
+    np.testing.assert_array_equal(tb.probe('vout').corner('tt').y, [4., 5.])
+    assert tb._corner_netlist('tt')._retained is False
+
+
+def test_retained_reader_honors_analysis_selection(tb, tmp_path):
+    from tests._mock_rawfile import write_complete_rawfile
+    from silk.circuit.test_placement import EvidenceResults
+    from silk.exceptions import SimulationError
+    path = str(tmp_path / 'multiple.raw')
+    write_complete_rawfile(path, 'test\n.tran 1n 10n\n.ac lin 3 1 3\n.end\n',
+                           values={'v(vout)': 2.})
+    tb.netlist._raw = tb.netlist.backend.load_raw(path)
+    tb.netlist.simResultsAll = tb.netlist._raw.native
+    tb.netlist.sim_results_loaded, tb.netlist.results_file = True, path
+    reader = EvidenceResults(tb.netlist, _retained=True)
+    assert reader.load_signal('vout', analysis='tran').xlabel == 'time'
+    assert reader.load_signal('vout', analysis='ac').xlabel == 'frequency'
+    with pytest.raises(SimulationError):
+        reader.load_signal('vout')
+
+
+@pytest.mark.parametrize('shape', ['corners', 'declared', 'all', 'conditions', 'grid', 'scalar'])
+def test_collection_logical_current_reads_its_own_run(tmp_path, pdk, shape, monkeypatch):
+    from pathlib import Path
+    from tests._mock_rawfile import write_complete_rawfile
+    dut = Module('sky130', str(tmp_path), 'owned.cir', pdk, module_name='owned')
+    dut.define_module_ports({'b': PortDir.OUT})
+    dut.add(elements.resistor('load', p='b', n='0', value=1000))
+    test = dut.create_test('owned')
+    test.add_module_under_test({'b': 'vout'})
+    test.add_source(sources.VoltageSource('vs', 'vout', '0', dc=.2, pwl=[0, .5, 1, 1]))
+    test.add_sim_type(analysis.Transient(step=1e-9, stop=10e-9))
+    test.add_metric('direct_current', lambda c: float(c.load_signal('i(vs)').y[-1]))
+    test.add_metric('string_current', type='average', signal='i(vs)')
+    current = test.probe('i(vs)')
+    voltage = test.probe('vout')
+    expression = voltage + voltage * 2
+    backend = test.netlist.backend
+    launches = []
+
+    def launch(_backend, netlist_path, results_dir, **kwargs):
+        launches.append(netlist_path)
+        value = float(len(launches))
+        path = Path(results_dir) / 'owned.raw'
+        write_complete_rawfile(path, Path(netlist_path).read_text(), values={
+            'v(vout)': value, 'i(vvs__silk_pwl)': -value / 1000})
+        raw = backend.load_raw(str(path))
+        if shape == 'conditions':
+            raw.ambient_temperatures = (0. if len(launches) == 1 else 85.,)
+        return raw
+
+    monkeypatch.setattr(type(backend), 'run', launch)
+    if shape == 'corners':
+        reports = test.run_corners(['tt', 'ss'])
+    elif shape in ('declared', 'all'):
+        test.set_corners(['tt', 'ss'])
+        reports = test.run() if shape == 'declared' else next(iter(dut.run_all_tests().values()))
+    elif shape == 'conditions':
+        test.set_temperatures([0, 85])
+        test.add_source(sources.VoltageSource('rail', 'vdd', '0', dc=1.8))
+        test.set_supply_voltages([1.8], source='rail')
+        reports = test.run()
+    elif shape == 'scalar':
+        report = test.run()
+        reports = {report.corner: report}
+    else:
+        from silk import Variable
+        value = Variable('offset', value=.2)
+        test.netlist.sig_sources_dict['vs'].dc = value
+        test.set_variable_values(value, [.2, .3])
+        reports = test.run()
+    values = []
+    retained = test.sweep_corners
+    artifacts = {key: Path(path).read_bytes() for key, path in retained.items()}
+    live = test.netlist.results_file, test.netlist.simResultsAll
+    report_state = {key: (dict(report.metrics), report.rawfile_path, report.operating_conditions)
+                    for key, report in reports.items()}
+    for index, (key, report) in enumerate(reports.items(), 1):
+        reader = report.sim_results
+        physical = reader.load_signal('vvs__silk_pwl', 'I')
+        logical = reader.load_signal('i(vs)')
+        np.testing.assert_array_equal(logical.x, physical.x)
+        np.testing.assert_array_equal(logical.y, physical.y)
+        assert report.metrics['direct_current'] == pytest.approx(logical.y[-1])
+        assert report.metrics['string_current'] == pytest.approx(logical.y[-1])
+        for probe in (current, test.probe('i(vs)')):
+            selected = probe.point(key)
+            assert selected.bound
+            np.testing.assert_array_equal(selected.x, logical.x)
+            np.testing.assert_array_equal(selected.y, logical.y)
+        expected = reader.load_signal('vout')
+        np.testing.assert_array_equal(expected.y, np.full(expected.y.shape, float(index)))
+        np.testing.assert_array_equal(logical.y, np.full(logical.y.shape, -index / 1000))
+        for probe in (voltage, test.probe('vout')):
+            selected = probe.point(key)
+            assert selected.bound
+            np.testing.assert_array_equal(selected.x, expected.x)
+            np.testing.assert_array_equal(selected.y, expected.y)
+        selected = expression.point(key)
+        assert selected.bound
+        np.testing.assert_array_equal(selected.x, expected.x)
+        np.testing.assert_allclose(selected.y, expected.y * 3)
+        values.append(float(logical.y[-1]))
+        if shape != 'scalar':
+            assert all(vec._data is None for plot in reader.simResultsAll.plots for vec in plot.vectors)
+    assert len(set(values)) == (1 if shape == 'scalar' else 2)
+    assert len(launches) == len(list(reports.items()))
+    assert {key: (dict(report.metrics), report.rawfile_path, report.operating_conditions)
+            for key, report in reports.items()} == report_state
+    assert test.sweep_corners == retained
+    assert test.netlist.results_file == live[0]
+    assert test.netlist.simResultsAll is live[1]
+    assert {key: Path(path).read_bytes() for key, path in retained.items()} == artifacts
+
+
+@pytest.mark.parametrize('key', ['missing', None, ['tt'], 1, ('tt',)])
+def test_point_refuses_unknown_or_unsupported_keys(tb, key):
+    tb._sweep_table = {'tt': '/retained.raw'}
+    with pytest.raises(UnboundSignalError) as error:
+        tb.probe('vout').point(key)
+    assert str(error.value) == (
+        f"No retained deterministic point for key {key!r}; available keys: ['tt'].")
+
+
+def test_point_empty_table_and_monte_carlo_first(tb):
+    for key in ('tt', None, ('tt', 0)):
+        with pytest.raises(UnboundSignalError, match=r'available keys: \[\]'):
+            tb.probe('vout').point(key)
+    tb._mc_samples = {('tt', 0): 'sample'}
+    for key in ('tt', None, ['tt'], ('tt', 0)):
+        with pytest.raises(UnboundSignalError, match='Monte Carlo.*sample'):
+            tb.probe('vout').point(key)
+
+
+def test_point_bound_and_expired_bench_errors(tb):
+    from silk.signals import Signal
+    import gc
+    bound = Signal('vout', 'voltage', 'time', 'v', np.array([0., 1.]), np.array([1., 2.]))
+    with pytest.raises(ValueError, match='already carries data'):
+        bound.point('tt')
+    other = copy.deepcopy(tb)
+    probe = other.probe('vout')
+    del other
+    gc.collect()
+    with pytest.raises(UnboundSignalError, match='No live testbench'):
+        probe.point('tt')
+
+
+def test_point_preserves_missing_artifact_error(reference_grid):
+    from pathlib import Path
+    from silk.signals.rawfile import RawfileError
+    tb, _, keys = reference_grid
+    Path(tb.sweep_corners[keys[0]]).unlink()
+    with pytest.raises(RawfileError):
+        tb.probe('vout').point(keys[0])

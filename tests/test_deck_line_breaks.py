@@ -628,7 +628,7 @@ def test_mismatch_off_switch_refused(brk):
 @pytest.mark.parametrize('brk', BREAKS)
 def test_showmod_fields_refused(brk):
     from silk.circuit.monte_carlo_draws import showmod_lines
-    assert showmod_lines([('xdut.xm1', 'sky130', ('vth0', 'u0'))]) == [
+    assert showmod_lines([('xdut.xm1', 'msky130', ('vth0', 'u0'))]) == [
         "showmod 'm.xdut.xm1.msky130' : vth0 u0"]
     with pytest.raises(DeckTextError, match='showmod'):
         showmod_lines([('xdut' + brk + 'shell id', 'm', ('vth0',))])

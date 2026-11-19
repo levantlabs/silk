@@ -26,6 +26,7 @@ from typing import List, Optional, Tuple
 
 import yaml
 
+from silk.utils._compat import yaml_safe_loader
 from silk.circuit.ports import PortRole
 
 
@@ -205,7 +206,7 @@ class RoleRuleset:
             If ``path`` does not exist.
         """
         with open(path) as f:
-            data = yaml.safe_load(f)
+            data = yaml.load(f, Loader=yaml_safe_loader)
         return cls._from_mapping(data, source=str(path))
 
     @classmethod

@@ -272,7 +272,7 @@ the block's own IN / POWER / GROUND / INOUT port pin is the other party on
 its pass-through net (the parent drives it through the port), so a port
 fanned out to two children satisfies INT-004; the block's own OUT port is
 *not*: OUT ports provide no external-drive evidence; these checks do not
-prove every output is driven. The own-port binding carries the port's
+prove every output is driven. Driver or reference evidence passes through voltage-source output pairs in either orientation, at any voltage, and through chains. The own-port binding carries the port's
 declared role: INT-002 reads it, so a child's GROUND port wired
 onto the net that carries the block's own POWER port (or POWER onto GROUND)
 is reported as a supply short with the block's port named — `Net 'vdd'

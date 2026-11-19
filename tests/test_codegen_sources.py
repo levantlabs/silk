@@ -748,3 +748,48 @@ def test_direct_ideal_source_spec_does_not_publish_file(tmp_path, kind, wiring, 
         assert path.read_text() == 'sentinel\n'
     else:
         assert not path.exists()
+
+
+@pytest.mark.parametrize('testbench', [False, True])
+@pytest.mark.parametrize('entry,expected', [
+    ({'type': 'VoltageSource', 'dc': 123456789.123, 'ac': 1.23456789e-9},
+     {'value': 123456789.123, 'ac': 1.23456789e-9}),
+    ({'type': 'VoltageSource', 'waveform': {'type': 'Pulse',
+       'v1': 0, 'v2': 123456789.123, 'td': 1.23456789e-9,
+       'tr': 1e-9, 'tf': 1e-9, 'pw': 40e-9, 'per': 1e-6}},
+     {'v2': 123456789.123, 'td': 1.23456789e-9, 'pw': 40e-9}),
+    ({'type': 'VoltageSource', 'pwl': [0, 0, 1.23456789e-9, 123456789.123]},
+     {'points': [0, 0, 1.23456789e-9, 123456789.123]}),
+    ({'type': 'VCVS', 'out_pos': 'out', 'out_neg': 'gnd',
+      'ctrl_pos': 'in', 'ctrl_neg': 'gnd', 'gain': 123456789.123},
+     {'gain': 123456789.123}),
+])
+def test_generated_source_numeric_precision(testbench, entry, expected):
+    import ast
+    from silk import sources
+    entry = dict(entry, instance='precise')
+    if entry['type'] == 'VoltageSource':
+        entry.update(positive='out', negative='gnd')
+    if testbench:
+        code = Generator().generate_testbenches({'circuit_name': 'precision',
+            'tests': [{'name': 'measure', 'dut_portmap': {}, 'sources': [entry]}]})
+    else:
+        code = Generator().generate({'circuit_name': 'precision', 'sources': [entry]})
+    compile(code, '<precision>', 'exec')
+    call = next(n.args[0] for n in ast.walk(ast.parse(code))
+                if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+                and n.func.attr == 'add')
+    kwargs = {k.arg: ast.literal_eval(k.value) for k in call.keywords}
+    for key, value in expected.items():
+        assert kwargs[key] == value
+    # Execute the emitted call against the real source constructors without simulation.
+    source = eval(compile(ast.Expression(call), '<source>', 'eval'), {'sources': sources})
+    if 'value' in expected:
+        assert source.dc == 123456789.123 and source.ac == 1.23456789e-9
+    elif 'v2' in expected:
+        assert source.pulse.v2 == 123456789.123
+        assert source.pulse.td == 1.23456789e-9 and source.pulse.pw == 40e-9
+    elif 'points' in expected:
+        assert list(source.pwl.points) == [(0.0, 0.0), (1.23456789e-9, 123456789.123)]
+    else:
+        assert source.gain == 123456789.123

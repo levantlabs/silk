@@ -7,6 +7,7 @@ from pathlib import Path
 
 import yaml
 
+from silk.utils._compat import yaml_safe_loader
 from silk import settings
 
 DEFAULT_THRESHOLDS_PATH = Path(__file__).with_name('data') / 'region-thresholds.default.yaml'
@@ -31,7 +32,7 @@ def load_thresholds_file(path):
     # returns. Retain each node's first key path for that later validation.
     node_paths = {}
 
-    class UniqueLoader(yaml.SafeLoader):
+    class UniqueLoader(yaml_safe_loader):
         def construct_object(self, node, deep=False):
             try:
                 return super().construct_object(node, deep=deep)

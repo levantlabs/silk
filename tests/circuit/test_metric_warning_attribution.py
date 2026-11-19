@@ -22,12 +22,14 @@ import pytest
 from silk import Module, sources
 from silk.circuit.ports import PortDir
 from silk.elements import elements
-from silk.exceptions import MetricBindingError
+from silk.exceptions import AmbiguousBranchCurrentError, MetricBindingError
 from silk.metrics.diagnostics import MetricWarning
 from silk.metrics.timing import rise_time
 from silk.simulation import Transient
+from silk.signals import schema as S
 from tests._env import needs_pdk
 from tests._temperature import mark_simulated
+from tests.test_multi_output_metrics import Pair
 
 
 FIXTURE = (Path(__file__).resolve().parents[1]
@@ -198,6 +200,8 @@ class TestFilterPolicies:
         assert record.metric == 'rise_time'
         assert record.code == 'zero_swing'
         assert record.output == 'rt_declarative'
+        assert report.metric_errors['rt_declarative']['exception_type'] == 'MetricWarning'
+        assert 'zero_swing' in report.metric_errors['rt_declarative']['message']
 
     def test_filterwarnings_ignore_stays_silent_but_report_keeps_the_record(
         self, pdk, tmp_path,
@@ -315,3 +319,119 @@ def test_spectral_interpolation_warning_survives_report_and_storage(pdk, tmp_pat
         assert result.conditions['silk_metric_warnings'] == [r.to_dict() for r in records]
     finally:
         mod.close()
+
+
+@pytest.mark.parametrize('policy', ['always', 'default', 'error', 'ignore'])
+def test_warnings_survive_extractor_failure(pdk, tmp_path, policy):
+    tb = _bench(pdk, tmp_path, 'failed_warning', declarative=False,
+                function_form=False)
+
+    def extract(ckt):
+        warnings.warn(MetricWarning(metric='measure', code='first', message='limited',
+                                    details={'count': 2}, suggestion='inspect input'))
+        warnings.warn_explicit('plain evidence', UserWarning, 'extractor.py', 123)
+        warnings.warn(MetricWarning(metric='measure', code='second', message='missing',
+                                    details={}))
+        raise ValueError('extractor failed')
+
+    tb.add_metric('bad', extract)
+    with _stub(tb), warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter('always')
+        warnings.simplefilter(policy, MetricWarning)
+        if policy == 'ignore':
+            warnings.simplefilter('ignore', UserWarning)
+        report = tb.run(corner='tt')
+    assert report.metrics['bad'] == 'Error: extractor failed'
+    assert report.metric_errors['bad']['exception_type'] == 'ValueError'
+    assert report.metric_errors['bad']['message'] == 'extractor failed'
+    first, second = report.metric_warnings['bad']
+    assert (first.metric, first.code, first.output, first.message,
+            first.details, first.suggestion) == (
+                'measure', 'first', 'bad', 'limited', {'count': 2}, 'inspect input')
+    assert (second.code, second.output) == ('second', 'bad')
+    assert len(caught) == {'always': 3, 'default': 3, 'error': 1, 'ignore': 0}[policy]
+    if policy != 'ignore':
+        plain, = [w for w in caught if type(w.message) is UserWarning]
+        assert (str(plain.message), plain.category, plain.filename, plain.lineno) == (
+            'plain evidence', UserWarning, 'extractor.py', 123)
+
+
+def test_plain_warning_before_failure_is_delivered(pdk, tmp_path):
+    tb = _bench(pdk, tmp_path, 'plain_failure', declarative=False, function_form=False)
+
+    def extract(ckt):
+        warnings.warn_explicit('plain evidence', UserWarning, 'extractor.py', 42)
+        raise ValueError('failed')
+
+    tb.add_metric('bad', extract)
+    with _stub(tb), warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter('always')
+        report = tb.run(corner='tt')
+    warning, = caught
+    assert (warning.category, str(warning.message), warning.filename, warning.lineno) == (
+        UserWarning, 'plain evidence', 'extractor.py', 42)
+    assert report.metric_warnings == {}
+    assert report.metric_errors['bad']['exception_type'] == 'ValueError'
+    assert report.metric_errors['bad']['message'] == 'failed'
+
+
+def test_plain_warning_promoted_inside_extractor_stays_error(pdk, tmp_path):
+    tb = _bench(pdk, tmp_path, 'plain_promotion', declarative=False, function_form=False)
+
+    def extract(ckt):
+        warnings.warn('plain evidence', UserWarning)
+        raise AssertionError('must not reach later raise')
+
+    tb.add_metric('bad', extract)
+    with _stub(tb), warnings.catch_warnings():
+        warnings.simplefilter('error', UserWarning)
+        report = tb.run(corner='tt')
+    assert report.metric_errors['bad']['exception_type'] == 'UserWarning'
+    assert report.metric_errors['bad']['message'] == 'plain evidence'
+    assert report.metric_warnings == {}
+
+
+@pytest.mark.parametrize('policy', ['always', 'error'])
+@pytest.mark.parametrize('error_type', [MetricBindingError, AmbiguousBranchCurrentError, KeyboardInterrupt, SystemExit])
+def test_warning_before_fatal_error_preserves_exception(pdk, tmp_path, policy, error_type):
+    tb = _bench(pdk, tmp_path, 'fatal_warning', declarative=False, function_form=False)
+    error = error_type('fatal extractor error')
+
+    def extract(ckt):
+        warnings.warn(MetricWarning(metric='measure', code='limited',
+                                    message='evidence', details={}))
+        raise error
+
+    tb.add_metric('bad', extract)
+    with _stub(tb), warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter(policy, MetricWarning)
+        with pytest.raises(error_type) as raised:
+            tb.run(corner='tt')
+    assert raised.value is error
+    assert len(caught) == (1 if policy == 'always' else 0)
+    if caught:
+        assert caught[0].message.output == 'bad'
+
+
+def test_warned_result_with_invalid_field_keeps_warning(pdk, tmp_path, monkeypatch):
+    tb = _bench(pdk, tmp_path, 'invalid_field', declarative=False, function_form=False)
+
+    monkeypatch.setattr(S, '_REGISTRY', S._REGISTRY.copy())
+
+    @S.metric(domain='tran', outputs={'height': 'V'})
+    def extract(sig: S.Transient) -> Pair:
+        warnings.warn(MetricWarning(metric='measure', code='limited',
+                                    message='evidence', details={}))
+        return object()
+
+    tb.add_metric('bad', extract, sig=tb.probe('out'))
+    with _stub(tb), warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter('always')
+        report = tb.run(corner='tt')
+    assert len(caught) == 1
+    record, = report.metric_warnings['bad']
+    assert (record.code, record.output) == ('limited', 'bad')
+    assert set(report.metric_warnings) == {'bad'}
+    assert report.metrics['bad.height'] == report.metrics['bad']
+    assert report.metric_errors['bad']['exception_type'] == 'AttributeError'
+    assert report.metric_errors['bad.height'] == report.metric_errors['bad']

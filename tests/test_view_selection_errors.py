@@ -1,4 +1,4 @@
-"""Typed waveform selection errors (TASK-615, doc-1 Q35 a).
+"""Typed waveform selection errors (TASK-615).
 
 Each of the three selector failures raises its own subclass of
 ``SelectionError``: ``SelectorNotFoundError`` and ``AmbiguousSelectorError``

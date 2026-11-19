@@ -182,8 +182,24 @@ def test_included_rows_are_collected_once(entries, dotted):
 
 
 @pytest.mark.parametrize('dotted', ['silk.circuit.validate_instance_name',
-                                   'silk.circuit.validate_net_name'])
+                                   'silk.circuit.validate_net_name',
+                                   'silk.circuit.validate_port_name'])
 def test_public_name_checks_are_collected_once(entries, dotted):
     hits = [entry for entry in entries if entry.name == dotted]
     assert len(hits) == 1
     assert hits[0].kind == 'function'
+
+
+@pytest.mark.parametrize('name', ['TestFailure', 'RunRecord'])
+def test_run_records_are_public_circuit_exports(entries, name):
+    import silk.circuit as circuit
+    from silk.circuit import test_failure
+
+    assert name in circuit.__all__
+    namespace = {}
+    exec('from silk.circuit import *', namespace)
+    assert namespace[name] is getattr(test_failure, name)
+    hits = [entry for entry in entries
+            if entry.name == f'silk.circuit.{name}']
+    assert len(hits) == 1
+    assert hits[0].obj is namespace[name]

@@ -3,6 +3,7 @@
 import os
 import yaml
 
+from silk.utils._compat import yaml_safe_loader
 from silk.elements.factory import make_device_class
 from silk.elements._catalog import _validate_device_names
 from silk.exceptions import CircuitError
@@ -65,7 +66,7 @@ class ElementLibrary:
             yaml_path = _DEFAULT_YAML
 
         with open(yaml_path, 'r') as f:
-            config = yaml.safe_load(f)
+            config = yaml.load(f, Loader=yaml_safe_loader)
 
         self._device_classes = {}
         self.device_names = []

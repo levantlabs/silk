@@ -280,6 +280,13 @@ def test_run_corners_reports_each_carry_their_own_corner(pdk, tmp_path):
     # would mark the wrong object simulated.
     def fake_simulate(netlist, *_a, **_kw):
         mark_simulated(netlist, _kw.get('corner', 'tt'))
+        from pathlib import Path
+        from tests._mock_rawfile import write_complete_rawfile
+        path = str(Path(netlist.dir_folder) / f"mock_{_kw.get('corner', 'tt')}.raw")
+        write_complete_rawfile(path, 'test\n.tran 1n 10n\n.end\n')
+        netlist._raw = netlist.backend.load_raw(path)
+        netlist.simResultsAll = netlist._raw.native
+        netlist.results_file = path
     with patch.object(type(test.netlist), 'simulate', fake_simulate):
         results = test.run_corners(corners=('tt', 'ff', 'ss'))
 
@@ -297,6 +304,13 @@ def test_run_corners_reports_store_under_their_own_corners(pdk, tmp_path):
 
     def fake_simulate(netlist, *_a, **_kw):
         mark_simulated(netlist, _kw.get('corner', 'tt'))
+        from pathlib import Path
+        from tests._mock_rawfile import write_complete_rawfile
+        path = str(Path(netlist.dir_folder) / f"mock_{_kw.get('corner', 'tt')}.raw")
+        write_complete_rawfile(path, 'test\n.tran 1n 10n\n.end\n')
+        netlist._raw = netlist.backend.load_raw(path)
+        netlist.simResultsAll = netlist._raw.native
+        netlist.results_file = path
     with patch.object(type(test.netlist), 'simulate', fake_simulate):
         results = test.run_corners(corners=('ff', 'ss'))
     for report in results.values():

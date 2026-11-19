@@ -393,6 +393,13 @@ def test_extraction_failure_stays_with_its_real_placement(tmp_path, monkeypatch,
     launches = []
     def simulate(module, **kwargs):
         launches.append(module)
+        from tests._mock_rawfile import write_complete_rawfile
+        path = str(tmp_path / f'launch_{len(launches)}.raw')
+        write_complete_rawfile(path, 'test\n.tran 1n 10n\n.end\n',
+                               values={'v(out)': 1.0})
+        module._raw = module.backend.load_raw(path)
+        module.simResultsAll = module._raw.native
+        module.results_file = path
         module.sim_results_loaded = True
     monkeypatch.setattr(Module, 'simulate', simulate)
     top.run_all_tests(n_workers=1)

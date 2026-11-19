@@ -395,9 +395,9 @@ def test_nested_emphasis_slug_through_the_real_fragment_gate(tmp_path, monkeypat
     assert dead_fragments() == [('a.md', 'b.md', 'foo-_bar_-baz')]
 
 
-_CODEX_EXAMPLE_1 = (
+_QUOTED_EXAMPLE_1 = (
     '```md\n> ```\n[file](missing.md) [fragment](#ghost)\n```\n')
-_CODEX_EXAMPLE_2 = (
+_QUOTED_EXAMPLE_2 = (
     '> ```md\n> example\n\n[real broken link](missing.md) [frag](#ghost2)\n')
 _LIST_FENCE = (
     '- item\n\n  ```md\n  [e](gone.md#x)\n  ```\n\n[after](lost.md)\n')
@@ -407,8 +407,8 @@ _LIST_MARKER_NOT_CLOSER = (
 
 def test_container_fences_through_the_real_gates(tmp_path, monkeypatch):
     _fake_repo(monkeypatch, tmp_path, {
-        'one.md': '# One\n\n' + _CODEX_EXAMPLE_1,                 # all example: no hits
-        'two.md': '# Two\n\n' + _CODEX_EXAMPLE_2,                 # link after the quote is real
+        'one.md': '# One\n\n' + _QUOTED_EXAMPLE_1,                 # all example: no hits
+        'two.md': '# Two\n\n' + _QUOTED_EXAMPLE_2,                 # link after the quote is real
         'three.md': '# Three\n\n' + _LIST_FENCE,                  # only [after] is real
         'four.md': '# Four\n\n' + _LIST_MARKER_NOT_CLOSER,        # marker line is content
         'five.md': ('# Five\n\n```md\n# Fake\n```\n\n> ```\n> [q](qgone.md)\n> ```\n'

@@ -135,8 +135,10 @@ def _module_paths(root, target, active=()):
                 yield ((root, key, entry), *tail)
 
 
-def _resolve_path(chain, name):
+def _resolve_path(chain, name, *, follow_ports=True):
     from silk.circuit.emitted_names import emitted_submodule_name
+    if not follow_ports:
+        return '.'.join((*[emitted_submodule_name(link[1]) for link in chain], name))
     # Walk ports upward through LIVE placement-local wiring.
     for position in range(len(chain) - 1, -1, -1):
         _, key, entry = chain[position]

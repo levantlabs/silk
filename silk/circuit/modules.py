@@ -42,7 +42,7 @@ from silk.circuit.modules_structure import _StructureMethods, _validate_module_n
 
 
 def _reconstruct_module(cls):
-    """Pickle helper used by :meth:`Module.__reduce_ex__` — creates a
+    """Pickle helper for modules and result readers — creates a
     bare instance (bypassing ``__init__``) that ``__setstate__`` fills
     in."""
     return cls.__new__(cls)
@@ -185,7 +185,6 @@ class Module(_StructureMethods, _FaultMethods, _DbMethods, _TestbenchMethods,
 
         self.passives_dict = {}  # Dictionary of passive elements (R, C, L)
 
-        self.output_file_available = False
         self.sim_results_loaded = False
         self.sim_xaxis_values = ['time', 'frequency']
         self.custom_lines = []

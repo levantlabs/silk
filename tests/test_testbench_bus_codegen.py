@@ -1,6 +1,6 @@
 """TASK-606.3: a TestbenchSpec signal may be an ordered list of paths, written as
 one ``tb.probe_bus([...])`` line; a metric over a bus becomes a Python for loop of
-scalar metrics named ``name[k]`` (doc-1 Q33, Q39, Q40 option A)."""
+scalar metrics named ``name[k]``."""
 import ast
 
 import numpy as np

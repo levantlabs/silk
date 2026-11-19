@@ -510,9 +510,10 @@ Packaged PDK catalogs may be loaded at import time.
 
 ### `silk/utils/` — shared formatting and validation
 
-**Responsibility.** `_fmt` (SPICE value formatter with a plain-decimal band so
-`l=0.5` never emits as `500m`) and `_parse_si` (its inverse, and silk's *one*
-SPICE-number parser — I16; its docstring is the parse contract) in
+**Responsibility.** `_fmt` (SPICE value formatter using up to 15 significant
+digits, with a plain-decimal band so `l=0.5` never emits as `500m`) and
+`_parse_si` (silk's *one* SPICE-number parser — I16; its docstring is the parse
+contract) in
 `silk/utils/_utils.py`; `trapezoid` in `silk/utils/_compat.py`, the one copy
 of the NumPy 2.0 rename shim. `format_spice_value` and `parse_spice_value`
 are the public aliases (`silk.utils.__all__`); both delegate to the same

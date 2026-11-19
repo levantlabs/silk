@@ -17,6 +17,12 @@ The field examples below are fragments to merge into a circuit payload, unless
 shown as a complete example. Python emission snippets show the corresponding
 generated lines; they assume the surrounding module or testbench setup.
 
+Generated numeric parameters keep existing Python float literals that represent
+the input exactly. Small or large floats that would otherwise lose precision use
+15-significant-digit rounding; if that rounding would overflow, the exact finite
+literal is retained. Parameters already emitted with Python's repr() are
+unchanged. SI strings remain quoted strings.
+
 ---
 
 ## Top-level structure
@@ -1281,7 +1287,7 @@ TestbenchSpec, TestbenchSpecError`. Runnable generation-only demo (no PDK or sim
 | `circuit_name` | string | yes | Names the generated `build_<circuit_name>_with_tests(pdk)` assembler when `circuit_builder` is set — then it must be a valid, non-keyword Python identifier (same rule as [`circuit_name`](#top-level-structure) above). |
 | `circuit_builder` | string | no | The caller's circuit-builder function name (e.g. `_build_ac_gain`). See the contract below. Absent/`null`/`""` → no assembler is emitted; the caller writes the one-line assembler itself. |
 | `rigs` | array | no | Shared groups: `{"name", "sources": [SourceSpec…], "devices": […], "ideal_elements": […], "submodules": [SubmoduleSpec…]}` → `def _apply_<name>_rig(tb)`. `name` must be a Python identifier. |
-| `tests` | array | no | One per testbench: `{"name", "dut_portmap", "applied_rigs", "sources", "devices", "ideal_elements", "submodules", "analyses", "metrics", "specs", "corner", "temperature_c"}` → `def _attach_<name>(mod)` calling `mod.create_test('<name>')`. `name` must be a Python identifier; `dut_portmap` maps DUT port → testbench net. `corner` and `temperature_c` are optional; see [Corner, temperature and op tables](#corner-temperature-and-op-tables). |
+| `tests` | array | no | One per testbench: `{"name", "dut_portmap", "applied_rigs", "sources", "devices", "ideal_elements", "submodules", "analyses", "probes", "metrics", "specs", "corner", "temperature_c"}` → `def _attach_<name>(mod)` calling `mod.create_test('<name>')`. `name` must be a Python identifier. `dut_portmap` maps DUT port → testbench net. See [Plot-only probes](#plot-only-probes) and [Corner, temperature and op tables](#corner-temperature-and-op-tables) for optional fields. |
 | `save_device_params` | boolean | no | `true` turns on operating-point device-parameter capture for the DUT, so `report.op_table()` works on a test with an `op` analysis. See [Corner, temperature and op tables](#corner-temperature-and-op-tables). Absent, `null` or `false` emits nothing. |
 
 - **Sources** (`rigs[].sources` and `tests[].sources`) are the same
@@ -1346,17 +1352,17 @@ TestbenchSpec, TestbenchSpecError`. Runnable generation-only demo (no PDK or sim
 
   **One signal-path vocabulary**, shared by a metric's `signal` /
   every `signals` slot and a derived signal's `inputs`: a net (`"vout"`), a
-  DUT-internal path (`"xdut.<net>"`), a device probe (`"xdut.m1:d"`), and a
-  source's branch current as `"i(<source name>)"`, e.g. `"i(vs)"` for the
-  source whose `instance` is `vs` (emitted as `Vvs`). The raw vector name
-  `"i(vvs)"` is also accepted and is documented behaviour. Both readers
+  DUT-internal path (`"xdut.<net>"`), a terminal-current probe
+  (`"xdut.m1:d"`), a device-parameter probe (`"MN:gm"`), and a
+  source's branch current as `"i(<source name>)"`, e.g. `"i(vs)"` for the source whose `instance` is `vs`. For a DC/AC-only voltage source,
+  its raw vector `"i(vvs)"` is also accepted. Both readers
   (`tb.probe` and a metric's path) use one lookup: `i(x)` where `x` is a
-  source name reads that source; otherwise `x` is the raw vector name,
-  verbatim. If `x` is both a source name and the emitted instance of a
-  *different* source (sources `vs` and `vvs`: `i(vvs)` is `Vvvs` or `Vvs`),
-  the run raises `AmbiguousBranchCurrentError` naming both readings; it never
-  picks one. A current that is not in the results raises, listing these
-  spellings. The path is emitted as a string and resolved at run time.
+  source name uses circuit-backed source lookup, also accepting designer
+  paths such as `i(dut.core.vs)`. An emitted reading or registered card wins
+  over a different source target with a warning naming the physical alternative;
+  capture uses that same card. Otherwise `x` retains its raw-vector meaning.
+  Ambiguous raw rows still raise `AmbiguousSignalError`. A current that is not in the results raises, listing these
+  spellings.
   - **One input → `"signal": "<path>"`.** Use this for a one-input metric.
   - **N inputs → `"signals": {"<slot>": "<path>", …}`**, keyed by the metric's
     own signal-input names as published in
@@ -1396,10 +1402,56 @@ TestbenchSpec, TestbenchSpecError`. Runnable generation-only demo (no PDK or sim
   ```jsonc
   {"name": "vavg", "type": "average", "signal": "vout", "analysis": "tran"}
   ```
+
+  A device-parameter path uses the designer name relative to the DUT, for
+  example `MN:gm` or `core.MN:gm`. Omit the emitted `xdut.` prefix.
+  When any input binds a device parameter, the generator uses the metric
+  function and registers each path input with `tb.probe`. An explicit
+  metric `analysis` is passed to those probes.
+
+  ```json
+  {"name": "gm", "type": "final_value", "signal": "MN:gm", "analysis": "dc"}
+  ```
+
+  ```python
+  tb.add_metric('gm', metrics.final_value, sig=tb.probe('MN:gm', analysis='dc'))
+  ```
+
+  The function form requires the registered function to be exported by
+  `silk.metrics`. All built-in probe-bindable types meet this requirement.
+  Registered sidecar metrics without that export raise `TestbenchSpecError`
+  when bound to device parameters. The built-in types with inputs no
+  analysis produces are also refused in generated testbenches:
+  `error_norm`, `relative_error_norm`, `p1db`, `inl`, `dnl`, `static_errors`,
+  `inl_max_lsb`, `dnl_max_lsb`, `offset_error_lsb`, `gain_error_lsb`,
+  `full_scale_error_lsb`, `missing_code_count` and `non_monotonic_steps`.
+
 - **Specs** — `{"name", "metric", "op", "target"}` — emit as `tb.add_spec(...)`;
   `metric` must name a metric declared in the same test. Runtime specs support
   `<`, `<=`, `>`, `>=` and `==`; the target must be a real number in the metric's
   units, not a boolean. Codegen does not validate all runtime requirements.
+
+### Plot-only probes
+
+Add an optional `probes` array to a test to capture device parameters for
+plotting or readback. Each entry has one non-empty string `signal` and may
+have an `analysis` selector for a plot declared in that test. The selector
+uses silk's words `tran`, `dc`, `ac`, `noise` and `op`.
+
+```jsonc
+// Inside a test with a DC analysis
+"probes": [{"signal": "MN:gm", "analysis": "dc"}]
+```
+
+The example emits `tb.probe('MN:gm', analysis='dc')` after the analyses and
+before derived signals. After the run, read the saved vector with
+`report.sim_results.load_signal('MN:gm', analysis='dc')`. Net paths are
+accepted and emit no call. Net capture follows the test's simulator and save
+settings.
+This list supports scalar nets and DUT-relative device-parameter paths.
+Bus lists, branch and terminal currents, unknown fields, and malformed
+entries raise `TestbenchSpecError` naming the test and entry. Run-time
+capture follows the simulator's [device-parameter probe limits](probes.md#what-can-be-probed).
 
 ### Corner, temperature and op tables
 
@@ -1471,7 +1523,7 @@ from silk's fixed list**, its inputs and the operation's parameters.
 |---|---|---|---|
 | `name` | string | yes | A non-keyword Python identifier, unique among the test's derived signals. It is emitted as a local variable of `_attach_<test>`, so the names that function reads (`tb`, `mod`, `pdk`, `analysis`, `sources`, `elements`, `metrics`, `i`, `range`, the generated `_apply_*_rig` / `_attach_*` / builder names) are refused. It must not equal, case-insensitively, a DUT port or a net of the test (`dut_portmap` nets, and the nets of the test's and its applied rigs' sources, devices, ideal elements and helpers): a metric's `signal` could not tell the two apart. |
 | `operation` | string | yes | One of the operation names below. |
-| `inputs` | array of strings | yes | Each one is a **signal path**, in the same vocabulary as a metric's `signal` (the testbench net a DUT port maps to, `xdut.<net>`, `i(vs)`, a device probe such as `xdut.m1:d`), or the **name of a derived signal declared earlier in the list**. Order matters for `difference` and `quotient`. |
+| `inputs` | array of strings | yes | Each one is a **signal path**, in the same vocabulary as a metric's `signal` (the testbench net a DUT port maps to, `xdut.<net>`, `i(vs)`, a terminal-current probe such as `xdut.m1:d`, or a device parameter such as `MN:gm`), or the **name of a derived signal declared earlier in the list**. Order matters for `difference` and `quotient`. |
 | `params` | object | no | The operation's parameters; only `scale` has any. Values are numbers. Omitted parameters take their defaults. |
 | `analysis` | string | no | `"tran"`, `"ac"`, `"dc"`, `"noise"` or `"op"`: the plot this derived signal's path inputs read, in a test that declares more than one analysis. It must be an analysis the test declares. A derived signal inherits the analysis of the derived signals it uses; inputs that read different analyses are refused. |
 

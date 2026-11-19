@@ -270,3 +270,50 @@ def test_public_net_validation_preserves_component_prefix_rule():
     from silk.circuit import validate_net_name
     for name in ['out[0]', 'xdut_out', 'in__silk_y', 'a_in__silk_y']:
         assert validate_net_name(name) is None
+
+
+@pytest.mark.parametrize('name', ['out', '_vss', 'data[0]', 'data[02]',
+                                  'in__silk_x', 'gnd', 'GND', 'Gnd'])
+def test_public_port_validation_matches_valid_declarations(tmp_path, name):
+    import silk.circuit as circuit
+    public = getattr(circuit, 'validate_port_name', None)
+    assert callable(public)
+    assert 'validate_port_name' in circuit.__all__
+    assert public(name) is None
+    mod = Module('sky130', str(tmp_path), 'top.cir',
+                 pdk_details=load_pdk('sky130'), module_name='block')
+    mod.define_module_ports({name: 'in'})
+    assert name in mod.pin_list
+
+
+@pytest.mark.parametrize('name', ['', 'bad name', 'bad\tname', 'a:b', 'a.b',
+                                  'bus[en]', 'bus[-1]', 'bus[1][2]', 'bus[2]x',
+                                  'bus<2>', '2bus', 'gnd!', '__silk_x',
+                                  '__SILK_x[2]', '0', None, 0, 1.5])
+def test_public_port_validation_matches_invalid_declarations(tmp_path, name):
+    import silk.circuit as circuit
+    public = getattr(circuit, 'validate_port_name', None)
+    assert callable(public)
+    mod = Module('sky130', str(tmp_path), 'top.cir',
+                 pdk_details=load_pdk('sky130'), module_name='block')
+    error = ValueError if isinstance(name, str) else TypeError
+    with pytest.raises(error) as public_exc:
+        public(name)
+    with pytest.raises(error) as declaration_exc:
+        mod.define_module_ports({name: 'in'})
+    message = str(declaration_exc.value)
+    if name == '0':
+        # A standalone check has no block identity; the reason and remedy match.
+        message = message.replace("block 'block'", "block '<unnamed>'", 1)
+        assert 'SPICE node 0 is global' in message
+        assert "Rename the port to 'vss'" in message
+    assert str(public_exc.value) == message
+    assert not mod.pin_list
+
+
+def test_public_port_validation_has_no_generated_prefix_exception():
+    from silk.circuit import validate_port_name
+    from silk.circuit.emitted_names import _generated_token_scope
+    with _generated_token_scope(nets=('__silk_x',)):
+        with pytest.raises(ValueError, match='reserved __silk_ namespace'):
+            validate_port_name('__silk_x')

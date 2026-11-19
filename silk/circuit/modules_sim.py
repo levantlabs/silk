@@ -99,7 +99,6 @@ def _invalidate_current_results(module):
     module.sim_results_loaded = False
     module.results_file = None
     module.dataFile = None
-    module.output_file_available = False
     module.characterization_context = None
     module.operating_conditions = None
     module._last_sim_corner = None

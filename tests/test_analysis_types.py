@@ -5,6 +5,7 @@ Tests for typed analysis classes in pynetlist.core.analysis:
 Also tests the object-based path in PyNetlist.add_sim_type().
 """
 
+import numpy as np
 import pytest
 import sys
 import os
@@ -448,7 +449,7 @@ def test_frequency_step_boundary_retains_emission(variation, points, stop):
 
 def test_dec_refuses_substep_created_by_spice_formatting():
     # Three points/decade reaches this exact mathematical step, but the
-    # emitted 2.15443k is below it and would run away on ngspice 42.
+    # emitted 2.15443469003188k is below it and would run away on ngspice 42.
     with pytest.raises(ValueError, match='SPICE formatting.*at least 4'):
         AC('dec', 3, 1000, 1000 * 10 ** (1 / 3))
 
@@ -463,3 +464,46 @@ def test_dec_uncapped_integer_points_and_zero_span():
     assert AC('dec', count, 1, 2).points == count
     with pytest.raises(ValueError, match='zero span'):
         AC('dec', count, 1, 1)
+
+
+@pytest.mark.parametrize('simulator', ['ngspice', 'xyce'])
+def test_dc_fractional_stop_preserves_precision(tmp_path, simulator):
+    from pathlib import Path
+    from tests.test_run_files import _module
+    mod = _module(tmp_path, simulator, [DC('vin', 0, .8022651269, .8022651269 / 100)])
+    assert '.dc Vvin 0 0.8022651269 0.008022651269\n' in Path(mod.generate_netlist()).read_text()
+
+
+@pytest.mark.parametrize('dtype', [np.float16, np.float32])
+@pytest.mark.parametrize('simulator', ['ngspice', 'xyce'])
+@pytest.mark.parametrize('kind,expected', [
+    ('tran', '.tran 0.1 1.8 0.1 10u\n'),
+    ('dc', '.dc Vvin -1.8 1.8 0.1\n'),
+    ('ac', '.ac lin 10 0.1 1.8\n'),
+    ('noise', '.noise v(out,0) Vvin lin 10 0.1 1.8 1\n'),
+])
+def test_numpy_analysis_decks_preserve_stored_scalars(
+        tmp_path, dtype, simulator, kind, expected):
+    from pathlib import Path
+    from tests.test_run_files import _module
+
+    if kind == 'tran':
+        fields = dict(step=dtype(0.1), stop=dtype(1.8),
+                      start=dtype(0.1), maxstep=dtype(1e-5))
+        analysis = Transient(**fields)
+    elif kind == 'dc':
+        fields = dict(start=dtype(-1.8), stop=dtype(1.8), step=dtype(0.1))
+        analysis = DC('vin', **fields)
+    else:
+        fields = dict(fstart=dtype(0.1), fstop=dtype(1.8))
+        analysis = (AC('lin', 10, **fields) if kind == 'ac' else
+                    Noise('out', '0', 'vin', 'lin', 10, **fields))
+    mod = _module(tmp_path, simulator, [analysis])
+    try:
+        assert expected in Path(mod.generate_netlist()).read_text()
+        for field, original in fields.items():
+            stored = getattr(analysis, field)
+            assert type(stored) is dtype
+            assert stored == original
+    finally:
+        mod.close()

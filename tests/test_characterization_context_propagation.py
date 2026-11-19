@@ -203,6 +203,13 @@ class TestRunContextPropagation:
         # evaluates — believing nothing had loaded.
         def fake_simulate(netlist, *_a, **_kw):
             mark_simulated(netlist, _kw.get('corner', 'tt'), voltage=1.8)
+            from pathlib import Path
+            from tests._mock_rawfile import write_complete_rawfile
+            path = str(Path(netlist.dir_folder) / f"mock_{_kw.get('corner', 'tt')}.raw")
+            write_complete_rawfile(path, 'test\n.tran 1n 10n\n.end\n')
+            netlist._raw = netlist.backend.load_raw(path)
+            netlist.simResultsAll = netlist._raw.native
+            netlist.results_file = path
         with patch.object(type(test.netlist), 'simulate', fake_simulate):
             results = test.run_corners(
                 corners=('tt', 'ff'), temperature=27.0, voltage=1.8,
@@ -216,6 +223,13 @@ class TestRunContextPropagation:
         test = _wired_test(configured_module)
         def fake_simulate(netlist, *_a, **_kw):
             mark_simulated(netlist, _kw.get('corner', 'tt'))
+            from pathlib import Path
+            from tests._mock_rawfile import write_complete_rawfile
+            path = str(Path(netlist.dir_folder) / f"mock_{_kw.get('corner', 'tt')}.raw")
+            write_complete_rawfile(path, 'test\n.tran 1n 10n\n.end\n')
+            netlist._raw = netlist.backend.load_raw(path)
+            netlist.simResultsAll = netlist._raw.native
+            netlist.results_file = path
         with patch.object(type(test.netlist), 'simulate', fake_simulate):
             results = test.run_corners(corners=('tt', 'ff'))
         for corner in ('tt', 'ff'):

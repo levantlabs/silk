@@ -9,6 +9,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 import yaml
 
+from silk.utils._compat import yaml_safe_loader
+
 
 @dataclass
 class ScopeExclusion:
@@ -103,7 +105,7 @@ class ExclusionFile:
             If an entry's ``reason`` is missing or empty.
         """
         path = Path(path)
-        data = yaml.safe_load(path.read_text()) or {}
+        data = yaml.load(path.read_text(), Loader=yaml_safe_loader) or {}
         entries = data.get("exclusions", []) or []
         exclusions = []
         for entry in entries:

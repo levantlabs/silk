@@ -48,7 +48,7 @@ class NgspiceSignal(Signal):
 
     @classmethod
     def from_rawfile(cls, rawdata, signal_name: str, signal_type: str = 'V',
-                     plot=None):
+                     plot=None, *, _resolved=None):
         """Extract a single signal from an ngspice rawfile result object.
 
         Parameters
@@ -113,12 +113,14 @@ class NgspiceSignal(Signal):
         # made every transient/AC metric reject Xyce output (TASK-87). Only the
         # Signal's label is folded; RawVector.name stays verbatim (the reader
         # contract — the rawfile viewer shows names as the simulator wrote them).
-        is_op = rawfile_analysis_kind(rawdata) == ANALYSIS_OP
-        # Y-axis: ONE collector gathers every candidate row of the selected
-        # plot before anything is chosen (TASK-527).
-        first = 0 if is_op else 1
-        candidates = collect_vector_candidates(rawdata, signal_name,
-                                               signal_type, first=first)
+        if _resolved is None:
+            is_op = rawfile_analysis_kind(rawdata) == ANALYSIS_OP
+            # Gather all candidates before choosing a row.
+            first = 0 if is_op else 1
+            candidates = collect_vector_candidates(rawdata, signal_name,
+                                                   signal_type, first=first)
+        else:
+            candidates, is_op = _resolved
 
         # Distinguish a missing x-axis from a missing y-signal: reporting the
         # former as the latter is what historically mis-diagnosed the DC-sweep

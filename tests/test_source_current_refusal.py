@@ -10,7 +10,7 @@ from tests.test_raw_current_paths import _bench
 
 
 @pytest.mark.parametrize('name', ['stim', 'Istim__silk_pwl', 'Istim__silk_dc', '@istim__silk_dc[current]'])
-@pytest.mark.parametrize('path', ['load', 'probe', 'metric'])
+@pytest.mark.parametrize('path', ['load', 'logical_load', 'probe', 'metric'])
 def test_ac_current_source_read_refuses_with_ammeter_guidance(tmp_path, name, path):
     src = sources.CurrentSource('stim', 'a', '0', dc=.2, pwl=[0, .5, 1, 1])
     tb = _bench(tmp_path, [], [src])
@@ -23,6 +23,8 @@ def test_ac_current_source_read_refuses_with_ammeter_guidance(tmp_path, name, pa
     with pytest.raises(NotSupportedError, match='ac=.*0 V VoltageSource'):
         if path == 'load':
             tb.netlist.load_signal(name, 'I', analysis='ac')
+        elif path == 'logical_load':
+            tb.netlist.load_signal(f'i({name})', analysis='ac')
         elif path == 'metric':
             _load_metric_path(tb.netlist, f'i({name})', analysis='ac')
         else:

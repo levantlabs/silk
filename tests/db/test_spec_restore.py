@@ -291,10 +291,13 @@ def test_generated_nested_report_uses_canonical_owner_path(
     stored_tb._module_added = True
 
     def _fake_simulate(corner="tt"):
-        # No-op stand-in for the simulator; also flips sim_results_loaded
-        # (TASK-115: run() calls the public evaluate(), whose "nothing
-        # loaded" guard would otherwise reject this never-really-simulated
-        # netlist) so the extraction tail still runs on gain_dB's constant.
+        from pathlib import Path
+        from tests._mock_rawfile import write_complete_rawfile
+        path = str(Path(stored_tb.netlist.dir_folder) / 'mock.raw')
+        write_complete_rawfile(path, 'test\n.op\n.end\n')
+        stored_tb.netlist._raw = stored_tb.netlist.backend.load_raw(path)
+        stored_tb.netlist.simResultsAll = stored_tb.netlist._raw.native
+        stored_tb.netlist.results_file = path
         stored_tb.netlist.sim_results_loaded = True
 
     monkeypatch.setattr(stored_tb.netlist, "simulate", _fake_simulate)

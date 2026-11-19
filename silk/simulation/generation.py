@@ -584,7 +584,19 @@ def read_retained(owner):
         if gen is not None:
             with gen.read():
                 return read_rawfile(gen.resolve('rawfile_path'))
-        return read_rawfile(retained_source(owner))
+        native = getattr(raw, 'native', None) if raw is not None else getattr(reader, 'simResultsAll', None)
+        stores = {id(vector._store): vector._store
+                  for plot in getattr(native, 'plots', ())
+                  for vector in plot.vectors if vector._store is not None}
+        for store in stores.values():
+            with open(store.path, 'rb') as handle:
+                store.check(handle, 'view')
+        source = next(iter(stores.values())).path if stores else retained_source(owner)
+        result = read_rawfile(source)
+        for store in stores.values():
+            with open(store.path, 'rb') as handle:
+                store.check(handle, 'view')
+        return result
     except OSError as exc:
         raise RawfileError(f'Cannot read result association for {retained_source(owner)!r}: {exc}') from exc
 

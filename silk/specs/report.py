@@ -126,7 +126,7 @@ class SpecOutcome:
         """
         if self.owner_path in (None, '$'):
             return ''
-        return _single_line(f' (instance {self.owner_path.removeprefix("$/")})')
+        return _single_line(f' (instance {self.owner_path.removeprefix("$/").replace("/", ".")})')
 
     @property
     def display_label(self) -> str:

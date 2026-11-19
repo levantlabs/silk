@@ -6,12 +6,12 @@
 ***** Date: Mon Oct 12 16:45:25 CDT 2026
 
 
-***** Executing netlist /tmp/codex552-review-kkc2sG/evidence/xyce/duplicate/failure.cir
+***** Executing netlist /tmp/xyce-dup-fixtur-kkc2sG/evidence/xyce/duplicate/failure.cir
 
 ***** Reading and parsing netlist...
 Netlist warning: No print specified
 Netlist error in file
- /tmp/codex552-review-kkc2sG/evidence/xyce/duplicate/failure.cir at or near
+ /tmp/xyce-dup-fixtur-kkc2sG/evidence/xyce/duplicate/failure.cir at or near
  line 5
  Duplicate device XDUT:R1
 Simulation aborted due to error.  There are 0 MSG_FATAL errors and 1 MSG_ERROR

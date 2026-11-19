@@ -1,4 +1,4 @@
-"""Bus Signal maths: bit by bit, by position like numpy (TASK-606.1, doc-1 Q33)."""
+"""Bus Signal maths: bit by bit, by position like numpy (TASK-606.1)."""
 import copy
 import operator
 
@@ -445,3 +445,11 @@ def test_bus_arithmetic_refuses_inexact_bit_grid(operation, other_bus, reverse):
     with pytest.raises(ValueError, match='X-values'):
         operation(other, d) if reverse else operation(d, other)
     assert d._indices == (9, 8)
+
+
+def test_abs_bus_preserves_indices_and_plus_identity():
+    d = bus('d', (9, 8), base=-1.)
+    assert +d is d
+    result = abs(d)
+    assert result._indices == (9, 8)
+    assert ys(result) == [[9., 8.5], [8., 7.5]]

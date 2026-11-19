@@ -244,6 +244,35 @@ class TestAddSourceDelegation:
 
 class TestAddSimTypeDelegation:
 
+    def test_analyses_empty_without_building_netlist(self, configured_module):
+        test = configured_module.create_test('t1')
+        assert test.analyses == ()
+        assert test.netlist is None
+        test.add_source(sources.VoltageSource('vs', positive='vin', negative='0', dc=0))
+        assert test.analyses == ()
+
+    def test_analyses_order_replacement_and_deep_copies(self, configured_module):
+        test = configured_module.create_test('t1')
+        transient = Transient(step=1e-9, stop=1e-7)
+        ac = AC(variation='dec', points=10, fstart=1, fstop=1e6)
+        ac.metadata = {'labels': ['original']}
+        test.add_sim_type(transient).add_sim_type(ac)
+        earlier = test.analyses
+        assert isinstance(earlier, tuple)
+        assert [type(a) for a in earlier] == [Transient, AC]
+        replacement = Transient(step=2e-9, stop=2e-7)
+        test.add_sim_type(replacement)
+        current = test.analyses
+        assert [type(a) for a in current] == [Transient, AC]
+        assert current[0].step == 2e-9
+        assert earlier[0].step == 1e-9
+        current[0].stop = 9e-7
+        current[1].metadata['labels'].append('edited')
+        assert replacement.stop == 2e-7
+        assert ac.metadata == {'labels': ['original']}
+        assert test.analyses[0].stop == 2e-7
+        assert test.analyses[1].metadata == {'labels': ['original']}
+
     def test_simtype_in_internal_netlist(self, configured_module):
         """add_sim_type() populates the internal netlist's sim_analysis_dict."""
         test = configured_module.create_test('t1')

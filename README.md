@@ -88,6 +88,18 @@ the rawfile and may have companion files. See the
 [viewer guide](https://github.com/levantlabs/silk/blob/main/docs/waveform-explorer.md).
 Keep `tb.plot(vin, vout)` for a static plot.
 
+For a selected placement, `right = top.get_test(name, instance='right')`,
+`right.netlist.view()` and `right.netlist.load_signal('out')` read right's
+latest retained run, even after another placement runs. Configuration remains
+shared: `right.netlist.simulator = 'behavioral'` configures the authored bench.
+The selected netlist is a placement-aware adapter, so its identity differs from
+the authored `tb.netlist`. Execute through `right.run()` or
+`right.evaluate(rawfile=...)`; direct netlist execution/loading is refused.
+After a sweep, the adapter shows the last successful run in plan order; use a
+collection member's `report.sim_results.view()` for another run. See the
+[selected-handle API](https://github.com/levantlabs/silk/blob/main/docs/api-reference.md#module)
+for result availability and identity details.
+
 Expected output:
 
 ```text

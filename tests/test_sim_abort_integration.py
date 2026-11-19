@@ -249,6 +249,10 @@ def _legacy_serializer(tmp_path, monkeypatch):
         assert source.physical_instance_names() == previous_names
         assert len(wave) == 10
         assert wave[0][1] == wave[1][1] == wave[2][1]  # redundant first-word knots
+    # Preserve the six-digit transient values carried by the frozen deck.
+    transient = next(iter(mod.sim_analysis_dict.values()))
+    transient.step = 4.16667e-12
+    transient.maxstep = 8.33333e-12
     mod.generate_netlist()
     assert mod._run_files.completion is not None
     assert mod._run_files.completion.requests[0].stop == pytest.approx(frozen['stop'])

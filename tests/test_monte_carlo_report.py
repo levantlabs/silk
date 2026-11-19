@@ -88,17 +88,17 @@ def test_yield_rows_per_corner():
 def test_sensitivity_table_in_share_order_and_scatter_plots():
     mc = _mc(list(np.linspace(0.5, 4, 30)))
     # list the weak (noise) column first so share order differs from input
-    cols = (('m2', 'noise'), ('m1', 'vth0'))
-    draws = _draws(mc, (('m1', 'vth0'), ('m2', 'noise')))
+    cols = (('dut.r1', 'rbody.rsh'), ('dut.r1', 'rhead.rsh'))
+    draws = _draws(mc, (('dut.r1', 'rhead.rsh'), ('dut.r1', 'rbody.rsh')))
     draws = DrawTable(cols, {k: v[::-1] for k, v in draws.values.items()},
                       raw=True)
     mc.draws = draws
     rep, h = _html(mc, top=1)
     assert 'Sensitivity' in h
-    assert h.index('m1:vth0') < h.index('m2:noise')
+    assert h.index('dut.r1:rhead.rsh') < h.index('dut.r1:rbody.rsh')
     assert h.count(IMG) == 2                              # histogram + 1 scatter
     rows = rep.monte_carlo[0].data['sensitivity'][0]['rows']
-    assert [r['name'] for r in rows] == ['m1:vth0', 'm2:noise']
+    assert [r['name'] for r in rows] == ['dut.r1:rhead.rsh', 'dut.r1:rbody.rsh']
 
 
 def test_json_carries_numbers_without_images(tmp_path):
@@ -279,9 +279,12 @@ def test_grid_report_states_yield_requirement_and_tabular_point_evidence(tmp_pat
         assert restored._render_grid('terminal') == terminal
 
 
-def test_grid_spec_rows_keep_each_checks_direction_and_yield_status():
+@pytest.mark.parametrize('point, location, coordinates', [
+    ('tt', 'tt', ['tt', '—', '—']),
+    (('tt', 27., 1.8), 'tt, 27 °C, 1.8 V', ['tt', '27', '1.8']),
+])
+def test_grid_spec_rows_keep_each_checks_direction_and_yield_status(point, location, coordinates):
     from silk.circuit.monte_carlo_report import build_grid_section
-    point = ('tt', 27., 1.8)
     records = {}
     for i, gain in enumerate((2., 4.)):
         records[point, i] = SpecReport('ac', 'amp', {'gain': gain, 'offset': i+.25})
@@ -290,10 +293,12 @@ def test_grid_spec_rows_keep_each_checks_direction_and_yield_status():
     mc = MonteCarloResults(records, seeds={k: i for i, k in enumerate(records)},
                           settings=MonteCarloSettings(n=2, min_yield=.9))
     d = build_grid_section(mc).data
+    assert d['spec_columns'][-2:] == ['Mean (pooled)', 'Sample std (pooled)']
     assert d['spec_rows'] == [
-        ['PASS', 'floor', '>', '1', '2', 'tt, 27 °C, 1.8 V', '1', '2', '4'],
-        ['FAIL', 'ceiling', '<', '3', '4', 'tt, 27 °C, 1.8 V', '1', '2', '4'],
-        ['—', 'offset', '—', '—', '—', '—', '—', '0.25', '1.25']]
+        ['PASS', 'floor', '>', '1', '2', f'{location}, sample 0', '1', '2', '4', '3', '1.41421'],
+        ['FAIL', 'ceiling', '<', '3', '4', f'{location}, sample 1', '1', '2', '4', '3', '1.41421'],
+        ['—', 'offset', '—', '—', '—', '—', '—', '0.25', '1.25', '0.75', '0.707107']]
+    assert d['yield_rows'][0][:3] == coordinates
     assert [row[3] for row in d['yield_rows']] == ['floor', 'ceiling', 'floor', 'ceiling']
     assert [row[4:8] for row in d['yield_rows']] == [
         [2, 0, 0, '1.00'], [2, 1, 0, '0.500'],
@@ -350,3 +355,68 @@ def test_variable_grid_labels_yields_and_samples_keep_coordinates():
     assert [row[index] for row in data['yield_rows'][:2]] == ['1', '3']
     assert 'trim=3' in data['errors'][0]
     assert any('trim=1' in str(row) for row in data['spec_rows'])
+
+
+def test_mc_summary_names_nan_sample_warning_without_changing_yield():
+    from silk.circuit.monte_carlo_report import build_grid_section, render_grid_section
+    from silk.metrics.diagnostics import MetricWarning, MetricWarningRecord
+    point = ('tt', 85., 1.8)
+    good, bad = _report(2.), _report(float('nan'))
+    bad.metric_warnings['gain'] = (MetricWarningRecord(
+        metric='gain', code='audit_missing', message='cannot measure gain',
+        details={}, output='gain',
+    ),)
+    mc = MonteCarloResults({(point, 0): good, (point, 1): bad},
+        seeds={(point, 0): 10, (point, 1): 11},
+        settings=MonteCarloSettings(n=2, min_yield=.5))
+    with pytest.warns(MetricWarning):
+        section = build_grid_section(mc)
+    assert section.data['yield_rows'][0][-3] == '0.500'
+    assert section.data['yield_rows'][0][-1] == 'PASS'
+    assert section.data['spec_rows'][0][0] == 'PASS'
+    assert section.data['spec_rows'][0][5] == 'tt, 85 °C, 1.8 V, sample 0'
+    assert section.data['spec_rows'][0][10] == '—', 'undefined sample std is an empty cell'
+    for mode in ('html', 'markdown', 'terminal'):
+        output = render_grid_section(section, mode=mode)
+        rows = [line for line in output.splitlines() if 'audit_missing' in line]
+        assert len(rows) == 1, 'the summary must show the failing sample warning once'
+        row = rows[0]
+        assert 'PASS' in row
+        assert 'tt, 85 °C, 1.8 V, sample 1: audit_missing: cannot measure gain' in row
+
+
+def test_single_mc_sample_summary_uses_nested_test_name():
+    from silk.circuit.monte_carlo_report import build_grid_section, render_grid_section
+    from silk.metrics.diagnostics import MetricWarning
+    owner = '$/amp/bias'
+    report = SpecReport('step', 'leaf', {'gain': 2.}, owner_path=owner)
+    report.check('Gain floor', 'gain', '>=', 1., spec_key='gain', owner_path=owner)
+    mc = MonteCarloResults({('tt', 0): report}, seeds={('tt', 0): 1},
+                           settings=MonteCarloSettings(n=1))
+    with pytest.warns(MetricWarning):
+        section = build_grid_section(mc)
+    for mode in ('html', 'markdown', 'terminal'):
+        output = render_grid_section(section, mode=mode)
+        assert 'step (instance amp.bias) — PASS' in output
+        assert 'Gain floor (instance amp.bias)' in output
+        assert '$/' not in output and 'PVT Grid:' not in output
+
+
+def test_sample_table_distinguishes_nan_from_absent_metric():
+    from silk.circuit.monte_carlo_report import build_grid_section, render_grid_section
+    from silk.metrics.diagnostics import MetricWarning
+    mc = MonteCarloResults({
+        ('tt', 0): SpecReport('ac', 'amp', {'gain': float('nan')}),
+        ('tt', 1): SpecReport('ac', 'amp', {}),
+    }, seeds={('tt', 0): 10, ('tt', 1): 11}, settings=MonteCarloSettings(n=2))
+    with pytest.warns(MetricWarning):
+        section = build_grid_section(mc)
+    assert [row[-1] for row in section.data['run_rows']] == ['not measured', '']
+    assert section.data['spec_rows'][0][-4:] == ['—'] * 4
+    html = render_grid_section(section, mode='html')
+    assert '<td>0</td><td>PASS</td><td>not measured</td>' in html
+    assert '<td>1</td><td>PASS</td><td></td>' in html
+    for mode in ('markdown', 'terminal'):
+        output = render_grid_section(section, mode=mode)
+        assert '| tt | — | — | 0 | PASS | not measured |' in output
+        assert '| tt | — | — | 1 | PASS |  |' in output

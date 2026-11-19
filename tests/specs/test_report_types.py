@@ -144,8 +144,8 @@ def test_outcome_identity_serialization_and_summary():
 def test_placement_display_hides_internal_root_and_preserves_identity():
     spec = _spec('gain')
     paths = [None, '$', '$/u0', '$/u0/u1', '$/u1', '$/u%2F0/x%25']
-    labels = ['', '', ' (instance u0)', ' (instance u0/u1)',
-              ' (instance u1)', ' (instance u%2F0/x%25)']
+    labels = ['', '', ' (instance u0)', ' (instance u0.u1)',
+              ' (instance u1)', ' (instance u%2F0.x%25)']
     outcomes = []
     for path, label in zip(paths, labels):
         outcome = SpecOutcome(spec, None, 'UNMEASURED', owner_path=path)
@@ -157,7 +157,7 @@ def test_placement_display_hides_internal_root_and_preserves_identity():
     summary = SpecReconciliationReport(None, outcomes).summary()
     assert '$' not in summary
     assert '(instance u0)' in summary and '(instance u1)' in summary
-    assert '(instance u0/u1)' in summary
+    assert '(instance u0.u1)' in summary
 
     for label in labels:
         assert f'[UNMEASURED] gain{label}: (no measurement)' in summary

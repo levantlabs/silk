@@ -121,6 +121,8 @@ def fake_sim(monkeypatch, events):
         from pathlib import Path
         write_complete_rawfile(raw, Path(netlist_deck_path).read_text(), values={'v(vout)': _gain(*key)})
         netlist.results_file = raw
+        netlist._raw = netlist.backend.load_raw(raw)
+        netlist.simResultsAll = netlist._raw.native
         conditions = OperatingConditions(
             'silk', netlist.simulator, **_launched_corner(spec.corner_str, False))
         netlist.operating_conditions = conditions
@@ -778,3 +780,458 @@ def test_reference_first_sample_and_overlay(sky130_tb, fake_sim, monkeypatch):
             assert line.get_label() == f'tt/mc_{key[1]:04d}'
     finally:
         plt.close('all')
+
+
+@pytest.mark.parametrize('index', [0, 2])
+@pytest.mark.parametrize('variation', ['mismatch', 'process', 'both'])
+@pytest.mark.parametrize('mode', ['overwrite', 'new'])
+def test_prepare_selected_sample(sky130_tb, tmp_path, monkeypatch, events,
+                                 index, variation, mode):
+    from pathlib import Path
+    from unittest.mock import Mock
+    tb = sky130_tb.set_monte_carlo(3, seed=17, variation=variation,
+                                   output_mode=mode)
+    sample_spec = Mock(wraps=tb._sample_spec)
+    monkeypatch.setattr(tb, '_sample_spec', sample_spec)
+    evidence = object()
+    tb._metric_values = {'old': evidence}
+    tb._cache = {'old': evidence}
+    tb._cache_enabled = True
+    monkeypatch.setattr(tb, '_fingerprint', lambda: pytest.fail('cache accessed'))
+    monkeypatch.setattr(tb.netlist, 'simulate', lambda *a, **k: pytest.fail('launched'))
+    deck = Path(tb.prepare(corner='tt', sample=index, run_label='external'))
+    text = deck.read_text()
+    assert sample_spec.call_count == 1
+    assert sample_spec.call_args.args[2] == index
+    assert deck.parent.name == f'mc_{index:04d}'
+    assert any(part.endswith('~run~external') for part in deck.parts)
+    assert f'.options seed={derive_sample_seed(17, index)}' in text
+    assert tb.netlist._mc_sample.index == index
+    assert tb.netlist._mc_sample.seed == derive_sample_seed(17, index)
+    assert len(list(tmp_path.rglob('*.cir'))) == 1
+    assert len(list(tmp_path.rglob('run-*'))) == (1 if mode == 'new' else 0)
+    if variation == 'both':
+        wrapper = Path(tb.netlist._mc_sample.wrapper_path)
+        assert wrapper.is_file()
+        assert any(part.endswith('~run~external') for part in wrapper.parts)
+        assert f'.lib "{wrapper}" mc_both' in text
+    elif variation == 'mismatch':
+        assert 'tt_mm' in text
+    else:
+        assert tb.pdk_details.statistical.process_section in text
+    raw = deck.parent / 'rawfile.raw'
+    raw.write_text('previous evidence')
+    tb.prepare(corner='tt', sample=index, run_label='external')
+    assert raw.read_text() == 'previous evidence'
+    assert tb._metric_values == {'old': evidence}
+    assert tb._cache == {'old': evidence}
+    assert not any(e[0] == 'sim' for e in events)
+
+
+@pytest.mark.parametrize('index', [-1, 3, True, 1.0, '1'])
+def test_prepare_invalid_sample_before_allocation(sky130_tb, tmp_path, index):
+    sky130_tb.set_monte_carlo(3, output_mode='new')
+    with pytest.raises(MonteCarloError, match='sample'):
+        sky130_tb.prepare(corner='tt', sample=index)
+    assert not list(tmp_path.rglob('run-*'))
+    assert not list(tmp_path.rglob('*.cir'))
+
+
+def test_prepare_ambiguous_sample_before_allocation(sky130_tb, tmp_path):
+    sky130_tb.set_temperatures([0, 85]).set_monte_carlo(3, output_mode='new')
+    with pytest.raises(NotSupportedError, match='one'):
+        sky130_tb.prepare(corner='tt', sample=1)
+    assert not list(tmp_path.rglob('run-*'))
+    assert not list(tmp_path.rglob('*.cir'))
+
+
+def test_prepare_sample_requires_declaration(sky130_tb):
+    with pytest.raises(MonteCarloError, match='declar'):
+        sky130_tb.prepare(sample=0)
+
+
+def test_prepare_sample_refuses_overridden_run(sky130_tb, monkeypatch):
+    from silk.circuit.module_test import ModuleTestbench
+    sky130_tb.set_monte_carlo(3)
+    # Match the planner's subclass-override admission without a new class.
+    monkeypatch.setattr(ModuleTestbench, '_run_declarations', lambda *a: (None, None))
+    with pytest.raises(MonteCarloError, match='sample'):
+        sky130_tb.prepare(sample=1)
+
+
+@pytest.mark.parametrize('simulator', ['ngspice', 'xyce'])
+@pytest.mark.parametrize('variation', ['mismatch', 'process', 'both'])
+def test_prepare_matches_managed_sample(sky130_tb, fake_sim, simulator, variation):
+    from pathlib import Path
+    tb = sky130_tb
+    tb.module.simulator = simulator
+    tb.set_monte_carlo(3, seed=19, variation=variation)
+    tb.run()
+    expected = fake_sim.deck_text(('tt', 2))
+    assert Path(tb.prepare(corner='tt', sample=2)).read_text() == expected
+
+
+def test_selected_prepare_sample_inherits_and_restores_point(sky130_tb, tmp_path):
+    from pathlib import Path
+    from silk import Module, Variable
+    tb = sky130_tb
+    supply = Variable('rail', value=1.0)
+    tb.netlist.sig_sources_dict['vd'].dc = supply
+    tb.set_variable_values(supply, [1.8])
+    tb.set_temperatures([85]).set_monte_carlo(3, seed=17)
+    top = Module('sky130', str(tmp_path), 'selected.cir', tb.pdk_details)
+    top.add_module(tb.module, 'a', d='out', g='gate', s='0')
+    selected = top.get_test('op', instance='a')
+    try:
+        text = Path(selected.prepare(corner='tt', sample=2)).read_text()
+        assert '.options temp=85.0' in text
+        assert 'Vvd vout 0 DC 1.8' in text
+        assert f'seed={derive_sample_seed(17, 2)}' in text
+        assert supply.value == 1.0
+        assert tb.netlist.sig_sources_dict['vd'].dc is supply
+        assert getattr(selected, '_metric_values', {}) == {}
+    finally:
+        top.close()
+
+
+def test_retained_mc_logical_currents_read_each_samples_operands(sky130_tb, fake_sim, monkeypatch):
+    import numpy as np
+    from silk import sources
+    tb = sky130_tb
+    tb.add_source(sources.CurrentSource('bias', 'vout', '0', dc=99, pwl=[0, .5, 1, 1]))
+    tb.probe('i(bias)')
+    tb.add_metric('logical', lambda c: float(c.load_signal('i(bias)').y[-1]))
+    tb.add_metric('string', type='average', signal='i(bias)')
+    writer = write_complete_rawfile
+
+    def write_currents(path, deck, *, values):
+        level = values['v(vout)']
+        writer(path, deck, values={**values, 'i(vvd)': -level,
+                                  '@ibias__silk_pwl[current]': level,
+                                  '@ibias__silk_dc[current]': -.1})
+
+    monkeypatch.setattr(__name__ + '.write_complete_rawfile',
+                        write_currents)
+    reports = tb.run_monte_carlo(2, seed=13)
+    values = []
+    for key, report in reports.items():
+        reader = report.sim_results
+        level = 10 + .25 * key[1]
+        single = reader.load_signal('i(vd)')
+        physical = reader.load_signal('vvd', 'I')
+        np.testing.assert_array_equal(single.x, physical.x)
+        np.testing.assert_array_equal(single.y, physical.y)
+        np.testing.assert_allclose(single.y, -level)
+        logical = reader.load_signal('i(bias)', 'I')
+        np.testing.assert_allclose(logical.y, level - .1)
+        assert report.metrics['logical'] == pytest.approx(level - .1)
+        assert report.metrics['string'] == pytest.approx(level - .1)
+        values.append(float(logical.y[-1]))
+        assert all(vec._data is None for plot in reader.simResultsAll.plots for vec in plot.vectors)
+    assert len(set(values)) == 2
+
+
+def _add_advisory_resistors(tb, kinds):
+    for i, kind in enumerate(kinds):
+        tb.module.add(getattr(tb.pdk_details, kind)(
+            f'r{i}', a='d', b='s', c='s', w=1.0, l=1.0))
+
+
+@pytest.mark.parametrize('simulator', ['ngspice', 'xyce'])
+@pytest.mark.parametrize('variation', ['process', 'both', 'mismatch'])
+@pytest.mark.parametrize('kinds', [('res_hpo',), ('res_xhpo',),
+    ('res_xhpo', 'res_hpo', 'res_hpo'), ()])
+def test_process_advisory_matches_catalog_types(
+        sky130_tb, fake_sim, simulator, variation, kinds):
+    import warnings
+    tb = sky130_tb
+    tb.module.simulator = simulator
+    _add_advisory_resistors(tb, kinds)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter('always')
+        result = tb.run_monte_carlo(2, seed=19, variation=variation, record_draws=False)
+    advisories = [w for w in caught if 'process-model advisory' in str(w.message)]
+    assert len(advisories) == int(bool(kinds) and variation != 'mismatch')
+    if advisories:
+        assert advisories[0].category is UserWarning
+        assert str(advisories[0].message) == (
+            f"Monte Carlo process-model advisory for PDK 'sky130', test {tb.report_key!r}, "
+            f"device types {', '.join(sorted(set(kinds)))}: "
+            + tb.pdk_details.statistical.process_warnings[0][1])
+    assert list(result.reports) == [('tt', 0), ('tt', 1)]
+    assert result.seeds == {('tt', i): derive_sample_seed(19, i) for i in range(2)}
+    assert [r.metrics['gain'] for r in result.reports.values()] == [10., 10.25]
+
+
+@pytest.mark.parametrize('route', ['direct', 'declared', 'serial', 'parallel', 'prepare'])
+def test_process_advisory_precedes_preparation_once_per_plan(
+        sky130_tb, fake_sim, events, monkeypatch, route):
+    import warnings
+    tb = sky130_tb
+    _add_advisory_resistors(tb, ['res_hpo', 'res_hpo', 'res_xhpo'])
+    tb.set_monte_carlo(3, seed=19, variation='process')
+    if route != 'prepare':
+        tb.set_temperatures([25, 85])
+    original = warnings.showwarning
+    def show(message, *args, **kwargs):
+        events.append(('warning', str(message)))
+    monkeypatch.setattr(warnings, 'showwarning', show)
+    with warnings.catch_warnings():
+        warnings.simplefilter('always')
+        for _ in range(2):
+            events.clear()
+            if route == 'direct':
+                tb.run_monte_carlo(3, seed=19, variation='process')
+            elif route == 'declared':
+                tb.run()
+            elif route in ('serial', 'parallel'):
+                results = tb.module.run_all_tests(n_workers=2 if route == 'parallel' else None)
+                assert all(isinstance(r, MonteCarloResults) for r in results.values())
+            else:
+                tb.prepare(sample=1)
+            labels = [e[0] for e in events]
+            assert labels.count('warning') == 1
+            assert max(i for i, e in enumerate(labels) if e == 'check') < labels.index('warning')
+            assert labels.index('warning') < labels.index('prepare')
+    monkeypatch.setattr(warnings, 'showwarning', original)
+
+
+def test_process_advisory_filters_and_preflight(sky130_tb, fake_sim, events):
+    import warnings
+    from pathlib import Path
+    tb = sky130_tb
+    _add_advisory_resistors(tb, ['res_hpo'])
+    before = set(Path(tb.module.dir_folder).rglob('*'))
+    with warnings.catch_warnings():
+        warnings.filterwarnings('error', message='Monte Carlo process-model advisory')
+        with pytest.raises(UserWarning, match='res_hpo'):
+            tb.run_monte_carlo(2, variation='process', output_mode='new')
+    assert set(Path(tb.module.dir_folder).rglob('*')) == before
+    assert not any(e[0] in ('prepare', 'sim') for e in events)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter('always')
+        with pytest.raises(MonteCarloError):
+            tb.set_corners(['ss']).run_monte_carlo(2, variation='process')
+    assert not caught
+    tb.set_corners(['tt'])
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', message='Monte Carlo process-model advisory')
+        result = tb.run_monte_carlo(2, variation='process')
+    assert len(result.reports) == 2
+
+
+@pytest.mark.parametrize('n_workers', [None, 2])
+def test_process_advisory_recursive_and_selected_placements(
+        sky130_tb, fake_sim, tmp_path, n_workers):
+    import warnings
+    from silk import Module
+    tb = sky130_tb
+    _add_advisory_resistors(tb, ['res_hpo', 'res_xhpo'])
+    tb.set_monte_carlo(2, variation='process')
+    top = Module('sky130', str(tmp_path), 'top.cir', tb.pdk_details)
+    for name in ('a', 'b'):
+        top.add_module(tb.module, name, d=f'd_{name}', g=f'g_{name}', s='0')
+    try:
+        entries = top.list_test_entries()
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter('always')
+            results = top.run_all_tests(n_workers=n_workers)
+        messages = [str(w.message) for w in caught if 'process-model advisory' in str(w.message)]
+        assert len(messages) == 2
+        for entry in entries:
+            assert sum(f'test {entry.report_key!r},' in m for m in messages) == 1
+        assert all(isinstance(r, MonteCarloResults) for r in results.values())
+        selected = top.get_test('op', instance='a')
+        with pytest.warns(UserWarning, match='process-model advisory') as caught:
+            selected.prepare(sample=1)
+        assert len(caught) == 1
+        assert f'test {entries[0].report_key!r},' in str(caught[0].message)
+    finally:
+        top.close()
+
+
+@pytest.mark.parametrize('record_draws', [False, True])
+@pytest.mark.parametrize('simulator', ['ngspice', 'xyce'])
+def test_process_advisory_preserves_prepared_deck(sky130_tb, record_draws, simulator):
+    import warnings
+    from dataclasses import replace
+    from pathlib import Path
+    tb = sky130_tb
+    tb.module.simulator = simulator
+    _add_advisory_resistors(tb, ['res_hpo'])
+    tb.set_monte_carlo(3, seed=23, variation='both', record_draws=record_draws)
+    with pytest.warns(UserWarning, match='process-model advisory') as caught:
+        text = Path(tb.prepare(sample=2)).read_text()
+    assert len(caught) == 1
+    st = tb.pdk_details.statistical
+    try:
+        tb.pdk_details.statistical = replace(st, process_warnings=())
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter('always')
+            baseline = Path(tb.prepare(sample=2)).read_text()
+        assert not caught
+        assert text == baseline
+    finally:
+        tb.pdk_details.statistical = st
+
+
+@pytest.mark.parametrize('identity', ['ideal', 'custom', 'pdk'])
+def test_process_advisory_generic_manifest_and_identity(ideal_rc_tb, fake_sim, identity):
+    from dataclasses import replace
+    from silk.elements import elements
+    import warnings
+    tb = ideal_rc_tb
+    st = tb.pdk_details.statistical
+    # A different catalog type and message exercise data-driven matching.
+    tb.pdk_details.statistical = replace(st, process_warnings=((('nmos1p8',), 'custom reason'),))
+    if identity != 'pdk':
+        tb.module.add(elements.resistor('nmos1p8', p='d', n='s', value=1000))
+        if identity == 'custom':
+            device = tb.module.elem_dict['nmos1p8']['device']
+            device.device_name = 'nmos1p8'
+            device._is_pdk_device = True
+            device._pdk_device = ''
+        # Keep a real, unmatched PDK device so preflight still admits the plan.
+        _add_advisory_resistors(tb, ['res_hpo'])
+    else:
+        tb.module.add(tb.pdk_details.nmos1p8('M1', d='d', g='g', s='s', b='s', w=1., l=.5))
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter('always')
+        tb.run_monte_carlo(2, variation='process')
+    messages = [str(w.message) for w in caught if 'process-model advisory' in str(w.message)]
+    assert len(messages) == int(identity == 'pdk')
+    if messages:
+        assert messages[0].endswith('device types nmos1p8: custom reason')
+
+
+def test_process_advisory_batch_plan(sky130_tb, fake_sim, monkeypatch, events):
+    tb = sky130_tb
+    _add_advisory_resistors(tb, ['res_hpo'])
+    tb.set_monte_carlo(5, seed=19, variation='process', samples_per_process=2)
+    with pytest.warns(UserWarning, match='process-model advisory') as caught:
+        planned = tb._plan_runs()
+    assert len(caught) == 1
+    assert [r.key for r in planned] == [('tt', i) for i in range(5)]
+    assert [r.sample.seed for r in planned] == [derive_sample_seed(19, i) for i in range(5)]
+    from silk.circuit import module_test
+    batches = []
+    def simulate_chunk(run_dir, specs, chunk_dir):
+        batches.append(len(specs))
+        return [module_test._simulate_run_outcome(spec) for spec in specs], []
+    monkeypatch.setattr(module_test, '_chunk_simulate_task', simulate_chunk)
+    with pytest.warns(UserWarning, match='process-model advisory') as caught:
+        result = tb.run()
+    assert len(caught) == 1
+    assert batches == [2, 2, 1]
+    assert list(result.reports) == [('tt', i) for i in range(5)]
+    assert sum(e[0] == 'sim' for e in events) == 5
+
+
+def test_process_advisory_skips_behavioral_with_matching_manifest(tmp_path):
+    import warnings
+    from dataclasses import replace
+    from silk import load_pdk
+    from silk.simulation.variation import Normal
+    from tests._variation_bench import chip
+    pdk = load_pdk('sky130')
+    pdk.statistical = replace(pdk.statistical, process_warnings=((('nmos1p8',), 'reason'),))
+    top, tb = chip(pdk, tmp_path, {
+        'offset': Normal(nominal=0., sigma=.01, variation='process', name='offset')})
+    block = top.elem_dict['c0']['device']
+    block.add(pdk.nmos1p8('m1', d='y', g='a', s='a', b='a', w=1., l=.5))
+    try:
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter('always')
+            result = tb.run_monte_carlo(2, variation='process')
+        assert not any('process-model advisory' in str(w.message) for w in caught)
+        assert len(result.reports) == 2
+    finally:
+        top.close()
+
+
+@pytest.mark.parametrize('record_draws', [False, True])
+def test_process_advisory_preserves_fake_campaign_results(sky130_tb, fake_sim, monkeypatch, record_draws):
+    from dataclasses import replace
+    import warnings
+    tb = sky130_tb
+    _add_advisory_resistors(tb, ['res_hpo', 'res_xhpo'])
+    from silk.circuit import module_test
+    monkeypatch.setattr(module_test, '_read_sample_draws',
+                        lambda netlist: {('dut.M1', 'vth0'): .5 + netlist._mc_sample.index * .01})
+    with pytest.warns(UserWarning, match='process-model advisory'):
+        advised = tb.run_monte_carlo(3, seed=31, variation='both', record_draws=record_draws)
+    decks = {key: fake_sim.deck_text(key) for key in advised.reports}
+    st = tb.pdk_details.statistical
+    try:
+        tb.pdk_details.statistical = replace(st, process_warnings=())
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter('always')
+            baseline = tb.run_monte_carlo(3, seed=31, variation='both', record_draws=record_draws)
+        assert not caught
+        assert advised.seeds == baseline.seeds
+        assert list(advised.reports) == list(baseline.reports)
+        assert advised.draws == baseline.draws
+        if record_draws:
+            assert advised.draws.skipped_types == ('res_xhpo',)
+            assert len(advised.draws.values) == 3
+        for key in advised.reports:
+            assert decks[key] == fake_sim.deck_text(key)
+            assert advised[key].metrics == baseline[key].metrics
+            assert advised[key].metric_warnings == baseline[key].metric_warnings
+            advised_report = advised[key].to_dict()
+            baseline_report = baseline[key].to_dict()
+            advised_report.pop('provenance')
+            baseline_report.pop('provenance')
+            assert advised_report == baseline_report
+    finally:
+        tb.pdk_details.statistical = st
+
+
+@pytest.mark.parametrize('entry', ['direct', 'module'])
+@pytest.mark.parametrize('output_mode', ['overwrite', 'new'])
+def test_declared_run_workers_keep_sample_identity(sky130_tb, fake_sim, monkeypatch, entry, output_mode):
+    from silk.circuit import module_test
+    monkeypatch.setattr(module_test, '_read_sample_draws',
+                        lambda *args, **kwargs: {('M1', 'vth0'): 0.5})
+    tb = sky130_tb.set_corners(['tt', 'ss']).set_monte_carlo(
+        3, seed=19, record_draws=True, output_mode=output_mode)
+    settings = tb.monte_carlo
+    serial = tb.run()
+    run = tb.run if entry == 'direct' else lambda **kw: tb.module.run_test('op', **kw)
+    parallel = run(n_workers=2)
+    assert list(parallel.reports) == list(serial.reports)
+    assert parallel.seeds == serial.seeds
+    assert parallel.settings == serial.settings == settings
+    assert parallel.draws.columns == serial.draws.columns
+    assert parallel.draws.raw == serial.draws.raw
+    assert parallel.draws.skipped_types == serial.draws.skipped_types
+    for key in serial.draws.values:
+        assert parallel.draws.values[key] == pytest.approx(serial.draws.values[key])
+    assert parallel.structure_hash == serial.structure_hash
+    assert {key: r.metrics for key, r in parallel.items()} == {
+        key: r.metrics for key, r in serial.items()}
+    assert tb.monte_carlo is settings
+    assert parallel.rerun(('tt', 1)).metrics == serial[('tt', 1)].metrics
+
+
+def test_declared_run_workers_keep_chunk_path(sky130_tb, fake_sim, monkeypatch):
+    from silk.simulation import executor
+    tb = sky130_tb.set_monte_carlo(5, seed=19, samples_per_process=2)
+    dispatch = executor.run_tasks
+    batches = []
+
+    def recording(tasks, **kwargs):
+        batches.append([len(task.args[0]) for task in tasks])
+        return dispatch(tasks, **kwargs)
+
+    monkeypatch.setattr(executor, 'run_tasks', recording)
+    serial = tb.run()
+    assert batches == [[2], [2], [1]]
+    batches.clear()
+    monkeypatch.setattr(executor.os, 'cpu_count', lambda: 2)
+    parallel = tb.run(n_workers=2)
+    assert batches == [[2, 2], [1]]
+    assert list(parallel.reports) == [('tt', i) for i in range(5)]
+    assert parallel.seeds == serial.seeds
+    assert parallel.settings == serial.settings
+    assert [r.metrics for r in parallel.values()] == [r.metrics for r in serial.values()]

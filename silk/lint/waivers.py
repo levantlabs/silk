@@ -9,6 +9,8 @@ from datetime import date
 from pathlib import Path
 from typing import Optional
 import yaml
+
+from silk.utils._compat import yaml_safe_loader
 from silk.lint.violations import Violation
 from silk.lint.locations import (
     NetLocation, PortLocation, InstanceLocation, TerminalLocation, ModuleLocation,
@@ -172,7 +174,7 @@ class WaiverFile:
             If an entry has no ``rule_id``.
         """
         path = Path(path)
-        data = yaml.safe_load(path.read_text()) or {}
+        data = yaml.load(path.read_text(), Loader=yaml_safe_loader) or {}
         waivers_raw = data.get("waivers", [])
         waivers = []
         for idx, entry in enumerate(waivers_raw):

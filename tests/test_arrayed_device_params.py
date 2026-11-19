@@ -280,3 +280,63 @@ def test_repeated_prepared_launch_keeps_request_proof(tmp_path, monkeypatch, fai
     bench.run_simulator()
     assert bench._raw._device_param_requests == proof
     assert first._device_param_requests == proof
+
+
+# ---------------------------------------------------------------------------
+# TASK-820: device_probe_address on arrayed names; the deck is the oracle.
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize('path', [
+    'X1[0].Y[1].M1[0]:gm',      # array instances and an arrayed device
+    'X1[1].plain.MA:gm',
+    'plain.plain.M1[1]:gm',
+])
+@pytest.mark.parametrize('backend', ['ngspice', 'xyce'])
+def test_device_probe_address_arrays_match_deck(tmp_path, path, backend):
+    import re
+    from pathlib import Path
+    dut, tb = _bench(tmp_path, backend)
+    dut.save_device_params = False        # only the probe is saved: the deck is the oracle
+    got = tb.device_probe_address(path)
+    assert got['label'] == 'dut.' + path
+    tb.probe(path)
+    deck = Path(tb.prepare(corner='tt')).read_text()
+    if backend == 'xyce':
+        printed = ' '.join(l for l in deck.splitlines() if l.lower().startswith('.print'))
+        saved = re.findall(r'(?:\bN|\bID)\([^)]*\)', printed)
+    else:
+        saved = re.findall(r'save "(@m[^"]*)"', deck)
+    assert saved == [got['address']]
+    if '[0]' in path or '[1]' in path:
+        assert '<' in got['address'] and '[' not in got['address'].rsplit('[', 1)[0]
+
+
+@pytest.mark.parametrize('transient', [False, True])
+@pytest.mark.parametrize('path', ['X1[0].Y[1].M1[0]:gm', 'X1[1].plain.MA:gm',
+                                  'plain.plain.M1[1]:gm'])
+@needs_ngspice
+@needs_pdk
+def test_array_address_selects_real_ngspice_row(tmp_path, path, transient):
+    from tests.test_device_param_probe import _assert_selects_the_row
+    dut, tb = _bench(tmp_path, transient=transient)
+    dut.save_device_params = False
+    sig = tb.probe(path)
+    got = tb.device_probe_address(path)
+    report = dut.run_test('params')
+    sig.y
+    assert tb.device_probe_address(path) == got
+    _assert_selects_the_row(report.rawfile_path, got['address'])
+
+
+@pytest.mark.parametrize('path', ['X1[0].Y[1].M1[0]:gm', 'X1[1].plain.MA:gm'])
+@needs_pdk
+@pytest.mark.requires_xyce
+@pytest.mark.skipif(not HAVE_XYCE, reason='Xyce unavailable through silk settings')
+def test_array_address_selects_real_xyce_row(tmp_path, path):
+    from tests.test_device_param_probe import _assert_selects_the_row
+    dut, tb = _bench(tmp_path, 'xyce')
+    dut.save_device_params = False
+    sig = tb.probe(path)
+    got = tb.device_probe_address(path)
+    report = dut.run_test('params')
+    sig.y
+    _assert_selects_the_row(report.rawfile_path, got['address'])

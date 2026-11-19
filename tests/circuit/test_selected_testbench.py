@@ -56,7 +56,9 @@ def test_selected_handles_are_stable_and_do_not_select_each_other(tmp_path):
         assert a.owner_path == '$/one'
         assert b.owner_path == '$/two'
         assert tb.owner_path == '$'
-        assert a.netlist is b.netlist is tb.netlist
+        assert a.netlist is not b.netlist
+        assert a.netlist is not tb.netlist
+        assert a.netlist.sim_analysis_dict is b.netlist.sim_analysis_dict is tb.netlist.sim_analysis_dict
         assert tb.results_file is None
         with pytest.raises(ConfigurationError, match='one.*two'):
             top.get_test('step', instance='missing')
@@ -430,6 +432,7 @@ def test_selected_success_replaces_all_readback(recorded_selection, method):
     probe = selected.probe('out')
     if method == 'evaluate':
         from tests._mock_rawfile import write_complete_rawfile
+        raw = raw.with_name('replacement.raw')
         write_complete_rawfile(raw, 'replacement\n.tran 1n 10n\n.end\n',
                                values={'v(out)': 2.5})
         replacement = selected.evaluate(rawfile=raw, corner='ff')
@@ -653,9 +656,10 @@ def test_parent_fail_fast_reconciles_later_replacement(
     assert launches == []
 
 
+@pytest.mark.parametrize('workers', [None, 2])
 @pytest.mark.parametrize('order', ['failure_first', 'refusal_first'])
 def test_selected_plan_fail_fast_reconciles_entire_batch(
-        recorded_selection, monkeypatch, order):
+        recorded_selection, monkeypatch, order, workers):
     from silk.circuit.module_test import _RunOutcome
     from silk.exceptions import SimulationConfigurationError, SimulationError, UnboundSignalError
     from silk.simulation.executor import RunOutcome
@@ -676,7 +680,7 @@ def test_selected_plan_fail_fast_reconciles_entire_batch(
 
     monkeypatch.setattr('silk.simulation.executor.run_tasks', outcomes)
     with pytest.raises(SimulationConfigurationError) as caught:
-        selected.run()
+        selected.run(n_workers=workers)
     assert caught.value is refusal
     assert selected.report is None
     assert selected.metrics == {}
@@ -713,7 +717,7 @@ def test_selected_setters_persist_on_shared_bench(tmp_path, wired, method, kwarg
             tb.add_sim_type(Transient(step=1e-9, stop=10e-9))
         for handle in (selected, top.get_test('step', instance='b'),
                        other.get_test('step', instance='c'), tb):
-            assert handle.netlist is tb.netlist
+            assert handle.netlist.sim_analysis_dict is tb.netlist.sim_analysis_dict
             assert fragment in Path(handle.prepare()).read_text()
         deck = Path(selected.prepare()).read_text()
         assert 'abstol=1e-09' in deck
@@ -1050,7 +1054,8 @@ def test_condition_grids_resolve_per_selected_placement_and_restore(tmp_path, n_
 
 
 @pytest.mark.parametrize('name', [
-    'corner', 'monte_carlo', 'owner_path', 'report_key', 'results_file', 'sweep_corners',
+    'corner', 'monte_carlo', 'owner_path', 'report_key', 'results_file', 'sweep_corners', 'analyses',
+    'temperatures', 'supply_voltages', 'variable_values', 'groups',
 ])
 def test_selected_property_read_only_fresh(tmp_path, name):
     child, tb = leaf(tmp_path / 'child', wired=False)
@@ -1073,7 +1078,8 @@ def test_selected_property_read_only_fresh(tmp_path, name):
 
 
 @pytest.mark.parametrize('name', [
-    'corner', 'monte_carlo', 'owner_path', 'report_key', 'results_file', 'sweep_corners',
+    'corner', 'monte_carlo', 'owner_path', 'report_key', 'results_file', 'sweep_corners', 'analyses',
+    'temperatures', 'supply_voltages', 'variable_values', 'groups',
 ])
 def test_selected_property_read_only_retains_evidence(recorded_selection, name):
     selected, tb, top, raw, report, launches = recorded_selection
@@ -1087,6 +1093,28 @@ def test_selected_property_read_only_retains_evidence(recorded_selection, name):
     assert_recorded_evidence(selected, report, probe)
     assert selected._result_netlist() is reader
     assert files == {p: p.read_bytes() for p in Path(top.dir_folder).parent.rglob('*') if p.is_file()}
+    assert launches == []
+
+
+def test_selected_analyses_current_shared_declarations_retain_results(recorded_selection):
+    from silk.simulation import AC
+    selected, tb, top, raw, report, launches = recorded_selection
+    sibling = top.get_test('step', instance='b')
+    probe = selected.probe('out')
+    reader = selected._result_netlist()
+    earlier = selected.analyses
+    assert [type(a) for a in earlier] == [Transient]
+    sibling.add_sim_type(AC(variation='dec', points=10, fstart=1, fstop=1e6))
+    tb.add_sim_type(Transient(step=2e-9, stop=20e-9))
+    for handle in (tb, selected, sibling):
+        declared = handle.analyses
+        assert [type(a) for a in declared] == [Transient, AC]
+        assert declared[0].stop == 20e-9
+        declared[0].stop = 99e-9
+        assert handle.analyses[0].stop == 20e-9
+    assert earlier[0].stop == 10e-9
+    assert_recorded_evidence(selected, report, probe)
+    assert selected._result_netlist() is reader
     assert launches == []
 
 
@@ -1558,3 +1586,508 @@ def test_selected_metric_handle_campaign_registration_refuses(recorded_selection
             tb.add_metric('foreign', handle)
         with pytest.raises(ValueError, match='testbench'):
             tb.add_spec('foreign', handle, '>', 0)
+
+
+@pytest.fixture(params=['behavioral', pytest.param('ngspice', marks=needs_ngspice)])
+def selected_gain(tmp_path, request):
+    """A gain-2 block placed twice, with one shared transfer test."""
+    from silk import Port
+    child = Module(None, str(tmp_path / 'block'), 'gain.cir', None, module_name='gain')
+    child.define_module_ports({'vin': Port.analog_input(), 'out': Port.analog_output()})
+    child.add(sources.VoltageControlledVoltageSource(
+        'gain', out_pos='out', out_neg='0', ctrl_pos='vin', ctrl_neg='0', gain=2))
+
+    def model(ports, t, params):
+        ports.out.v = 2 * ports.vin.v
+
+    child.set_behavioral_model(model, execution='vector')
+    child.simulator = request.param
+    tb = child.create_test('transfer')
+    tb.add_module_under_test({'vin': 'vin', 'out': 'out'})
+    tb.add(sources.VoltageSource('drive', positive='vin', negative='0', dc=1))
+    tb.add_sim_type(Transient(step=1e-9, stop=10e-9))
+    top = root(tmp_path / 'root')
+    top.add_module(child, 'left', vin='a', out='b')
+    top.add_module(child, 'right', vin='c', out='d')
+    left = top.get_test('transfer', instance='left')
+    right = top.get_test('transfer', instance='right')
+    left.add_metric('output', type='average', signal='out')
+    left.add_spec('ceiling', 'output', '<', 10)
+    try:
+        yield top, tb, left, right
+    finally:
+        top.close()
+        child.close()
+
+
+def viewer_values(html_path):
+    """Decode the actual viewer sidecar rather than a parallel rawfile read."""
+    import base64
+    import json
+    import numpy as np
+    data = Path(html_path).with_suffix('.data.js').read_text()
+    payload = json.JSONDecoder().raw_decode(data.split('var p=', 1)[1])[0]
+    values = {}
+    for signal in payload['plots'][0]['signals']:
+        level = signal['levels'][0]
+        dtype = '<f4' if level['dt'] == 'f32' else '<f8'
+        values[signal['name']] = np.frombuffer(base64.b64decode(level['y']), dtype=dtype)
+    return values
+
+
+def test_selected_netlist_inspects_own_run_and_saved_calls_follow_rerun(selected_gain, tmp_path):
+    import matplotlib.pyplot as plt
+    import numpy as np
+    top, tb, left, right = selected_gain
+    netlist = right.netlist
+    show = netlist.view
+    load = netlist.load_signal
+    top.set_supply_voltage(9, source='drive')
+    high = right.run()
+    top.set_supply_voltage(3, source='drive')
+    low = left.run()
+    assert not high.passed and low.passed
+    assert right.probe('out').y[0] == pytest.approx(18)
+    assert netlist.results_file == right.results_file != left.results_file
+    assert netlist.sim_results_loaded
+    assert netlist.simResultsAll is high.sim_results.simResultsAll
+    assert netlist.dataFile == high.sim_results.dataFile
+    assert netlist.operating_conditions is high.sim_results.operating_conditions
+    assert netlist.characterization_context is high.sim_results.characterization_context
+    # Private simulation state is evidence too, never the sibling's live state.
+    from silk.circuit.module_test import _SIMULATED_STATE_ATTRS
+    for name in _SIMULATED_STATE_ATTRS:
+        if not name.startswith('_'):
+            continue
+        if name in high.sim_results.__dict__:
+            assert getattr(netlist, name) is high.sim_results.__dict__[name]
+        else:
+            with pytest.raises(ConfigurationError, match=name):
+                getattr(netlist, name)
+    assert 'v(out)' in netlist.get_signal_names()
+    assert 'v(out)' in netlist.get_signal_names(raw=True)
+    np.testing.assert_allclose(load('out').y, 18)
+    np.testing.assert_allclose(netlist.load_signal('vin', analysis='tran').y, 9)
+    values = viewer_values(show(open=False, out_path=tmp_path / 'right.html'))
+    np.testing.assert_allclose(values['v(out)'], 18)
+    np.testing.assert_allclose(values['v(vin)'], 9)
+    figure = netlist.plot('out', show=False)
+    np.testing.assert_allclose(figure.axes[0].lines[0].get_ydata(), 18)
+    plt.close(figure)
+    # Configuration is current/shared, but a retained read uses its producing backend.
+    netlist.simulator = 'ngspice' if high.sim_results.simulator == 'behavioral' else 'behavioral'
+    assert tb.netlist.simulator == netlist.simulator == left.netlist.simulator
+    netlist.read_raw_file()
+    np.testing.assert_allclose(load('out').y, 18)
+    if high.sim_results.simulator == 'behavioral':
+        from silk.exceptions import SimulationError
+        with pytest.raises(SimulationError, match='behavioral'):
+            netlist.annotate_currents()
+    # Rerun with the same producing engine, replacing right's evidence only.
+    netlist.simulator = high.sim_results.simulator
+    top.set_supply_voltage(4, source='drive')
+    right.run()
+    np.testing.assert_allclose(load('out').y, 8)
+    values = viewer_values(show(open=False, out_path=tmp_path / 'rerun.html'))
+    np.testing.assert_allclose(values['v(out)'], 8)
+    np.testing.assert_allclose(high.sim_results.load_signal('out').y, 18)
+    np.testing.assert_allclose(left.netlist.load_signal('out').y, 6)
+
+
+def test_selected_netlist_configuration_and_protocols(tmp_path):
+    import copy
+    import pickle
+    child, tb = leaf(tmp_path / 'child')
+    top = root(tmp_path / 'root')
+    top.add_module(child, 'right', out='a', vss='0')
+    selected = top.get_test('step', instance='right')
+    netlist = selected.netlist
+    try:
+        assert isinstance(netlist, Module)
+        assert netlist is not tb.netlist
+        assert netlist.sim_analysis_dict is tb.netlist.sim_analysis_dict
+        netlist.simulator = 'behavioral'
+        assert tb.netlist.simulator == 'behavioral'
+        analysis = Transient(step=2e-9, stop=20e-9)
+        assert netlist.add_sim_type(analysis) is None
+        assert tb.netlist.sim_analysis_dict['transient'] is analysis
+        assert netlist.set_temperature(45) is netlist
+        netlist.sig_sources_dict['rail'].dc = 0.75
+        assert tb.netlist.sig_sources_dict['rail'].dc == 0.75
+        with netlist as active:
+            assert active is netlist
+            resistor = elements.resistor('extra', p='out', n='0', value=2000)
+        assert tb.netlist.elem_dict['extra']['device'] is resistor
+        copied = copy.copy(netlist)
+        assert copied.sim_analysis_dict is tb.netlist.sim_analysis_dict
+        copied.simulator = 'ngspice'
+        assert netlist.simulator == 'ngspice'
+        copied_top, deep = copy.deepcopy((top, netlist))
+        try:
+            assert deep.sim_analysis_dict is copied_top.get_test('step', instance='right').netlist.sim_analysis_dict
+            assert deep.sim_analysis_dict is not tb.netlist.sim_analysis_dict
+        finally:
+            copied_top.close()
+        for value in (netlist, (netlist, top)):
+            with pytest.raises(TypeError, match='selected netlist|Selected netlist'):
+                pickle.dumps(value)
+    finally:
+        top.close()
+        child.close()
+
+
+@pytest.mark.parametrize('method', ['load_file', 'run_simulator', 'simulate', 'simulate_behavioral'])
+def test_selected_netlist_direct_execution_refuses(recorded_selection, method):
+    selected, _, _, raw, _, launches = recorded_selection
+    with pytest.raises(ConfigurationError, match=r"step.*\$/a.*run\(\).*evaluate"):
+        getattr(selected.netlist, method)(raw)
+    assert launches == []
+
+
+@pytest.mark.parametrize('operation', [
+    lambda n: n.results_file,
+    lambda n: n.sim_results_loaded,
+    lambda n: n.simResultsAll,
+    lambda n: n.dataFile,
+    lambda n: n.operating_conditions,
+    lambda n: n.characterization_context,
+    lambda n: n._raw,
+    lambda n: n._behavioral_mode,
+    lambda n: n._last_sim_corner,
+    lambda n: n._last_sim_label,
+    lambda n: n._launch_record,
+    lambda n: n._prepared_deck_record,
+    lambda n: n._mc_sample,
+    lambda n: n.view(open=False),
+    lambda n: n.load_signal('out'),
+    lambda n: n.get_signal_names(),
+    lambda n: n.plot('out', show=False),
+    lambda n: n.read_raw_file(),
+    lambda n: n.annotate_currents(),
+])
+def test_selected_netlist_without_evidence_never_reads_sibling(recorded_selection, operation):
+    selected, _, top, _, _, _ = recorded_selection
+    sibling = top.get_test('step', instance='b')
+    assert sibling.results_file is None
+    with pytest.raises(ConfigurationError, match=r"step.*\$/b.*run\(\).*evaluate"):
+        operation(sibling.netlist)
+
+
+def test_selected_netlist_failed_load_clears_live_reads(recorded_selection):
+    from silk.exceptions import SimulationError
+    selected, _, _, raw, report, _ = recorded_selection
+    netlist = selected.netlist
+    load = netlist.load_signal
+    with pytest.raises((SimulationError, OSError)):
+        selected.evaluate(rawfile=raw.parent / 'missing.raw')
+    assert selected.results_file is None
+    with pytest.raises(ConfigurationError, match=r"step.*\$/a.*run\(\).*evaluate"):
+        load('out')
+    assert report.sim_results.load_signal('out').y[-1] == 1.25
+    selected.evaluate(rawfile=raw)
+    assert load('out').y[-1] == 1.25
+
+
+def test_selected_netlist_missing_retained_attribute_never_falls_back(recorded_selection):
+    selected, tb, _, _, report, _ = recorded_selection
+    del report.sim_results.results_file
+    assert tb.netlist.results_file
+    with pytest.raises(ConfigurationError, match=r"step.*\$/a.*results_file"):
+        _ = selected.netlist.results_file
+
+
+@pytest.mark.parametrize('name', [
+    '_raw', '_behavioral_mode', '_last_sim_corner', '_last_sim_label',
+    '_launch_record', '_prepared_deck_record', '_mc_sample',
+])
+def test_selected_netlist_missing_private_state_never_reads_authored(recorded_selection, name):
+    selected, tb, _, _, report, _ = recorded_selection
+    report.sim_results.__dict__.pop(name, None)
+    setattr(tb.netlist, name, object())
+    with pytest.raises(ConfigurationError, match=name):
+        getattr(selected.netlist, name)
+
+
+@pytest.mark.parametrize('missing,method,args', [
+    ('simResultsAll', 'get_signal_names', ()),
+    ('_raw', 'load_signal', ('out',)),
+])
+def test_selected_result_methods_never_borrow_missing_state(
+        recorded_selection, missing, method, args):
+    selected, tb, top, _, report, _ = recorded_selection
+    sibling = top.get_test('step', instance='b')
+    sibling.run()
+    assert tb.netlist.load_signal('out').y[-1] == 2.5
+    report.sim_results.__dict__.pop(missing)
+    for receiver in (selected.netlist, report.sim_results):
+        with pytest.raises(ConfigurationError, match=missing + r'.*run\(\).*evaluate'):
+            getattr(receiver, method)(*args)
+
+
+def test_retained_native_only_reader_does_not_borrow_raw_result(recorded_selection):
+    from types import SimpleNamespace
+    from silk.circuit.test_placement import EvidenceResults
+    selected, tb, top, _, report, _ = recorded_selection
+    native_only = SimpleNamespace(
+        simResultsAll=report.sim_results.simResultsAll, sim_results_loaded=True,
+        results_file=report.rawfile_path, dataFile=report.rawfile_path,
+        operating_conditions=report.sim_results.operating_conditions)
+    reader = EvidenceResults(native_only, authored=tb.netlist)
+    top.get_test('step', instance='b').run()
+    assert tb.netlist.load_signal('out').y[-1] == 2.5
+    assert reader._raw is None
+    assert reader.load_signal('out').y[-1] == 1.25
+    assert selected.probe('out').y[-1] == 1.25
+
+
+def test_selected_netlist_no_authored_netlist_stays_none(tmp_path):
+    child, _ = leaf(tmp_path / 'child', wired=False)
+    top = root(tmp_path / 'top')
+    top.add_module(child, 'right', out='a', vss='0')
+    try:
+        assert top.get_test('step', instance='right').netlist is None
+    finally:
+        top.close()
+        child.close()
+
+
+def test_selected_netlist_expired_or_removed_selection_refuses(recorded_selection):
+    import gc
+    import weakref
+    selected, _, top, _, _, _ = recorded_selection
+    netlist = selected.netlist
+    load = netlist.load_signal
+    del top._element_mgr.elem_dict['a']
+    assert isinstance(netlist, Module)
+    with pytest.raises(ConfigurationError, match='removed or replaced'):
+        load('out')
+    copied_root = root(Path(top.dir_folder) / 'other')
+    copied_root.add_module(selected._authored.module, 'right', out='a', vss='0')
+    other = copied_root.get_test('step', instance='right').netlist
+    reference = weakref.ref(copied_root)
+    copied_root.close()
+    del copied_root
+    gc.collect()
+    assert reference() is None
+    assert isinstance(other, Module)
+    with pytest.raises(ConfigurationError, match='root.*no longer exists'):
+        _ = other.elem_dict
+
+
+def test_selected_netlist_type_inspection_after_expiry_is_safe(tmp_path):
+    import gc
+    import weakref
+    child, _ = leaf(tmp_path / 'child')
+    top = root(tmp_path / 'top')
+    top.add_module(child, 'right', out='a', vss='0')
+    netlist = top.get_test('step', instance='right').netlist
+    reference = weakref.ref(top)
+    top.close()
+    del top
+    gc.collect()
+    try:
+        assert reference() is None
+        assert isinstance(netlist, Module)
+        with pytest.raises(ConfigurationError, match='root.*no longer exists'):
+            netlist.load_signal('out')
+        with pytest.raises(ConfigurationError, match='root.*no longer exists'):
+            netlist.simulator = 'behavioral'
+    finally:
+        child.close()
+
+
+def test_selected_netlist_refuses_worker_serialization_for_campaign(recorded_selection, tmp_path):
+    from silk.faults import FaultCampaign, FaultSet
+    from silk.faults.evaluation import resolve_binding
+    selected, tb, _, _, _, _ = recorded_selection
+    assert resolve_binding(tb.netlist).bench is tb
+    campaign = FaultCampaign(selected.netlist, FaultSet(), n_runs=1,
+                             out_dir=str(tmp_path / 'campaign'))
+    with pytest.raises(TypeError, match='selected netlist|Selected netlist'):
+        campaign.run()
+
+
+def test_selected_netlist_uses_last_retained_corner_in_request_order(recorded_selection):
+    selected, _, _, _, _, _ = recorded_selection
+    netlist = selected.netlist
+    reports = selected.run_corners(['ff', 'tt'])
+    latest = list(reports.reports.values())[-1]
+    assert netlist.results_file == latest.rawfile_path
+    assert netlist.load_signal('out').y[-1] == latest.sim_results.load_signal('out').y[-1]
+    prior = netlist.results_file
+    selected.run_corners([])
+    assert netlist.results_file == prior
+
+
+def test_selected_netlist_context_follows_retained_evidence(recorded_selection):
+    selected, tb, top, raw, _, _ = recorded_selection
+    report = selected.evaluate(rawfile=raw)
+    # External rawfiles have no proved environment; attach explicit inspection
+    # metadata to this reader to distinguish it from the authored module.
+    report.sim_results.characterization_context = selected._build_context('tt', 20, 1.2)
+    sibling = top.get_test('step', instance='b')
+    sibling.evaluate(rawfile=raw, temperature=70, voltage=1.8)
+    netlist = selected.netlist
+    assert netlist.characterization_context is report.sim_results.characterization_context
+    assert netlist.characterization_context is not sibling.netlist.characterization_context
+    assert netlist.operating_conditions is report.sim_results.operating_conditions
+    assert netlist.operating_conditions is not sibling.netlist.operating_conditions
+    # A write configures the authored module, without replacing selected evidence.
+    netlist.results_file = 'authored-only.raw'
+    assert tb.netlist.results_file == 'authored-only.raw'
+    assert netlist.results_file == selected.results_file
+    assert Path(netlist.results_file) == Path(report.rawfile_path)
+    del netlist.results_file
+    assert 'results_file' not in vars(tb.netlist)
+    assert Path(netlist.results_file) == Path(report.rawfile_path)
+
+
+def test_retained_reader_releases_arrays_and_detects_replaced_artifact(recorded_selection):
+    from silk.signals.rawfile import RawfileError
+    from silk.simulation.generation import read_retained
+    from tests._mock_rawfile import write_complete_rawfile
+    selected, tb, _, path, report, _ = recorded_selection
+    reader = report.sim_results
+    held = reader.load_signal('out')
+    assert held.y[-1] == 1.25
+    assert all(v._data is None for p in reader.simResultsAll.plots for v in p.vectors)
+    write_complete_rawfile(path, 'replacement\n.tran 1n 10n\n.end\n',
+                           values={'v(out)': 9})
+    with pytest.raises(RawfileError, match='changed'):
+        reader.load_signal('out')
+    with pytest.raises(RawfileError, match='changed'):
+        read_retained(reader)
+    assert held.y[-1] == 1.25
+    path.unlink()
+    with pytest.raises(RawfileError):
+        reader.load_signal('out')
+
+
+def test_retention_requires_artifact_but_execution_does_not(recorded_selection):
+    from copy import copy
+    from silk.circuit.test_placement import EvidenceResults
+    from silk.exceptions import NotSupportedError
+    from silk.simulation.backend import RawResult
+    _, tb, _, _, report, _ = recorded_selection
+    module = copy(tb.netlist)
+    module._raw = RawResult(object(), '<memory-only>')
+    module.simResultsAll = module._raw.native
+    execution = EvidenceResults(module)
+    assert execution._raw.native is module._raw.native
+    with pytest.raises(NotSupportedError, match='ngspice.*rereadable'):
+        EvidenceResults(module, _retained=True)
+
+
+def test_retained_reader_freezes_run_declarations(recorded_selection):
+    selected, tb, _, _, report, _ = recorded_selection
+    reader = report.sim_results
+    original = dict(reader.sim_analysis_dict)
+    options = dict(reader.simulator_options)
+    pending = reader._pending_device_probes
+    tb.netlist.sim_analysis_dict.clear()
+    tb.netlist.simulator_options['temp'] = 99
+    tb.netlist._pending_device_probes = {('late', 'gm')}
+    tb.netlist.save_device_params = True
+    assert reader.sim_analysis_dict == original
+    assert reader.simulator_options == options
+    assert reader._pending_device_probes == pending
+    assert reader.save_device_params is False
+    assert reader.load_signal('out').y[-1] == 1.25
+
+
+def test_retained_native_only_artifact_uses_uncached_index(recorded_selection):
+    from types import SimpleNamespace
+    from silk.circuit.test_placement import EvidenceResults
+    _, tb, _, _, report, _ = recorded_selection
+    native_only = SimpleNamespace(
+        simResultsAll=report.sim_results.simResultsAll, sim_results_loaded=True,
+        results_file=report.rawfile_path, dataFile=report.rawfile_path,
+        operating_conditions=report.sim_results.operating_conditions)
+    reader = EvidenceResults(native_only, authored=tb.netlist, _retained=True)
+    assert reader._raw.native is reader.simResultsAll
+    assert reader.simResultsAll is not native_only.simResultsAll
+    assert reader.load_signal('out').y[-1] == 1.25
+    assert all(v._data is None for p in reader.simResultsAll.plots for v in p.vectors)
+
+
+def test_selected_current_readers_retain_their_own_external_run(recorded_selection, tmp_path):
+    import numpy as np
+    from tests._mock_rawfile import write_complete_rawfile
+    selected, tb, top, raw, report, launches = recorded_selection
+    reports = []
+    for index, value in enumerate([-.001, -.002]):
+        path = tmp_path / f'current_{index}.raw'
+        write_complete_rawfile(path, 'recorded\n.tran 1n 10n\n.end\n',
+                               values={'v(out)': 1.25 + index, 'i(vrail)': value})
+        reports.append(selected.evaluate(rawfile=path))
+    for report, value in zip(reports, [-.001, -.002]):
+        signal = report.sim_results.load_signal('i(rail)')
+        np.testing.assert_array_equal(signal.y, [value, value])
+        assert all(vec._data is None for plot in report.sim_results.simResultsAll.plots for vec in plot.vectors)
+    np.testing.assert_array_equal(selected.netlist.load_signal('i(rail)').y, [-.002, -.002])
+    assert not launches
+
+
+def test_selected_declaration_readers_share_authored_values_and_retain_evidence(recorded_selection):
+    from silk import Variable
+    selected, tb, top, raw, report, launches = recorded_selection
+    sibling = top.get_test('step', instance='b')
+    probe = selected.probe('out')
+    reader = selected._result_netlist()
+    knob = Variable('knob', value=0)
+    selected.set_temperatures([85, 27]).set_supply_voltages([1.8], source='rail')
+    selected.set_variable_values(knob, [1, 2]).set_groups([[knob, 'temperature']])
+    held = sibling.variable_values
+    for handle in (selected, sibling, tb):
+        assert handle.temperatures == (85., 27.)
+        assert handle.supply_voltages == (1.8,)
+        assert handle.variable_values == ((knob, (1, 2)),)
+        assert handle.variable_values[0][0] is knob
+        assert handle.groups == ((knob, 'temperature'),)
+        assert handle.groups[0][0] is knob
+    sibling.set_variable_values(knob, [3]).set_groups(None)
+    sibling.set_temperatures([10]).set_supply_voltages(None)
+    for handle in (selected, sibling, tb):
+        assert handle.variable_values == ((knob, (3,)),)
+        assert handle.groups == ()
+        assert handle.temperatures == (10.,)
+        assert handle.supply_voltages is None
+    assert held == ((knob, (1, 2)),)
+    assert_recorded_evidence(selected, report, probe)
+    assert selected._result_netlist() is reader
+    assert launches == []
+
+
+def test_selected_fresh_declaration_reads_do_not_create_netlists(tmp_path):
+    child, tb = leaf(tmp_path / 'child', wired=False)
+    top = root(tmp_path / 'top')
+    try:
+        top.set_temperatures([85])
+        top.add_module(child, 'a', out='a', vss='0')
+        top.add_module(child, 'b', out='b', vss='0')
+        for name in ('a', 'b'):
+            selected = top.get_test('step', instance=name)
+            assert selected.temperatures is selected.supply_voltages is None
+            assert selected.variable_values == selected.groups == ()
+            assert selected.netlist is None
+        assert tb.netlist is None
+        assert not list(tmp_path.rglob('*.cir'))
+    finally:
+        top.close()
+        child.close()
+
+
+def test_selected_declared_run_workers_keep_independent_readers(recorded_selection):
+    selected, tb, top, raw, report, launches = recorded_selection
+    sibling = top.get_test('step', instance='b')
+    selected.set_corners(['tt', 'ss', 'ff'])
+    first = selected.run(n_workers=2)
+    paths = {key: value.rawfile_path for key, value in first.items()}
+    second = sibling.run(n_workers=2)
+    assert list(first.reports) == list(second.reports) == ['tt', 'ss', 'ff']
+    for key in first.reports:
+        assert paths[key] != second[key].rawfile_path
+        assert selected.probe('out').point(key).y[-1] == 2.5
+        assert sibling.probe('out').point(key).y[-1] == 2.5
+        assert first[key].sim_results.load_signal('out').y[-1] == 2.5
+    assert selected._result_netlist() is not sibling._result_netlist()

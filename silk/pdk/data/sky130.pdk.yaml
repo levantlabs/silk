@@ -49,7 +49,22 @@ library:
         pmos1p8_lvt: [vth0, toxe, voff, nfactor]
         pmos1p8_hvt: [vth0, toxe, voff, nfactor]
         pmos5v: [vth0, toxe, voff, nfactor]
+        res_hpo:
+          rbody:
+            params: [rsh]
+            xyce_model: rbody_model
+          rhead:
+            params: [rsh]
+            xyce_model: rhead_model
     process:
+      warnings:
+        - devices: [res_hpo, res_xhpo]
+          message: >-
+            Some installed sky130 models use 1.25*ic_res for these resistors'
+            process variation (125% relative standard deviation; negative
+            sheet resistance is possible). silk uses the installed models
+            unchanged. Check the model before using process yield or
+            sensitivity results; variation='mismatch' excludes this process term.
       section: mc
       corners: [tt]
       switch: mc_pr_switch

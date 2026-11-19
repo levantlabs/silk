@@ -820,3 +820,257 @@ class TestBasePDKLibraryConfig:
                             pdk_name='sky130')
         assert p.default_corner == 'tt' and p.extra_includes == ['/x.spice']
         assert p.pdk_name == 'sky130' and 'tt' in p.corners
+
+
+# Parser controls run unchanged with libyaml present and in a fresh fallback process.
+def test_yaml_loader_selection(monkeypatch):
+    import yaml
+    from silk.utils._compat import yaml_safe_loader
+    from silk.pdk.basepdk import _StrictSafeLoader
+    import silk.circuit.region_thresholds as regions
+
+    selected = getattr(yaml, 'CSafeLoader', yaml.SafeLoader)
+    assert yaml_safe_loader is selected
+    assert _StrictSafeLoader.__bases__ == (selected,)
+    original = yaml.load
+    loaders = []
+
+    def capture(stream, Loader):
+        loaders.append(Loader)
+        return original(stream, Loader=Loader)
+
+    monkeypatch.setattr(yaml, 'load', capture)
+    regions.load_thresholds_file(regions.DEFAULT_THRESHOLDS_PATH)
+    assert loaders[0].__bases__ == (selected,)
+
+
+def test_yaml_shipped_parser_parity():
+    from pathlib import Path
+    import yaml
+    if not hasattr(yaml, 'CSafeLoader'):
+        pytest.skip('libyaml unavailable: C comparison only')
+
+    def typed(value):
+        if isinstance(value, dict):
+            return (type(value), [(typed(k), typed(v)) for k, v in value.items()])
+        if isinstance(value, list):
+            return (type(value), [typed(v) for v in value])
+        return (type(value), value)
+
+    paths = sorted((Path(__file__).resolve().parents[1] / 'silk').rglob('*.yaml'))
+    assert paths
+    for path in paths:
+        with path.open() as stream:
+            python = yaml.load(stream, Loader=yaml.SafeLoader)
+        with path.open() as stream:
+            compiled = yaml.load(stream, Loader=yaml.CSafeLoader)
+        assert typed(python) == typed(compiled), str(path)
+
+
+@pytest.mark.parametrize('text,accepted', [
+    ('%YAML 1.1\n---\nx: yes\n', True),
+    ('%YAML 1.2\n---\nx: yes\n', True),
+    ('x: [a,\tb]\n', True),
+    ('x:\tvalue\n', False),
+    ('x: a\r\ny: b\r\n', True),
+    ('x: a\u0085y: b\n', True),
+    ('x: a\u2028y: b\n', True),
+])
+def test_yaml_parser_boundary(text, accepted):
+    import yaml
+    loaders = [yaml.SafeLoader]
+    if hasattr(yaml, 'CSafeLoader'):
+        loaders.append(yaml.CSafeLoader)
+    results = []
+    for loader in loaders:
+        try:
+            results.append(yaml.load(text, Loader=loader))
+        except yaml.YAMLError:
+            results.append('syntax error')
+    # Some token boundaries differ between the parsers; shipped data is tested above.
+    if text in ('x: [a,\tb]\n', 'x:\tvalue\n'):
+        assert results[0] == 'syntax error'
+        if len(results) == 2:
+            assert results[1] == ({'x': ['a', 'b']} if '[' in text else {'x': 'value'})
+    else:
+        assert all(result == results[0] for result in results)
+        assert (results[0] != 'syntax error') == accepted
+
+
+@pytest.mark.parametrize('text', [
+    'device: {}\ndevice: {}\n',
+    'device:\n  nested: {}\n  nested: {}\n',
+])
+def test_yaml_duplicate_refusals(tmp_path, capsys, text):
+    import yaml
+    from silk.pdk.basepdk import _StrictSafeLoader, _strict_construct_mapping
+    from silk.pdk import validate
+    from silk.exceptions import PDKError
+    path = tmp_path / 'duplicate.yaml'
+    path.write_text(text)
+    with path.open() as stream, pytest.raises(yaml.constructor.ConstructorError) as caught:
+        yaml.load(stream, Loader=_StrictSafeLoader)
+    # Reuse the existing constructor with each parser, without introducing a class.
+    for loader in [yaml.SafeLoader] + ([yaml.CSafeLoader] if hasattr(yaml, 'CSafeLoader') else []):
+        assert yaml.load(text, Loader=loader) == (
+            {'device': {'nested': {}}} if 'nested' in text else {'device': {}})
+        with path.open() as stream:
+            instance = loader(stream)
+            try:
+                node = instance.get_single_node()
+                if 'nested' in text:
+                    node = node.value[0][1]
+                with pytest.raises(yaml.constructor.ConstructorError) as other:
+                    _strict_construct_mapping(instance, node)
+                assert str(other.value) == str(caught.value)
+            finally:
+                instance.dispose()
+    with pytest.raises(PDKError, match='device defined multiple times') as wrapped:
+        BasePDK(str(path), library_location='/fake')
+    assert str(caught.value) in str(wrapped.value)
+    assert validate.main(['--yaml', str(path)]) == 1
+    assert str(caught.value) in capsys.readouterr().out
+
+
+@pytest.mark.parametrize('site', [
+    'basepdk', 'validate', 'regions', 'certificate', 'waivers', 'exclusions',
+    'roles', 'registry', 'simulator', 'elements', 'sources',
+])
+def test_yaml_read_site_malformed_controls(tmp_path, monkeypatch, capsys, site):
+    import importlib
+    import io
+    import yaml
+    from silk.utils._compat import yaml_safe_loader
+    text = 'first: ok\nsecond: [}\n'
+    path = tmp_path / 'broken.yaml'
+    path.write_text(text)
+    with path.open() as stream, pytest.raises(yaml.YAMLError) as expected:
+        yaml.load(stream, Loader=yaml_safe_loader)
+    mark = expected.value.problem_mark
+    assert (mark.line, mark.column) == (1, 9)
+    assert mark.name == str(path)
+    original_load = yaml.load
+
+    def checked_load(stream, Loader):
+        assert issubclass(Loader, yaml_safe_loader)
+        return original_load(stream, Loader=Loader)
+
+    monkeypatch.setattr(yaml, 'load', checked_load)
+    if site == 'basepdk':
+        run = lambda: BasePDK(str(path), library_location='/fake')
+        error = ValidationError
+    elif site == 'validate':
+        from silk.pdk.validate import main
+        assert main(['--yaml', str(path)]) == 1
+        output = capsys.readouterr().out
+        assert str(path) in output and 'line 2, column 10' in output
+        return
+    elif site == 'regions':
+        from silk.circuit.region_thresholds import load_thresholds_file, RegionThresholdsError
+        run = lambda: load_thresholds_file(path)
+        error = RegionThresholdsError
+    elif site == 'certificate':
+        from importlib import resources
+        from silk.simulation._internal_nodes import _certificate
+        monkeypatch.setattr(resources, 'files', lambda package: path.parent)
+        monkeypatch.setattr(type(path), 'read_text', lambda self: text)
+        run = _certificate
+        error = yaml.YAMLError
+    elif site in ('waivers', 'exclusions'):
+        module = importlib.import_module('silk.lint.' + site)
+        cls = module.WaiverFile if site == 'waivers' else module.ExclusionFile
+        run = lambda: cls.load(path)
+        error = yaml.YAMLError
+    elif site == 'roles':
+        from silk.circuit.port_roles import RoleRuleset
+        run = lambda: RoleRuleset.from_yaml(path)
+        error = yaml.YAMLError
+    elif site == 'registry':
+        from silk.pdk import registry
+        monkeypatch.setattr(registry, '_DATA_DIR', str(tmp_path))
+        path.rename(tmp_path / 'broken.pdk.yaml')
+        path = tmp_path / 'broken.pdk.yaml'
+        run = registry._scan
+        error = registry.PDKRegistryError
+    elif site == 'simulator':
+        from silk.simulators import _loader
+        monkeypatch.setattr(_loader, '_CACHE', {})
+        # StringIO carries a file label just like the original open() stream.
+        def stream(*args, **kwargs):
+            result = io.StringIO(text)
+            result.name = str(path)
+            return result
+        monkeypatch.setattr(_loader, 'open', stream, raising=False)
+        run = lambda: _loader.load_simulator_config('ngspice')
+        error = yaml.YAMLError
+    elif site == 'elements':
+        from silk.elements.library import ElementLibrary
+        run = lambda: ElementLibrary(path)
+        error = yaml.YAMLError
+    else:
+        from silk.sources import schema
+        monkeypatch.setattr(schema, '_META_PATH', str(path))
+        run = schema._load_metadata
+        error = yaml.YAMLError
+    with pytest.raises(error) as caught:
+        run()
+    exc = caught.value
+    if isinstance(exc, yaml.YAMLError):
+        assert (exc.problem_mark.line, exc.problem_mark.column) == (1, 9)
+        label = '<unicode string>' if site in ('certificate', 'waivers', 'exclusions') else str(path)
+        assert exc.problem_mark.name == label
+    else:
+        assert str(path) in str(exc)
+        assert 'line 2, column 10' in str(exc)
+
+
+def test_yaml_eof_coordinates():
+    import yaml
+    positions = []
+    for loader in [yaml.SafeLoader] + ([yaml.CSafeLoader] if hasattr(yaml, 'CSafeLoader') else []):
+        with pytest.raises(yaml.YAMLError) as caught:
+            yaml.load('x: [', Loader=loader)
+        positions.append((caught.value.problem_mark.line, caught.value.problem_mark.column))
+    assert positions[0] == (0, 4)
+    if len(positions) == 2:
+        assert positions[1] == (1, 0)
+
+
+def test_yaml_fallback_fresh_process():
+    import os
+    from pathlib import Path
+    import subprocess
+    import sys
+    root = Path(__file__).resolve().parents[1]
+    code = '''
+import sys
+sys.modules['yaml._yaml'] = None
+import yaml
+assert yaml.__with_libyaml__ is False
+assert not hasattr(yaml, 'CSafeLoader')
+from silk.utils._compat import yaml_safe_loader
+assert yaml_safe_loader is yaml.SafeLoader
+import pytest
+raise SystemExit(pytest.main(['-q', *sys.argv[1:]]))
+'''
+    node_groups = (
+        (
+            'tests/test_pdk.py::test_yaml_loader_selection',
+            'tests/test_pdk.py::test_yaml_duplicate_refusals',
+            'tests/test_pdk.py::test_yaml_read_site_malformed_controls',
+            'tests/test_pdk.py::test_yaml_eof_coordinates',
+            'tests/test_pdk.py::test_yaml_parser_boundary',
+        ),
+        (
+            'tests/test_region_thresholds.py::test_malformed_file_names_file_and_key',
+            'tests/test_region_thresholds.py::test_non_utf8_file_has_typed_diagnostic',
+            'tests/test_region_thresholds.py::test_malformed_tagged_scalar_is_typed_and_doctor_reports_fail',
+            'tests/test_region_thresholds.py::test_mapping_tag_node_kind_has_file_and_key',
+            'tests/test_region_thresholds.py::test_nested_duplicate_keys_keep_exact_reason',
+        ),
+    )
+    for nodes in node_groups:
+        result = subprocess.run([sys.executable, '-c', code, *nodes], cwd=root,
+                                env=dict(os.environ, PYTHONPATH=str(root)),
+                                text=True, capture_output=True, timeout=120)
+        assert result.returncode == 0, result.stdout + result.stderr

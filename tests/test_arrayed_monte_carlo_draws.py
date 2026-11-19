@@ -16,7 +16,7 @@ from tests._env import needs_ngspice, needs_pdk
 def test_control_deck_single_quotes_every_complete_showmod_selector(tmp_path):
     paths = ['xmplain', 'xmleaf<0>', 'xparent<0>.xmplain',
              'xparent<0>.xmleaf<0>']
-    lines = showmod_lines([(path, 'model', ('vth0', 'toxe')) for path in paths])
+    lines = showmod_lines([(path, 'mmodel', ('vth0', 'toxe')) for path in paths])
     deck = PySpiceNetlister(load_pdk('sky130')).generate_control_block(
         str(tmp_path), draw_lines=lines)
     emitted = [line for line in deck.splitlines() if line.startswith('showmod ')]
@@ -68,3 +68,12 @@ def test_one_sample_records_all_four_plain_and_arrayed_device_draws(tmp_path):
     values = next(iter(mc.draws.values.values()))
     assert np.isfinite(values).all()
     np.testing.assert_array_equal(values, list(parsed.values()))
+
+
+def test_resistor_array_selectors_keep_literal_internal_targets():
+    assert showmod_lines([('xdut.xbank<0>.XMr<1>', target, ('rsh',))
+                          for target in ('rbody', 'rhead')]) == [
+        "showmod 'r.xdut.xbank<0>.XMr<1>.rbody' : rsh",
+        "showmod 'r.xdut.xbank<0>.XMr<1>.rhead' : rsh"]
+    with pytest.raises(ValueError, match='single quote'):
+        showmod_lines([("xdut.xbank<0>.XMr'1", 'rbody', ('rsh',))])

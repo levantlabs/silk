@@ -62,3 +62,42 @@ def test_shared_unicode_selector_python_masks():
                                   ({'exclude': case['signals']}, case['exclude_expect'])]:
             mask = select_node_paths(plots, **options)['masks'][0]
             assert [name for name, keep in zip(case['names'], mask) if keep] == expected
+
+
+def test_physical_and_depth_selection_do_not_enumerate_current_aliases():
+    from unittest.mock import MagicMock
+    plots = [{'vectors': [{'name': 'i(split)', 'selectable': True}]}]
+    aliases = MagicMock()
+    aliases.__iter__.side_effect = AssertionError('physical match enumerated source aliases')
+    for options in ({'signals': ['i(split)']}, {'max_depth': 2}):
+        result = select_node_paths(plots, current_aliases=aliases, **options)
+        assert result['masks'] == [[True]]
+        assert result['current_aliases'] == {}
+
+
+def test_current_alias_fallback_selects_existing_row_and_keeps_emitted_precedence():
+    plots = [{'vectors': [{'name': 'i(vsense)', 'selectable': True},
+                          {'name': 'i(vother)', 'selectable': True}]}]
+    aliases = ((('i(dut.core.sense)', ((0, 1),), (), True),
+                ('i(vsense)', ((1, 1),), (), True)),)
+    selected = select_node_paths(plots, signals=['i(dut.core.sense)'], current_aliases=aliases)
+    assert selected['masks'] == [[True, False]]
+    assert selected['current_aliases'] == {(0, 0): 'i(dut.core.sense)'}
+    assert select_node_paths(plots, signals=['i(vsense)'], current_aliases=aliases)['masks'] == [[True, False]]
+    assert select_node_paths(plots, exclude=['i(dut.core.sense)'], current_aliases=aliases)['masks'] == [[False, True]]
+
+
+def test_current_alias_depth_uses_selected_spelling_and_preserves_exclusion():
+    import pytest
+    from silk.signals.view.node_select import EmptySelectionError
+    plots = [{'vectors': [{'name': 'i(vsense)', 'selectable': True},
+                          {'name': 'i(vother)', 'selectable': True}]}]
+    aliases = ((('i(dut.core.sense)', ((0, 1),), (), True),),)
+    assert select_node_paths(plots, signals=['i(dut.core.sense)'], max_depth=2,
+                             current_aliases=aliases)['masks'] == [[True, False]]
+    with pytest.raises(EmptySelectionError):
+        select_node_paths(plots, signals=['i(dut.core.sense)'], max_depth=1,
+                          current_aliases=aliases)
+    assert select_node_paths(plots, signals=['i(dut.core.sense)', 'i(vother)'],
+                             exclude=['i(vsense)'], max_depth=2,
+                             current_aliases=aliases)['masks'] == [[False, True]]

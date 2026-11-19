@@ -222,3 +222,19 @@ def test_explicit_copy_preserves_protected_specs_and_runtime_relationships(
     assert copied._behavioral_params['gain'] == 55.0
     assert child.latest().passes is True
     assert m._behavioral_params['gain'] == 65.0
+
+
+@pytest.mark.parametrize('key', [None, 'stable_gain'])
+def test_two_testbenches_share_spec_key_namespace_and_can_share_display_name(tmp_path, key):
+    m = _module(tmp_path)
+    first_tb, second_tb = m.create_test('first'), m.create_test('second')
+    first = first_tb.add_spec('Gain', 'gain', '>=', 60., key=key)
+    with pytest.raises(DuplicateNameError, match='module-wide.*testbenches.*distinct key='):
+        second_tb.add_spec('Gain', 'gain', '<', 99., key=key)
+    assert second_tb._specs == []
+    assert m._specs == [first]
+    second = second_tb.add_spec('Gain', 'gain', '<', 99., key='other_gain')
+    assert first.name == second.name == 'Gain'
+    assert m._specs == [first, second]
+    assert [entry['spec'] for entry in first_tb._specs] == [first]
+    assert [entry['spec'] for entry in second_tb._specs] == [second]

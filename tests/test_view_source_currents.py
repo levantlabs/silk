@@ -474,3 +474,57 @@ def test_card_probe_refuses_literal_alias_and_duplicate_rows(tmp_path, names, pr
     _, proofs = _proof(raw, _capture_addresses(mod))
     current_probes = [probe for _, _, probe in proofs[0] if probe and probe.startswith('i(')]
     assert bool(current_probes) is proven
+
+
+
+@pytest.mark.parametrize('split', [False, True])
+def test_designer_current_alias_uses_existing_view_wire_format(tmp_path, split):
+    from silk.circuit.view_nodes import _capture_addresses
+    from tests.test_raw_current_paths import _bench
+    from tests.test_view_emit import _decoded_y
+    child = Module(None, str(tmp_path), 'child.cir', None, module_name='child')
+    child.define_module_ports({})
+    kwargs = {'pwl': [(0, .5), (1e-8, 1.)]} if split else {}
+    child.add_source(sources.CurrentSource('ib', 'a', '0', dc=.2, **kwargs))
+    names = ['@i.xdut.xcore.iib__silk_pwl[current]', '@i.xdut.xcore.iib__silk_dc[current]'] if split else ['@i.xdut.xcore.iib[current]']
+    tb = _bench(tmp_path, names, data=[[.5, 1.], [.2, .2]] if split else [[.2, .2]])
+    tb.netlist.elem_dict['dut']['device'].add_module(child, 'core', {})
+    from silk.signals.rawfile import read_rawfile
+    from silk.simulation.backend import RawResult
+    tb.netlist.results_file = str(tmp_path / 's.raw')
+    raw = read_rawfile(tb.netlist.results_file, lazy=True)
+    tb.netlist._raw = RawResult(raw, raw.source_path)
+    tb.netlist._raw._view_addresses = _capture_addresses(tb.netlist)
+    ctx = view_node_context(tb.netlist)
+    assert ctx is not None
+    for path in ['i(dut.core.ib)', 'i(xdut.xcore.ib)']:
+        payload = emit_view_data(ctx.source, node_context=ctx, signals=[path], max_depth=2)
+        plots = payload['plots']
+        signals = plots[0]['signals']
+        assert len(signals) == 1
+        assert signals[0]['node_probe']['name'] == path
+        assert plots[0]['node_paths']['version'] == 1
+        np.testing.assert_allclose(_decoded_y(signals[0]), [.7, 1.2] if split else [.2, .2])
+        code = _dump(payload)[0]['code']
+        assert code['ok']
+        np.testing.assert_allclose(eval(code['code'], {'tb': tb}).y, [.7, 1.2] if split else [.2, .2])
+
+
+def test_current_inventory_does_not_warn_for_external_row_collision(tmp_path):
+    import warnings
+    from silk.circuit.view_nodes import _capture_addresses, _proof, _source_current_proofs
+    from tests.test_raw_current_paths import _bench
+    tb = _bench(tmp_path, ['sense', 'vsense'],
+                [sources.VoltageSource('sense', 'a', '0', dc=1)],
+                data=[[3., 4.], [8., 9.]])
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter('always')
+        frozen = _capture_addresses(tb.netlist)
+        raw = tb.netlist._raw.native
+        _, proof = _proof(raw, frozen)
+        currents = _source_current_proofs(raw, frozen, proof)
+    assert not caught
+    assert not [record for record in currents[0] if record[0] == 'i(sense)']
+    with pytest.warns(UserWarning, match='emitted reading') as caught:
+        np.testing.assert_array_equal(tb.probe('i(sense)').y, [3., 4.])
+    assert len(caught) == 1

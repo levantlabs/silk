@@ -20,6 +20,7 @@ from tests._mock_rawfile import write_complete_rawfile
 
 from silk import Module, load_pdk, sources
 from silk.elements import elements
+from silk.circuit.ground_port import unportable_ground_port_message
 from silk.exceptions import (
     CharacterizationContextError, CircuitError, ConfigurationError,
     DatabaseError, NotSupportedError, OutputPathError, RunArgumentError,
@@ -430,3 +431,166 @@ def test_one_circuit_that_will_not_converge_still_does_not_abort_a_sweep(tree, l
     assert set(results['chain.level']) == {'error'}      # the bad circuit
     assert any('stage' in deck for deck in launch['decks'])
     assert results['stage.level'].metrics['supply']      # the sibling finished
+
+
+@pytest.fixture
+def behavioral_tests(tmp_path, request):
+    """Two model-free-install benches; only the bad bench has an invalid helper."""
+    from silk.metrics import final_value
+
+    top = Module(None, str(tmp_path), 'behavioral.cir', None, module_name='block')
+    top.define_module_ports({'a': 'in', 'y': 'out'})
+
+    def model(ports, t, params):
+        ports.y.v = ports.a.v + 0.25
+
+    top.set_behavioral_model(model, execution='vector')
+    top.simulator = 'behavioral'
+    benches = []
+    for name in ('good', 'bad'):
+        tb = top.create_test(name)
+        tb.add_module_under_test({'a': 'a', 'y': 'y'})
+        tb.add_source(sources.VoltageSource('input', positive='a', negative='0', dc=0.5))
+        tb.add_sim_type(Transient(step=1e-9, stop=2e-9))
+        tb.add_metric('output', final_value, sig=tb.probe('y'))
+        benches.append(tb)
+    helper = Module(None, str(tmp_path / 'helper'), 'helper.cir', None,
+                    module_name='helper')
+    helper.define_module_ports({'gnd': 'ground'})
+    if getattr(request, 'param', True):
+        benches[1].netlist.add_module(helper, 'helper', nets={'gnd': '0'})
+    yield top, *benches
+    top.close()
+    helper.close()
+
+
+@pytest.mark.parametrize('workers', [1, 2])
+@pytest.mark.parametrize('planning', [False, True], ids=['scalar', 'planning'])
+def test_behavioral_resolution_failure_is_per_test(behavioral_tests, workers, planning):
+    from silk import Variable
+    from silk.circuit.test_failure import TestFailure
+    from silk.simulation import DC
+
+    top, good, bad = behavioral_tests
+    if planning:
+        knob = Variable('input_level', value=0.5)
+        bad.netlist.sig_sources_dict['input'].dc = knob
+        bad.set_variable_values(knob, [0.5, 0.6])
+        bad.add_source(sources.VoltageSource('power', positive='vdd', negative='0', dc=1.8))
+        bad.set_supply_voltages([1.7, 1.8], source='power')
+        bad.netlist.sim_analysis_dict.clear()
+        bad.add_sim_type(DC('input', 0, 1, 0.5))
+    assert bad._effective_simulator() == 'behavioral'
+    results = top.run_all_tests(n_workers=workers)
+    assert set(results) == {'block.good', 'block.bad'}
+    assert results['block.good'].metrics['output'] == pytest.approx(0.75)
+    failure = results['block.bad']
+    assert isinstance(failure, TestFailure)
+    assert failure.error_type == 'CircuitError'
+    assert failure['error'] == unportable_ground_port_message('helper', 'gnd')
+    assert failure.run is None
+
+
+@pytest.mark.parametrize('route', ['run', 'configured_mc', 'direct_mc'])
+def test_bad_behavioral_standalone_still_raises(behavioral_tests, route, monkeypatch):
+    from silk.simulation.behavioral_backend import BehavioralBackend
+
+    _top, _good, bad = behavioral_tests
+
+    def unexpected_launch(*args, **kwargs):
+        pytest.fail('invalid topology reached the backend')
+
+    monkeypatch.setattr(BehavioralBackend, 'run_module', unexpected_launch)
+    with pytest.raises(CircuitError) as caught:
+        if route == 'direct_mc':
+            bad.run_monte_carlo(n=1)
+        else:
+            if route == 'configured_mc':
+                bad.set_monte_carlo(n=1)
+            bad.run()
+    assert str(caught.value) == unportable_ground_port_message('helper', 'gnd')
+
+
+@pytest.mark.parametrize('boundary', ['resolution', 'planning'])
+@pytest.mark.parametrize('workers', [1, 2])
+def test_behavioral_preflight_configuration_error_propagates(
+        behavioral_tests, monkeypatch, boundary, workers):
+    from silk import Variable
+    from silk.simulation.behavioral_backend import BehavioralBackend
+    from silk.simulation import _behavioral_variation
+
+    top, good, bad = behavioral_tests
+    calls = []
+
+    def refuse(*args, **kwargs):
+        raise SimulationConfigurationError('preflight setup refusal')
+
+    def executed(*args, **kwargs):
+        calls.append('executed')
+        pytest.fail('preflight ConfigurationError reached the backend')
+
+    monkeypatch.setattr(BehavioralBackend, 'run_module', executed)
+    if boundary == 'resolution':
+        monkeypatch.setattr(_behavioral_variation, 'resolve_test', refuse)
+    else:
+        bad.set_variable_values(Variable('knob', value=1), [1, 2])
+        monkeypatch.setattr(bad, '_plan_runs', refuse)
+    with pytest.raises(ConfigurationError, match='preflight setup refusal'):
+        top.run_all_tests(n_workers=workers)
+    assert calls == []
+
+
+@pytest.mark.parametrize('workers', [1, 2])
+def test_behavioral_conflicts_after_unresolvable_test(behavioral_tests, tmp_path, workers):
+    from silk.simulation.variation import Normal
+    from silk.exceptions import VariationError
+
+    top, good, bad = behavioral_tests
+    # Registration order makes the invalid bench the first preflight entry.
+    top._tests['good'] = top._tests.pop('good')
+    later = top.create_test('later')
+    later.add_module_under_test({'a': 'a', 'y': 'y'})
+    later.add_source(sources.VoltageSource('input', positive='a', negative='0', dc=0.5))
+    later.add_sim_type(Transient(step=1e-9, stop=2e-9))
+    calls = []
+
+    def model(ports, t, params):
+        calls.append('executed')
+        ports.y.v = ports.a.v + params.offset
+
+    for tb, sigma in ((good, 0.1), (later, 0.2)):
+        helper = Module(None, str(tmp_path / tb.test_name), 'process.cir', None,
+                        module_name=f'process_{tb.test_name}')
+        helper.define_module_ports({'a': 'in', 'y': 'out'})
+        helper.set_behavioral_model(model, execution='vector', params={
+            'offset': Normal(0, sigma, variation='process', name='shared')})
+        tb.netlist.add_module(helper, 'process', nets={'a': 'a', 'y': 'helper_y'})
+    with pytest.raises(VariationError, match='shared.*block.good.*block.later'):
+        top.run_all_tests(n_workers=workers)
+    assert calls == []
+
+
+@pytest.mark.parametrize('workers', [1, 2])
+@pytest.mark.parametrize('behavioral_tests', [False], indirect=True)
+def test_behavioral_plain_value_error_is_per_test(behavioral_tests, monkeypatch, workers):
+    from silk.simulation import _behavioral_variation
+    from silk.circuit.test_failure import TestFailure
+
+    top, _good, bad = behavioral_tests
+    original = _behavioral_variation.resolve_run
+    calls = []
+
+    def resolve(blocks, *, scope=None, sample=None):
+        if scope.test_name == bad.test_name:
+            calls.append(scope.test_name)
+            raise ValueError('resolution could not use this value')
+        return original(blocks, scope=scope, sample=sample)
+
+    monkeypatch.setattr(_behavioral_variation, 'resolve_run', resolve)
+    results = top.run_all_tests(n_workers=workers)
+    assert results['block.good'].metrics['output'] == pytest.approx(0.75)
+    failure = results['block.bad']
+    assert isinstance(failure, TestFailure)
+    assert failure.error_type == 'ValueError'
+    assert failure['error'] == 'resolution could not use this value'
+    assert len(calls) >= 2  # both preflight and the normal run path

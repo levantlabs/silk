@@ -389,7 +389,7 @@ def test_only_the_literal_zero_is_the_ground_node(tmp_path, name):
     (ngspice folds 'gnd' to node 0, Xyce does not — TASK-36). None of them
     is recognised by spelling: a POWER port on such a net with a role-less
     source return gets no INT-002 (only a GROUND-role port would trigger
-    it), and INT-004 does not skip the net."""
+    it). INT-004 can still find reference evidence through a voltage source."""
     from silk.lint.rules.interface import _is_ground_node
     from silk.sources.classes import VoltageSource
 
@@ -411,7 +411,8 @@ def test_only_the_literal_zero_is_the_ground_node(tmp_path, name):
                     nets={'a': 'a', 'y': 'y', 'vdd': 'vdd', 'gnd': 'gnd0'})
     top.add_source(VoltageSource('vdd', positive='vdd', negative=name, dc=1.8))
     top.add_source(VoltageSource('vin', positive='a', negative=name, dc=0.0))
-    assert [v.location.net_name for v in NoDriverRule().check(top)] == [name]
+    # The voltage source reaches the declared POWER port on vdd.
+    assert list(NoDriverRule().check(top)) == []
 
 
 @pytest.mark.parametrize('simulator', ['ngspice', 'xyce'])
@@ -834,3 +835,119 @@ def test_own_port_role_does_not_change_int004(tmp_path):
     dblk.add_module(plain, 'u4', nets={'a': 'o', 'y': 'y4'})
     assert [v.message for v in NoDriverRule().check(dblk)] == [
         "Net 'o' has no driver: u3.a(input), u4.a(input)"]
+
+
+@pytest.mark.parametrize('kind', ['voltage', 'behavioral', 'vcvs', 'ccvs', 'current'])
+@pytest.mark.parametrize('reverse', [False, True])
+@pytest.mark.parametrize('dc', [0, 0.7])
+def test_series_source_driver_pass_through(tmp_path, kind, reverse, dc):
+    from silk.sources import (VoltageSource, BehavioralVoltage, CurrentSource,
+                              VoltageControlledVoltageSource,
+                              CurrentControlledVoltageSource)
+
+    top = _top(tmp_path)
+    top.add_module(_sub(tmp_path, 'driver', {'OUT': PortDir.OUT}), 'driver',
+                   nets={'OUT': 'driven'})
+    top.add_module(_sub(tmp_path, 'sink', {'IN': PortDir.IN}), 'sink',
+                   nets={'IN': 'sense'})
+    pos, neg = ('sense', 'driven') if reverse else ('driven', 'sense')
+    if kind == 'vcvs':
+        source = VoltageControlledVoltageSource('series', out_pos=pos, out_neg=neg,
+                                               ctrl_pos='control', ctrl_neg='0', gain=2)
+    elif kind == 'ccvs':
+        source = CurrentControlledVoltageSource('series', out_pos=pos, out_neg=neg,
+                                               ctrl_vname='measure', transresistance=2)
+    elif kind == 'behavioral':
+        source = BehavioralVoltage('series', positive=pos, negative=neg, expression=str(dc))
+    else:
+        cls = CurrentSource if kind == 'current' else VoltageSource
+        source = cls('series', positive=pos, negative=neg, dc=dc)
+    top.add_source(source)
+    expected = ['sense'] if kind == 'current' and not reverse else []
+    assert [v.location.net_name for v in NoDriverRule().check(top)] == expected
+
+
+def test_series_voltage_chain_and_floating_pair(tmp_path):
+    from silk.sources import VoltageSource
+
+    top = _top(tmp_path)
+    sink = _sub(tmp_path, 'sink', {'IN': PortDir.IN})
+    top.add_module(sink, 'left', nets={'IN': 'left'})
+    top.add_module(sink, 'right', nets={'IN': 'right'})
+    top.add_source(VoltageSource('first', positive='left', negative='middle', dc=0))
+    top.add_source(VoltageSource('second', positive='middle', negative='right', dc=1))
+    assert [v.location.net_name for v in NoDriverRule().check(top)] == ['right']
+    top.add_module(_sub(tmp_path, 'driver', {'OUT': PortDir.OUT}), 'driver',
+                   nets={'OUT': 'left'})
+    assert list(NoDriverRule().check(top)) == []
+
+
+def test_voltage_control_pins_do_not_join_output_nets(tmp_path):
+    from silk.sources import VoltageControlledVoltageSource
+
+    top = _top(tmp_path)
+    top.add_module(_sub(tmp_path, 'sink', {'IN': PortDir.IN}), 'sink',
+                   nets={'IN': 'sense'})
+    top.add_source(VoltageControlledVoltageSource(
+        'series', out_pos='floating', out_neg='sense',
+        ctrl_pos='0', ctrl_neg='0', gain=1))
+    assert [v.location.net_name for v in NoDriverRule().check(top)] == ['sense']
+
+
+@pytest.mark.parametrize('evidence', ['ground', 'passive', 'device', 'own_port',
+                                     'declared_power', 'inferred_power', 'ground_role'])
+def test_series_voltage_reference_evidence(tmp_path, evidence):
+    from silk.sources import VoltageSource
+    from silk.elements import ElementLibrary
+    from silk.circuit.net import PortBinding
+
+    top = _top(tmp_path)
+    reference = '0' if evidence == 'ground' else 'reference'
+    top.add_module(_sub(tmp_path, 'sink', {'IN': PortDir.IN}), 'sink',
+                   nets={'IN': 'sense'})
+    top.add_source(VoltageSource('series', positive=reference, negative='sense', dc=0))
+    if evidence == 'passive':
+        top.add_passive(ElementLibrary().resistor('load', p=reference, n='other', value=1e3))
+    elif evidence == 'device':
+        # Match the directionless primitive binding used by device registration.
+        top.net_dict[reference].pins.append(PortBinding(
+            net=reference, instance='mn', port='d', kind='device'))
+    elif evidence == 'own_port':
+        top.define_module_ports({reference: PortDir.IN})
+    elif evidence in ('declared_power', 'inferred_power', 'ground_role'):
+        role = PortRole.GROUND if evidence == 'ground_role' else PortRole.POWER
+        block = _sub(tmp_path, 'monitor', {'IN': (PortDir.IN, role)})
+        top.add_module(block, 'monitor', nets={'IN': reference})
+        if evidence == 'inferred_power':
+            for binding in top.net_dict[reference].pins:
+                if binding.instance == 'monitor':
+                    binding.role_inferred = True
+    expected = ['sense'] if evidence == 'inferred_power' else []
+    assert [v.location.net_name for v in NoDriverRule().check(top)] == expected
+
+
+def test_voltage_source_between_two_floating_inputs_unchanged(tmp_path):
+    from silk.sources import VoltageSource
+
+    top = _top(tmp_path)
+    sink = _sub(tmp_path, 'sink', {'IN': PortDir.IN})
+    top.add_module(sink, 'left', nets={'IN': 'left'})
+    top.add_module(sink, 'right', nets={'IN': 'right'})
+    top.add_source(VoltageSource('series', positive='left', negative='right', dc=0))
+    findings = list(NoDriverRule().check(top))
+    assert [v.message for v in findings] == [
+        "Net 'right' has no driver: right.IN(input), series.negative(input)"]
+    assert findings[0].location == NetLocation(
+        net_name='right', port_names=['right.IN', 'series.negative'])
+
+
+def test_series_ammeter_reaches_separate_voltage_driver(tmp_path):
+    from silk.sources import VoltageSource
+
+    top = _top(tmp_path)
+    sink = _sub(tmp_path, 'sink', {'IN': PortDir.IN})
+    top.add_module(sink, 'load', nets={'IN': 'n'})
+    top.add_module(sink, 'sense', nets={'IN': 'sense'})
+    top.add_source(VoltageSource('drive', positive='n', negative='return', dc=1.8))
+    top.add_source(VoltageSource('amm', positive='n', negative='sense', dc=0))
+    assert list(NoDriverRule().check(top)) == []

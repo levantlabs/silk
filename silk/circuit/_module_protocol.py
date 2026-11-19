@@ -75,7 +75,6 @@ class _ModuleAttrs(Protocol):
     simResultsAll: Any
     results_file: Any
     dataFile: Any
-    output_file_available: Any   # property
     sim_results_loaded: Any      # property
     _simulator: Any
     _simulator_explicit: bool

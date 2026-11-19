@@ -21,6 +21,8 @@ def test_arrayed_designer_probe_and_metric_read_same_branch(tmp_path):
     np.testing.assert_allclose(probe.y, -.0006)
     raw = tb.netlist.load_signal('vvs<0>', 'I')
     np.testing.assert_array_equal(probe.y, raw.y)
+    np.testing.assert_array_equal(tb.netlist.load_signal('i(vs[0])').y, raw.y)
+    np.testing.assert_array_equal(tb.netlist.load_signal('i(vs[0])', 'I').x, raw.x)
 
 
 @needs_ngspice

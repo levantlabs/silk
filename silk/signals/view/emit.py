@@ -1152,17 +1152,25 @@ def _node_plan(raw, node_context, signals, exclude, max_depth, labels,
     if metadata is None:
         masks, totals = _resolve_selection(raw, signals, exclude, max_depth)
     else:
+        # Complete one-card aliases follow the compound/missing entries in
+        # the checked proof. Existing selections need only that prefix.
+        source_currents = []
         # Selection sees logical names as ordinary current vectors, while the
         # published node inventory and source-row indices remain physical.
         inventories = []
         for i, meta in enumerate(metadata):
-            sources = (node_context._source_currents[i]
-                       if node_context._source_currents else ())
+            sources = []
+            if node_context._source_currents:
+                for source in node_context._source_currents[i]:
+                    if source[3] and not source[2]:
+                        break
+                    sources.append(source)
+            source_currents.append(sources)
             vectors = list(meta['vectors']) + [
-                {'name': probe, 'selectable': True} for probe, _, _ in sources]
+                {'name': probe, 'selectable': True} for probe, _, _, _ in sources]
             inventories.append({'vectors': vectors, 'node_paths': dict(meta, vectors=vectors)})
         selection = select_node_paths(inventories, signals=signals, exclude=exclude,
-                                      max_depth=max_depth)
+                                      max_depth=max_depth, current_aliases=node_context._source_currents)
         for diagnostic in selection['diagnostics']:
             warnings.warn(f"{diagnostic['keyword']} selector {diagnostic['selector']!r}: "
                           'emitted reading takes precedence over designer nodes.', UserWarning,
@@ -1176,25 +1184,41 @@ def _node_plan(raw, node_context, signals, exclude, max_depth, labels,
         return plans, default, totals
     # Keep the chosen rows if the metadata budget forces legacy display.
     legacy = [dict(p, signals=[dict(sig) for sig in p['signals']]) for p in plans]
-    for pp, meta, proof in zip(plans, metadata, node_context._proofs):
+    for pi, (pp, meta, proof) in enumerate(zip(plans, metadata, node_context._proofs)):
         pp['node_paths'] = meta
         rows = {row: (label, probe) for row,label,probe in proof}
+        rows.update((row, (probe, probe)) for (plot, row), probe
+                    in selection['current_aliases'].items() if plot == pi)
         graph_labels = {}
         for sig in pp['signals']:
             sig['source_row'] = sig['row']
             if sig['row'] in rows:
                 label, probe = rows[sig['row']]
-                sig['node_probe'] = {'name': probe, 'type': 'I' if probe.startswith('i(') else 'V'} if probe else None
+                if isinstance(probe, tuple):
+                    sig['node_probe'] = {'name': probe[1], 'type': 'D'}
+                else:
+                    sig['node_probe'] = {'name': probe, 'type': 'I' if probe.startswith('i(') else 'V'} if probe else None
                 if labels == DESIGNER_LABELS:
                     sig.pop('label', None)
                     if label:
                         graph_labels[sig['raw']] = label
         _apply_labels([pp], graph_labels)
-    for i, (pp, plot, sources) in enumerate(zip(plans, raw.plots, node_context._source_currents)):
+    for i, (pp, plot, sources) in enumerate(zip(plans, raw.plots, source_currents)):
         logical_mask = selection['masks'][i][len(plot.vectors):]
-        for (probe, terms, missing), selected in zip(sources, logical_mask):
+        emitted_currents = set()
+        from silk.signals.view.select import matches_selector
+        excluded_currents = ({(terms, missing) for probe, terms, missing, _ in sources
+                              if any(matches_selector(probe, selector) for selector in exclude)}
+                             if exclude else set())
+        for (probe, terms, missing, single_card), selected in zip(sources, logical_mask):
             if not selected:
                 continue
+            identity = (terms, missing)
+            if identity in emitted_currents:
+                continue
+            if identity in excluded_currents:
+                continue
+            emitted_currents.add(identity)
             if missing:
                 # Default views offer only complete logical currents; saved
                 # physical cards remain independently available above.

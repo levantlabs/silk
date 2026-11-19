@@ -160,16 +160,20 @@ def test_object_view_uses_retained_generation_after_replacement(tmp_path):
 def test_corner_reader_uses_held_generation_with_fresh_cache(tmp_path):
     from silk.simulation.generation import begin, offer, attach, accept
     from silk.simulation.backend import RawResult
-    from silk.circuit.module_test import _CornerRawfile
+    from silk.circuit.test_placement import EvidenceResults
+    from silk.circuit.modules import Module
     files = RunFiles.resolve(str(tmp_path / 'deck.cir'), str(tmp_path))
     Path(files.netlist_path).write_text('* deck\n.end\n')
     gen = begin(files)
     Path(gen.staged.rawfile_path).write_bytes(raw_bytes(12))
     raw = attach(RawResult(read_rawfile(gen.staged.rawfile_path, lazy=True), files.rawfile_path), offer(gen))
     accept(raw)
-    held = _CornerRawfile('tt', files.rawfile_path, SimulatorBackend.get('ngspice'), generation=gen)
+    module = Module(None, str(tmp_path), 'deck.cir', None)
+    module._raw, module.simResultsAll = raw, raw.native
+    module.results_file, module.sim_results_loaded = files.rawfile_path, True
+    held = EvidenceResults(module, _retained=True)
     begin(files)
-    assert_array_equal(held._raw_result().native.vectors[2].data, [22, 22])
+    assert_array_equal(held._raw.native.vectors[2].data, [22, 22])
     assert raw.native.vectors[2]._data is None
 
 
@@ -1134,3 +1138,84 @@ def test_evaluation_error_keeps_the_successful_run_record(tmp_path, monkeypatch,
         assert failure.run == seen['run']
     finally:
         mod.close()
+
+
+@pytest.mark.parametrize('mixed', [False, True])
+def test_retained_xyce_noise_descriptor_keeps_its_generation(tmp_path, mixed):
+    from silk.circuit.modules import Module
+    from silk.circuit.test_placement import EvidenceResults
+    from silk.simulation.backend import RawResult
+    from silk.simulation.generation import begin, offer, attach, accept
+    files = RunFiles.resolve(str(tmp_path / 'deck.cir'), str(tmp_path), noise=True)
+    Path(files.netlist_path).write_text('* noise evidence\n.end\n')
+    gen = begin(files)
+    Path(gen.staged.noise_path).write_text('FREQ,ONOISE,INOISE\n1,4,9\n2,4,9\n')
+    native = None
+    if mixed:
+        Path(gen.staged.rawfile_path).write_bytes(raw_bytes(7))
+        native = read_rawfile(gen.staged.rawfile_path, lazy=True)
+    raw = attach(RawResult(native, files.noise_path, run_files=files), offer(gen))
+    accept(raw)
+    module = Module(None, str(tmp_path), 'deck.cir', None)
+    module.simulator = 'xyce'
+    module._raw, module.simResultsAll = raw, native
+    module.results_file, module.sim_results_loaded = files.rawfile_path, True
+    reader = EvidenceResults(module, _retained=True)
+    held = reader.load_signal('noise_out')
+    assert_array_equal(held.y, [2, 2])
+    begin(files)
+    assert_array_equal(reader.load_signal('noise_out').y, [2, 2])
+    assert_array_equal(reader.load_signal('noise_in').y, [3, 3])
+    if mixed:
+        assert_array_equal(reader.load_signal('out').y, [7, 7])
+    Path(gen.resolve('noise_path')).unlink()
+    with pytest.raises(SimulationError):
+        reader.load_signal('noise_out')
+    assert_array_equal(held.y, [2, 2])
+
+
+def test_unmanaged_retained_view_keeps_index_identity_across_cwd(tmp_path, monkeypatch):
+    from silk.circuit.modules import Module
+    from silk.circuit.test_placement import EvidenceResults
+    from silk.simulation.backend import RawResult
+    from silk.simulation.generation import read_retained
+    monkeypatch.chdir(tmp_path)
+    Path('result.raw').write_bytes(raw_bytes(2))
+    module = Module(None, str(tmp_path), 'deck.cir', None)
+    native = read_rawfile('result.raw', lazy=True)
+    module._raw = RawResult(native, 'result.raw')
+    module.simResultsAll, module.sim_results_loaded = native, True
+    module.results_file = 'result.raw'
+    reader = EvidenceResults(module, _retained=True)
+    other = tmp_path / 'other'
+    other.mkdir()
+    (other / 'result.raw').write_bytes(raw_bytes(9))
+    monkeypatch.chdir(other)
+    later_reader = EvidenceResults(module, _retained=True)
+    for retained in (reader, later_reader):
+        assert_array_equal(retained.load_signal('out').y, [2, 2])
+        assert_array_equal(read_retained(retained).vectors[1].data, [2, 2])
+
+
+def test_unmanaged_retention_refuses_replacement_during_reindex(tmp_path, monkeypatch):
+    from silk.circuit.modules import Module
+    from silk.circuit.test_placement import EvidenceResults
+    from silk.signals.rawfile import RawfileError
+    from silk.simulation.backend import RawResult
+    source = tmp_path / 'result.raw'
+    source.write_bytes(raw_bytes(2))
+    native = read_rawfile(source, lazy=True)
+    module = Module(None, str(tmp_path), 'deck.cir', None)
+    module._raw = RawResult(native, str(source))
+    module.simResultsAll, module.sim_results_loaded = native, True
+    module.results_file = str(source)
+
+    def replace_before_reindex(path, *, lazy=False):
+        replacement = tmp_path / 'replacement.raw'
+        replacement.write_bytes(raw_bytes(9))
+        replacement.replace(source)
+        return read_rawfile(path, lazy=lazy)
+
+    monkeypatch.setattr('silk.signals.rawfile.read_rawfile', replace_before_reindex)
+    with pytest.raises(RawfileError):
+        EvidenceResults(module, _retained=True)

@@ -1350,3 +1350,72 @@ def test_unsupported_location_save_preserves_destination(tmp_path, existing, sub
     with pytest.raises(TypeError, match=type(location).__name__):
         report.save_json(path)
     assert path.read_bytes() == b'keep existing bytes' if existing else not path.exists()
+
+
+@pytest.mark.slow
+@needs_pdk
+@needs_ngspice
+@pytest.mark.parametrize('case', ['corners', 'temperature', 'variable', 'mc', 'mc-temperature', 'single'])
+def test_diode_result_summary_live_and_reloaded(tmp_path, case):
+    from silk import sources
+    from silk.circuit.report import _pvt_number, _pvt_point
+    from silk.circuit.spec_report import load_results_json, save_results_json
+    from silk.metrics import final_value
+    from silk.pdk import load_pdk
+    from silk.simulation import Transient
+
+    pdk = load_pdk('sky130')
+
+    def build(folder):
+        dut = Module('sky130', str(folder), 'diode.cir', pdk_details=pdk,
+                     module_name='diode')
+        dut.define_module_ports({'g': PortDir.OUT, 'VSS': PortDir.IN})
+        dut.add(pdk.nmos1p8('m1', d='g', g='g', s='VSS', b='VSS', w=2., l=.5))
+        tb = dut.create_test('bias')
+        tb.add_module_under_test({'g': 'g', 'VSS': '0'})
+        tb.add_source(sources.VoltageSource('vdd', positive='vdd', negative='0', dc=1.8))
+        ib = sources.CurrentSource.dc.variable(name='ib', value=5e-6)
+        tb.add_source(sources.CurrentSource('bias', positive='vdd', negative='g', dc=ib))
+        tb.add_sim_type(Transient(step=1e-9, stop=20e-9))
+        tb.add_metric('vgs', final_value, sig=tb.probe('g'))
+        tb.add_spec('Vgs limit', 'vgs', '<', 1.2)
+        if case == 'corners':
+            tb.set_corners(['tt', 'ss', 'ff'])
+        if case == 'temperature':
+            tb.set_temperatures([-40, 27, 125])
+        if case == 'variable':
+            tb.set_variable_values(ib, [2e-6, 5e-6, 10e-6])
+        if case == 'mc':
+            tb.set_monte_carlo(4, seed=1)
+        if case == 'mc-temperature':
+            tb.set_monte_carlo(3, seed=1)
+            tb.set_temperatures([27, 85])
+        return dut
+
+    dut = build(tmp_path / 'live')
+    results = dut.run_all_tests()
+    assert results['diode.bias'].passed
+    evidence = results['diode.bias']
+    if case == 'single':
+        value, location = evidence.metrics['vgs'], evidence.corner
+    else:
+        worst = evidence.worst('vgs')
+        value, location = worst.value, _pvt_point(worst.corner)
+        if case in ('mc', 'mc-temperature'):
+            location += f', sample {worst.sample}'
+
+    report = generate_report(dut, test_results=results, auto_discover_config=False)
+    path = tmp_path / 'results.json'
+    save_results_json(results, path)
+    restored = generate_report(build(tmp_path / 'fresh'), test_results=load_results_json(path),
+                               auto_discover_config=False)
+    for mode in ('html', 'markdown', 'terminal'):
+        assert restored._render_grid(mode) == report._render_grid(mode)
+    expected = f'<td>&lt;</td><td>1.2</td><td>{_pvt_number(value)}</td><td>{location}</td>'
+    for candidate in (report, restored):
+        html = candidate._to_html()
+        heading = 'bias' if case == 'single' else 'PVT Grid: bias'
+        assert f'<h2>{heading} — PASS</h2>' in html
+        assert expected in html
+        assert html.count('<td>Vgs limit</td><td>&lt;</td>') == 1
+        assert 'Vgs limit' not in candidate._render_spec_reconciliation_html()

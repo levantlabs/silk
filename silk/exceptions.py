@@ -318,10 +318,12 @@ class UnboundSignalError(CircuitError):
 
 
 class AmbiguousBranchCurrentError(ConfigurationError, ValueError):
-    """``i(x)`` has two readings on this bench: ``x`` is a source's
-    silk name AND the emitted instance name of a different source (sources
-    ``vs`` and ``vvs``: ``i(vvs)`` is ``Vvvs``'s current by the first reading
-    and ``Vvs``'s by the second). silk never picks one; the message names both.
+    """A branch-current request has unresolved competing source readings.
+
+    Emitted readings and registered cards take precedence over source aliases
+    in probes and metric strings, with a warning when their targets differ.
+    This exception remains available for source ambiguity; ambiguous raw rows
+    instead raise :class:`AmbiguousSignalError`.
     """
 
 

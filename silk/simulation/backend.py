@@ -1144,7 +1144,7 @@ class SpiceBackend(SimulatorBackend):
         return raw
 
     def load_signal(self, raw: RawResult, name: str, *, type: str = 'V',
-                    analysis=None):
+                    analysis=None, _resolved=None):
         """Extract one signal from a run result.
 
         A request for a canonical noise signal (``noise_out``/``noise_in``,
@@ -1184,6 +1184,10 @@ class SpiceBackend(SimulatorBackend):
         if port is not None:
             return self.load_noise(raw, port, analysis=analysis)
         from silk.signals.spice import NgspiceSignal
+        if _resolved is not None:
+            plot, candidates, is_op = _resolved
+            return NgspiceSignal.from_rawfile(raw.native, name, type, plot=plot,
+                                              _resolved=(candidates, is_op))
         return NgspiceSignal.from_rawfile(raw.native, name, type,
                                           plot=select_plot(raw.native, analysis))
 

@@ -62,6 +62,10 @@ single-analysis run, `snapshot.x` and `snapshot.y` hold the same samples that
 `(vin + vout) / 2`, `vout.derivative()` or `vout.window(1e-6, 4e-6)` also defers
 until results are requested. Normal signal compatibility checks still apply.
 
+`abs(sig)` is equivalent to `sig.mag()`: pointwise absolute values for real
+samples and magnitudes for complex samples, deferred on unbound probes.
+`+sig` returns the same `Signal` without copying it.
+
 `sig.versus(x_signal)` re-plots one Signal against another's values — for
 example `(gm / id).versus(id / w)` for a gm/Id lookup curve. It defers like the
 other transforms. Strictly decreasing x is reversed to ascending; x that is not
@@ -95,12 +99,16 @@ tb.add_metric('out_avg_declarative', type='average', signal='vout')
 tb.add_metric('out_avg_mV', lambda ckt: average(ckt.load_signal('vout')) * 1e3)
 ```
 
-Use the callable form when an extractor needs the simulated `Module`
-directly; it receives that `Module`, not a `ModuleTestbench`, and should load
-signals from that argument. For arithmetic on reported metric numbers, use
-[metric handles](#derive-metrics-from-reported-values). Capturing an outer probe in a lambda is not a replacement for
-registered binding: copying a testbench rebinds its registered probe slots,
-but cannot rewrite a Python closure.
+Use the callable form when an extractor needs the simulated `Module` directly;
+it receives that `Module`, not a `ModuleTestbench`. Read from that argument
+with `ckt.load_signal(...)`, using netlist voltage names such as `'xdut.mid'`
+or logical source currents such as `'i(vs)'`. For `i(name)`, a card name in
+the circuit takes precedence over a source name. Designer node paths belong in
+probes or metric signal slots. Declare device-parameter and independent
+current-source probes before running so the required operands are saved.
+For arithmetic on reported metric numbers, use [metric handles](#derive-metrics-from-reported-values).
+Capturing an outer probe in a lambda is not a replacement for registered binding:
+copying a testbench rebinds registered probe slots but cannot rewrite a Python closure.
 
 ## Names and paths
 
@@ -195,8 +203,8 @@ Net and port names keep their spelling: an internal `g[0]` becomes a vector
 such as `v(xX1<0>.g[0])`. Generated `.control save` arguments are double-quoted;
 the quotes are not part of the raw vector name.
 
-For a bench source named `vs[0]`, both `tb.probe('i(vs[0])')` and a metric's
-`signal='i(vs[0])'` resolve to raw `i(vvs<0>)`. The bracket spelling of a raw
+For a DC/AC-only voltage source named `vs[0]`, both `tb.probe('i(vs[0])')` and a
+metric's `signal='i(vs[0])'` resolve to raw `i(vvs<0>)`. The bracket spelling of a raw
 path is an alias again: `i(vvs[0])` reads the same vector, and
 `xx1[0].xy[1].g[0]` resolves like `xx1<0>.xy<1>.g[0]` (instance parts convert,
 the node leaf `g[0]` does not; matching stays case-insensitive).
@@ -207,10 +215,12 @@ rawfile names remain the data keys. Only when two distinct vectors differ
 by `[k]` versus `<k>` alone does silk show the raw names, and the remedy of an
 ambiguous request names the raw spelling (`i(Vbias<0>__silk_pwl)`) or asks you to
 rename; see [simulator save list](simulator-save-list.md#selectors).
-`i(<name>)` considers the source's designer name and the normalised emitted
-name together: two different sources reached that way (`vs[0]` beside a source
-named `vvs[0]`; `v` beside `vv`) raise
-`AmbiguousBranchCurrentError`. A raw current name that names no source is
+For probes and metric strings, an emitted reading or registered source card
+wins over a different source target with a `UserWarning` naming the physical
+alternative. For sources `vs[0]` and `vvs[0]`, `i(vvs[0])` selects the card
+`Vvs<0>`; capture saves that same winning card. Direct `load_signal` keeps
+registered-card precedence without a new collision warning. AC capability
+checks apply to the winning card's source. A raw current name that names no source is
 handed to the one signal collector with its original spelling, so an
 `i(vvs[0])` row, an `i(vvs<0>)` row, or both (ambiguous) are each found or
 refused as they are, never read as a missing current. When a
@@ -309,8 +319,18 @@ a warning. Depth limits apply to physical node paths after port wiring; ground
 has no saved vector. Equivalent designer and emitted selections write identical
 save commands. Private source nodes keep their emitted spelling.
 
-Device-parameter names such as `st1.MN:gm`, terminal probes such as
-`st1.MN:d`, and `i(vs)` keep their existing routes. Designer node strings do
+Source-current strings also accept designer paths such as `i(dut.core.ib)`
+when the reader has the circuit. Probes, metric strings, `Module.load_signal`,
+callable metrics, retained corner/point/sample readers and checked viewer
+selections share this source lookup. A rawfile-only reader cannot recover
+source aliases. Reads require saved operands and the backend's existing
+capabilities. A previously declared logical source probe can still read a
+retained file after the source is removed if all its bound physical operands
+are present; a new metric string or declaration does not inherit that binding,
+and a removed source cannot be captured in a new deck.
+
+Device-parameter names such as `st1.MN:gm` and terminal probes such as
+`st1.MN:d` keep their existing routes. Designer strings do
 not change rawfile keys or netlist names. Viewer selectors and labels use emitted names with bracket
 aliases by default. Checked `node_context` enables designer selection and, with
 `labels='designer'`, designer display labels; see the checked-node metadata
@@ -462,12 +482,22 @@ The codegen JSON writes one of these per bus: see
 |---|---|
 | `tb.probe('vout')` or `tb.probe('v(vout)')` | Voltage on a testbench net. Plain names are checked against known bench nets. |
 | `tb.probe('xdut.mid')` | Voltage on an internal DUT node, if that vector was saved. |
-| `tb.probe('i(vs)')` | Branch current through `VoltageSource('vs', ...)`; silk maps the source name to its emitted vector. In the RC example, this is the driving source's current, with the simulator's source-current sign convention. |
-| `tb.probe('vvs', 'I')` | Low-level spelling of that same current vector. |
+| `tb.probe('i(vs)')` or `tb.probe('i(dut.core.vs)')` | Branch current through `VoltageSource('vs', ...)`; silk maps the source name to its emitted vector. In the RC example, this is the driving source's current, with the simulator's source-current sign convention. |
+| `tb.probe('vvs', 'I')` | Current of a DC/AC-only `VoltageSource('vs', ...)`; for the RC example's pulse source, use `tb.probe('i(vs)')`. |
 | `tb.probe('st1.MN:d')` | Drain-terminal current of the DUT device you named `MN` inside submodule instance `st1` — the same designer name `tb.probe('st1.MN:gm')` takes. Same vector, same requirements as the emitted-path form below. |
 | `tb.probe('xdut.m1:d')` | The same terminal current by EMITTED path (still accepted, unchanged): drain-terminal current of device `m1` through silk's ammeter wrapper; requires the DUT's `save_device_currents = True`, `terminal_current_method = 'ammeter_wrapper'`, and exactly one transient analysis. |
 
 If a prefix reads as both an emitted path and a designer name, and the two reach different devices, the emitted-path device is used and a `UserWarning` names the spelling (`'xdut.<path>.<name>:d'`) that selects the DUT device.
+
+Bare names with type `'I'` retain their physical raw-current meaning on read,
+including direct `load_signal(name, 'I')`. At probe declaration, a name that
+resolves only as a source alias to different physical operands raises
+`ValueError` naming `i(name)` and the physical cards. This also applies to
+`probe_bus(..., type='I')`; an earlier bare-I read of an external or behavioral
+row with that name may therefore be refused as a new probe. Viewer Copy as
+code uses the same declaration rule. Unsafe unresolved current capture that
+would fabricate a current-source save is refused before launch; explicit
+raw-vector escapes remain available.
 
 There is no current vector *for a node*. Insert a voltage-source ammeter
 (0 V if appropriate) at the branch you want to measure. Device-current
@@ -607,8 +637,10 @@ authored-handle copying and pickling retain their existing behavior.
 
 ## Keep and select corner waveforms
 
-Use `.point((corner, temperature, supply))` for deterministic grids, and
-`.sample((corner, index))` or `.sample((point, index))` for Monte Carlo.
+Use a key from the returned results: `.point(key)` for a deterministic sweep and
+`.sample(key)` for Monte Carlo. Pass the key unchanged, including any variable
+values in a grid tuple. For corner-only runs, `.corner(name)` is the short form
+of `.point(name)`.
 To extend the runnable RC example, sweep the corners:
 
 ```python
@@ -702,16 +734,31 @@ it; they read the bench's current results directly.
 - Before a run, reading probe data raises `UnboundSignalError`; declaring
   arithmetic or registering a metric does not require samples yet.
 - A probe follows the bench's results at each read. Use `snapshot()` (see
-  above) to obtain a plain Signal holding the current samples, or `corner(name)` to select retained
-  samples. Use `.point((corner, temperature, supply))` for deterministic grids
-  and `.sample((corner, index))` or `.sample((point, index))` for Monte Carlo.
+  above) to keep the current samples. Select a retained run with `.point(key)`
+  for deterministic sweeps or `.sample(key)` for Monte Carlo, using a key from
+  the returned results; `.corner(name)` is the corner-only short form.
   None creates a persisted run archive. The corner table describes
   only the latest sweep; a subsequent single `run()` or `evaluate()` replaces it.
 - Keep the bench alive: probes hold weak references to it.
   `tb.plot()` draws all registered probes; pass derived expressions explicitly.
-- Report metrics are captured numbers. Hierarchy reports retain readers for
-  their run data; ordinary unselected direct reports retain their existing
-  live-Module behavior. A retained reader is not an independent circuit.
+- Report metrics are captured numbers. Collection members and selected
+  reports retain readers for their own run data. An ordinary unselected scalar
+  `run()` or `evaluate()` report keeps the live testbench Module as
+  `sim_results`. The `SpecReport` returned by
+  `mc.rerun(key)` does too when `mc` came from a Monte Carlo run made directly
+  on an unselected testbench. Retained
+  readers share the authored circuit topology and freeze the run's analyses,
+  options and probe declarations.
+- Retained readers reread waveform data instead of keeping waveform caches.
+  Even a previously read vector becomes unreadable if its associated artifact
+  is deleted or replaced, raising a typed simulation/artifact error. Managed
+  generations may preserve the original artifact independently of its public
+  pathname. Signals already held by the caller keep their samples.
+- Retention without a rereadable artifact raises `NotSupportedError` naming
+  the backend. Ordinary direct scalar execution remains available for
+  memory-only results. Copying and pickling retain their existing availability
+  rules; a pickle is not a portable waveform archive and does not bypass
+  artifact lifetime or process ownership checks.
 - Report caching is disabled: `ModuleTestbench(cache=True)`
   emits a `UserWarning` at construction and then behaves exactly like
   `cache=False`: every `run()` simulates. A report holds the metrics from

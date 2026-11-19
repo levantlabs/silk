@@ -610,6 +610,8 @@ def test_swept_variable_resolves_behavioral_declarations_per_point(pdk, tmp_path
         assert report.metrics['y0'] == pytest.approx(
             expected(3, index, ('c0',), nominal=chosen))
         assert report.parameters['silk_run_variables'] == {'nominal': chosen}
+        assert report.sim_results.load_signal('y0').y[-1] == report.metrics['y0']
+        assert tb.probe('y0').sample((point, index)).y[-1] == report.metrics['y0']
     assert nominal.value == 0.25
     assert [row['run.nominal'] for row in mc.table()] == [0.1, 0.1, 0.7, 0.7]
     nominal.value = 0.5
@@ -655,7 +657,8 @@ def test_variable_sources_and_metrics_execute_at_the_same_point(pdk, tmp_path, w
     assert [report.metrics['live_knob'] for report in result.values()] == [1.62, 1.98]
     assert [row['observed.supply'] for row in result.table()] == [1.62, 1.98]
     assert list(tb._sweep_table) == list(result.keys()), [(key, report.rawfile_path) for key, report in result.items()]
-    for point in result.keys():
+    for point, report in result.items():
+        assert report.sim_results.load_signal('y0').y[-1] == report.metrics['y0']
         signal = tb.probe('y0').point(point)
         assert signal.y[-1] == dict(point[3])['rail']
     assert knob.value == 1.8 and source.dc is knob
@@ -692,7 +695,7 @@ def test_two_placements_sharing_a_swept_variable_keep_distinct_evidence(pdk, tmp
     for name in ('left', 'right'):
         top.add_module(child, name, nets={port: name + '_' + port for port in child.pin_list})
     selected = [top.get_test('offsets', instance=name) for name in ('left', 'right')]
-    assert selected[0].netlist is selected[1].netlist is tb.netlist
+    assert selected[0].netlist.sim_analysis_dict is selected[1].netlist.sim_analysis_dict is tb.netlist.sim_analysis_dict
     results = top.run_all_tests(n_workers=workers)
     assert len(results) == 2
     reports = list(results.values())
@@ -703,9 +706,57 @@ def test_two_placements_sharing_a_swept_variable_keep_distinct_evidence(pdk, tmp
     assert {r.owner_path for c in reports for r in c.values()} == {'$/left', '$/right'}
     assert set(r.rawfile_path for r in reports[0].values()).isdisjoint(
         r.rawfile_path for r in reports[1].values())
-    for bench in selected:
+    for bench, collection in zip(selected, reports):
+        for point, report in collection.items():
+            assert report.sim_results.load_signal('y0').y[-1] == report.metrics['y0']
+            assert bench.probe('y0').point(point).y[-1] == report.metrics['y0']
+        latest = list(collection.reports.values())[-1]
+        assert bench.netlist.results_file == latest.rawfile_path
+        assert bench.netlist.load_signal('y0').y[-1] == 0.7
+        assert list(collection.reports.values())[0].sim_results.load_signal('y0').y[-1] == 0.1
         for point in reports[0].keys():
             assert bench.probe('y0').point(point).y[-1] == dict(point[3])['level']
     assert knob.value == 0.25 and binding.dc is knob
     top.close()
     child.close()
+
+
+def test_selected_netlist_monte_carlo_uses_last_successful_sample(pdk, tmp_path):
+    child, tb = chip(pdk, tmp_path / 'child', {'offset': Normal(nominal=0.0, sigma=SIGMA)})
+    top = Module(None, str(tmp_path / 'root'), 'top.cir', None)
+    top.simulator = 'behavioral'
+    top.add_module(child, 'right', nets={port: 'right_' + port for port in child.pin_list})
+    selected = top.get_test('offsets', instance='right')
+    netlist = selected.netlist
+    try:
+        samples = selected.run_monte_carlo(3, seed=9)
+        reports = list(samples.reports.values())
+        assert netlist.results_file == reports[-1].rawfile_path
+        assert netlist.load_signal('y0').y[-1] == pytest.approx(expected(9, 2, ('right', 'c0')))
+        for index, report in enumerate(reports):
+            assert report.sim_results.load_signal('y0').y[-1] == pytest.approx(
+                expected(9, index, ('right', 'c0')))
+    finally:
+        top.close()
+        child.close()
+
+
+@pytest.mark.parametrize('through_module', [False, True])
+def test_all_retained_mc_members_read_own_files_without_caches(pdk, tmp_path, through_module):
+    from silk.circuit.test_placement import EvidenceResults
+    from silk.simulation.backend import RawResult
+    top, tb = chip(pdk, tmp_path, {'offset': Normal(nominal=0., sigma=0.1)})
+    tb.set_monte_carlo(n=20, seed=19)
+    coll = next(iter(top.run_all_tests().values())) if through_module else tb.run()
+    levels = []
+    for key, report in coll.items():
+        reader = report.sim_results
+        assert type(reader) is EvidenceResults
+        truth = RawResult(read_rawfile(report.rawfile_path), report.rawfile_path)
+        expected = reader.backend.load_signal(truth, 'y0')
+        np.testing.assert_array_equal(reader.load_signal('y0').y, expected.y)
+        np.testing.assert_array_equal(tb.probe('y0').sample(key).y, expected.y)
+        levels.append(expected.y[-1])
+        assert reader._raw.native is reader.simResultsAll
+        assert all(vec._data is None for plot in reader.simResultsAll.plots for vec in plot.vectors)
+    assert len(set(levels)) == 20

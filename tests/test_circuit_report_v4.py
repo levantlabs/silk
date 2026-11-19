@@ -301,7 +301,8 @@ def test_grid_report_uses_stable_check_keys_and_escapes_evidence(tmp_path):
     report = generate_report(_top_with_instances(tmp_path), test_results=grid,
                              auto_discover_config=False)
     html = report._to_html()
-    assert html.count('<td>same label</td>') == 2
+    assert '<td>same label (instance left)</td>' in html
+    assert '<td>same label (instance right)</td>' in html
     assert 'check.left.gain' not in html and 'check.right.gain' not in html
     assert '<script>x</script>' not in html
     assert '&lt;script&gt;x&lt;/script&gt;' in html
@@ -309,16 +310,17 @@ def test_grid_report_uses_stable_check_keys_and_escapes_evidence(tmp_path):
     assert report.test_results.table()[0]['check.right.gain'] == 'UNAVAILABLE'
 
 
-def test_empty_failure_message_grid_renders_after_json_reload(tmp_path):
+@pytest.mark.parametrize('point', ['tt', ('tt', 27.0, 1.8)])
+def test_empty_failure_message_grid_renders_after_json_reload(tmp_path, point):
     from silk.circuit.spec_report import CornerResults
-    grid = CornerResults({}, failed={('tt', 27.0, 1.8): ''})
+    grid = CornerResults({}, failed={point: ''})
     report = generate_report(_top_with_instances(tmp_path), test_results=grid,
                              auto_discover_config=False)
     path = tmp_path / 'empty-error.json'
     report.save_json(path)
     restored = CircuitReport.load_json(path)
-    assert 'PVT Grid:' in restored._to_html()
-    assert 'PVT Grid:' in restored._to_markdown()
+    assert '<h2>unnamed — FAIL</h2>' in restored._to_html()
+    assert '## unnamed — FAIL' in restored._to_markdown()
     assert restored.test_results.failed == grid.failed
     restored.print_summary()
 
@@ -342,7 +344,7 @@ def test_monte_carlo_grid_report_keeps_per_point_yield_verdict(tmp_path):
     assert 'required yield 0.7 per point' in md
     assert '| ss | 125 | 1.6 | gain floor | 2 | 0 | 1 | 0.500 |' in md
     assert '| All points (informational) |  |  | gain floor | 4 | 0 | 1 | 0.750 |' in md
-    assert '| FAIL | gain floor | &gt; | 1 | 2 | tt, 27 °C, 1.8 V | 1 | 2 | 2 |' in md
+    assert '| FAIL | gain floor | > | 1 | 2 | tt, 27 °C, 1.8 V, sample 0 | 1 | 2 | 2 | 2 | 0 |' in md
 
 
 def presentation_grid(*, failed=False):
@@ -368,7 +370,7 @@ def test_deterministic_grid_presentation_uses_spec_extrema_and_compact_runs(tmp_
     assert '## PVT Grid: ac — PASS' in md
     assert 'Summary: 2 runs (ff, tt × -40 °C × 1.62 V): 2 PASS, 0 FAIL, 0 failed and produced no report' in md
     assert '| Status | Spec | Op | Target | Worst | Worst at | Margin | Min | Max |' in md
-    assert '| PASS | DC gain &gt; 20 dB | &gt; | 20 | 30.349 | ff, -40 °C, 1.62 V | 10.349 | 30.349 | 37.533 |' in md
+    assert '| PASS | DC gain &gt; 20 dB | > | 20 | 30.349 | ff, -40 °C, 1.62 V | 10.349 | 30.349 | 37.533 |' in md
     assert '| — | offset | — | — | — | — | — | 1.23457 | 2 |' in md
     assert '| Corner | Temp (°C) | Supply (V) | Status | gain_dB | offset |' in md
     assert '| ff | -40 | 1.62 | PASS | 30.349 | 1.23457 |' in md
@@ -473,15 +475,18 @@ def test_multiple_monte_carlo_grids_keep_declared_test_order(tmp_path):
     import warnings
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
+        other = grid_collection(True)
+        for record in other.reports.values():
+            record.test_name = 'other'
         report = generate_report(_top_with_instances(tmp_path),
-            test_results={'ac': grid_collection(True), 'other': grid_collection(True)},
+            test_results={'ac': grid_collection(True), 'other': other},
             auto_discover_config=False)
         md = report._render_grid('markdown')
         assert md.count('## PVT Grid:') == 2
         assert md.index('## PVT Grid: ac') < md.index('## PVT Grid: other')
 
 
-@pytest.mark.parametrize('coverage', ['some', 'all', 'no-grid'])
+@pytest.mark.parametrize('coverage', ['some', 'all', 'corners', 'scalar', 'no-collection'])
 def test_reconciliation_rendering_omits_only_specs_covered_by_grid_identity(tmp_path, coverage):
     from dataclasses import replace
     from silk.circuit.spec_report import CornerResults, SpecReport
@@ -489,13 +494,16 @@ def test_reconciliation_rendering_omits_only_specs_covered_by_grid_identity(tmp_
     first = module.declare_spec('same label', 'gain', '>', 1., key='stable-gain')
     second = module.declare_spec('same label', 'offset', '<', 3., key='stable-offset')
     first.record_measurement(Measurement(source='user', value=2.))
-    record = SpecReport('ac', 'amp', {'gain': 2., 'offset': 1.})
+    record = SpecReport('ac', 'amp', {'gain': 2., 'offset': 1.}, corner='tt')
     record.check('different grid label', 'gain', '>', 1., spec_key=first.key, owner_path='$')
     if coverage == 'all':
         record.check('offset grid label', 'offset', '<', 3., spec_key=second.key, owner_path='$')
-    key = 'tt' if coverage == 'no-grid' else ('tt', 27., 1.8)
-    report = generate_report(module, test_results={'ac': CornerResults({key: record})},
+    key = 'tt' if coverage == 'corners' else ('tt', 27., 1.8)
+    evidence = {'ac': record if coverage == 'scalar' else CornerResults({key: record})}
+    report = generate_report(module, test_results=None if coverage == 'no-collection' else evidence,
                              auto_discover_config=False)
+    if coverage in ('corners', 'scalar'):
+        assert '| PASS | different grid label | > | 1 | 2 | tt |' in report._render_grid('markdown')
     if coverage == 'some':
         # A second placement of the same stable spec key is not covered.
         report.spec_reconciliation.outcomes.append(replace(
@@ -518,6 +526,10 @@ def test_reconciliation_rendering_omits_only_specs_covered_by_grid_identity(tmp_
             assert rendered.index('Specs measured in a single run') < rendered.index('Specs not measured')
             assert 'latest single run' not in rendered
             assert rendered.index(note) < rendered.index('1 PASS')
+        elif coverage in ('corners', 'scalar'):
+            assert 'Specs not measured' in rendered
+            assert 'same label' in rendered
+            assert '1 PASS' not in rendered
         else:
             assert note not in rendered
             assert 'same label' in rendered
@@ -528,6 +540,8 @@ def test_reconciliation_rendering_omits_only_specs_covered_by_grid_identity(tmp_
     report.save_json(path)
     restored = CircuitReport.load_json(path)
     assert restored.spec_reconciliation.as_dict() == before
+    if coverage == 'scalar':
+        assert isinstance(restored.test_results['ac'], SpecReport)
     assert restored._render_spec_reconciliation_html() == report._render_spec_reconciliation_html()
     assert restored._render_spec_reconciliation_md() == report._render_spec_reconciliation_md()
     assert restored._render_metrics_terminal() == report._render_metrics_terminal()
@@ -600,7 +614,12 @@ def test_non_grid_reconciliation_keeps_frozen_rendered_bytes(tmp_path):
         '_render_metrics_terminal': 'e12556597dcf6f6a9a6b98c5d3eba2510bddc6fa5f56871e1a674c08d74f90d8',
     }
     for method, digest in expected.items():
-        assert hashlib.sha256(getattr(report, method)().encode()).hexdigest() == digest
+        rendered = getattr(report, method)()
+        assert '(instance u0.x1)' in rendered
+        # Verify the intended spelling above and keep the historical byte check
+        # for the rest of the rendered output.
+        frozen = rendered.replace('(instance u0.x1)', '(instance u0/x1)')
+        assert hashlib.sha256(frozen.encode()).hexdigest() == digest
 
 
 def test_grouped_variable_grid_keeps_named_columns_and_worst_label(tmp_path):
@@ -621,3 +640,20 @@ def test_grouped_variable_grid_keeps_named_columns_and_worst_label(tmp_path):
     report.save_json(path)
     restored = CircuitReport.load_json(path)
     assert restored._render_grid('markdown') == md
+
+
+def test_run_table_distinguishes_nan_from_absent_metric(tmp_path):
+    from silk.circuit.spec_report import CornerResults, SpecReport
+    results = CornerResults({
+        ('tt', 85., 1.8): SpecReport('ac', 'amp', {'gain': float('nan')}),
+        ('tt', 125., 1.8): SpecReport('ac', 'amp', {}),
+    })
+    report = generate_report(_top_with_instances(tmp_path), test_results={'ac': results},
+                             auto_discover_config=False)
+    html = report._render_grid('html')
+    assert '<td>85</td><td>1.8</td><td>PASS</td><td>not measured</td>' in html
+    assert '<td>125</td><td>1.8</td><td>PASS</td><td></td>' in html
+    for mode in ('markdown', 'terminal'):
+        output = report._render_grid(mode)
+        assert '| tt | 85 | 1.8 | PASS | not measured |' in output
+        assert '| tt | 125 | 1.8 | PASS |  |' in output

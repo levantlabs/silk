@@ -1,4 +1,4 @@
-"""ModuleTestbench.probe_bus: a bus Signal over named probes (TASK-606.3, doc-1 Q40)."""
+"""ModuleTestbench.probe_bus: a bus Signal over named probes (TASK-606.3)."""
 import numpy as np
 import pytest
 

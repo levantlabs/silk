@@ -17,24 +17,77 @@ else:
     _Base = object
 
 
-def _source_current_probe_name(module, raw, signalName, signalType, analysis):
+def _source_current_probe_name(module, raw, signalName, signalType, analysis, *, declared_card=None, _plot=None, _check_ac=True):
     """Translate source cards and enforce AC limits for live and corner reads."""
     from silk.circuit.node_paths import NodeVoltageRequest
     if (isinstance(signalName, NodeVoltageRequest)
             or getattr(signalName, '_literal_voltage', False)):
         return signalName
-    if str(signalType).upper() == 'I' or str(signalName).lower().startswith('i('):
-        from silk.sources._layout import current_source_for_request, refuse_ac_current
-        source = current_source_for_request(module.sig_sources_dict, signalName, module.elem_dict)
-        if source is not None:
+    physical_card = None
+    resolved_source = None
+    if (str(signalType).upper() == 'I' or str(signalName).lower().startswith('i(')):
+        if declared_card is not None:
+            # A bound probe supplies its declared card, not an authored alias.
+            # Its backend spelling does not depend on a live source object.
+            physical_card = declared_card
+        elif hasattr(module, '_element_mgr'):
+            from silk.circuit.circuit_elements import ElementType
+            from silk.sources._layout import _current_request_key, physical_source_card
+            from silk.sources.classes import CurrentSource, VoltageSource
+            parts = _current_request_key(signalName).split('.')
+            routes = [(parts, None)]
+            if len(parts) > 1 and parts[0] in ('i', 'v'):
+                routes.append((parts[1:], parts[0]))
+            for route, native_prefix in routes:
+                owner = module
+                for part in route[:-1]:
+                    graph = owner._element_mgr
+                    entry = graph._instance_names.get(part)
+                    if entry is None or entry[0] != 'elem_dict':
+                        break
+                    placement = graph.elem_dict[entry[1]]
+                    if placement['type'] != ElementType.MODULE:
+                        break
+                    owner = placement['device']
+                else:
+                    entry = owner._element_mgr._instance_names.get(route[-1])
+                    if entry is None or entry[0] != 'sig_sources_dict':
+                        continue
+                    source = owner.sig_sources_dict.get(entry[1])
+                    if source is None or (native_prefix == 'v' and not isinstance(source, VoltageSource)) or (
+                            native_prefix == 'i' and not isinstance(source, CurrentSource)):
+                        continue
+                    prefix = '.'.join(route[:-1])
+                    cards = [(prefix + '.' if prefix else '') + card
+                             for card in source.physical_instance_names()]
+                    physical_card = physical_source_card('.'.join(route), cards)
+                    if physical_card is not None:
+                        resolved_source = source
+                        break
+        from silk.sources._layout import current_source_card, refuse_ac_current
+        from silk.sources.classes import CurrentSource
+        if declared_card is not None:
+            from types import SimpleNamespace
+            source = (SimpleNamespace(name=declared_card)
+                      if declared_card.rsplit('.', 1)[-1].lower().startswith('i') else None)
+        elif resolved_source is None:
+            source, physical_card = current_source_card(module.sig_sources_dict, signalName, module.elem_dict)
+        else:
+            source = resolved_source if isinstance(resolved_source, CurrentSource) else None
+        if source is not None and _check_ac:
             from silk.simulation.backend import select_plot
             from silk.signals.analysis_kind import plot_silk_analysis
-            plot = select_plot(raw.native, analysis)
+            plot = _plot if _plot is not None else select_plot(raw.native, analysis)
             if plot_silk_analysis(plot if plot is not None else raw.native.current_plot) == 'ac':
                 refuse_ac_current(source)
     if str(signalType).upper() == 'I' and module.simulator in ('ngspice', 'xyce'):
-        from silk.sources._layout import current_source_card
-        _, card = current_source_card(module.sig_sources_dict, signalName, module.elem_dict)
+        if declared_card is not None:
+            card = physical_card if source is not None else None
+        elif resolved_source is None:
+            card = physical_card
+        else:
+            from silk.sources.classes import CurrentSource
+            card = physical_card if isinstance(resolved_source, CurrentSource) else None
         if card is not None:
             if module.simulator == 'ngspice':
                 # ngspice's hierarchical independent-current device spelling.
@@ -46,15 +99,66 @@ def _source_current_probe_name(module, raw, signalName, signalType, analysis):
         elif module.simulator == 'ngspice':
             from silk.sources._layout import source_instances, physical_source_card
             from silk.sources.classes import VoltageSource
-            for _, source, prefix in source_instances(module.sig_sources_dict, module.elem_dict):
-                if not prefix or not isinstance(source, VoltageSource):
-                    continue
-                voltage_card = physical_source_card(
-                    signalName, [prefix + name for name in source.physical_instance_names()])
-                if voltage_card is not None:
-                    signalName = 'v.' + voltage_card
-                    break
+            voltage_card = None
+            if declared_card is not None:
+                if declared_card.rsplit('.', 1)[-1].lower().startswith('v'):
+                    voltage_card = declared_card
+            elif resolved_source is not None:
+                if isinstance(resolved_source, VoltageSource) and native_prefix is None:
+                    voltage_card = physical_card
+            else:
+                for _, source, prefix in source_instances(module.sig_sources_dict, module.elem_dict):
+                    if not prefix or not isinstance(source, VoltageSource):
+                        continue
+                    voltage_card = physical_source_card(
+                        signalName, [prefix + name for name in source.physical_instance_names()])
+                    if voltage_card is not None:
+                        break
+            if voltage_card is not None and '.' in voltage_card:
+                signalName = 'v.' + voltage_card
     return signalName
+
+
+def _load_signal(module, raw, signalName, signalType, analysis, *, resolution=None):
+    """Acquire a signal; a current read can supply its plot and row proof.
+
+    The proof belongs to this call only. The ordinary Module reader and the
+    current-path reader share the same capability checks and acquisition.
+    """
+    from silk.circuit.node_paths import NodeVoltageRequest, resolve_node_request
+    signalName = resolve_node_request(module, raw, signalName, analysis)
+    from silk.simulation.behavioral_backend import (
+        BEHAVIORAL_COMMAND, refuse_behavioral_probe)
+    if any(plot.command == BEHAVIORAL_COMMAND
+           for plot in getattr(raw.native, 'plots', ())):
+        refuse_behavioral_probe(module, signalName, signalType)
+    if (':' in signalName and not getattr(signalName, '_literal_voltage', False)
+            and not isinstance(signalName, NodeVoltageRequest)):
+        prefix, _, suffix = signalName.rpartition(':')
+        from silk.simulation.backend import DEVICE_OP_PARAMS
+        if suffix in DEVICE_OP_PARAMS:
+            return module._load_device_probe(raw, prefix, suffix,
+                                           analysis=analysis)
+    if resolution is None:
+        signalName = _source_current_probe_name(module, raw, signalName, signalType, analysis)
+        return module.backend.load_signal(raw, signalName, type=signalType, analysis=analysis)
+    plot, matches, is_op = resolution
+    if plot is None:
+        from silk.simulation.backend import select_plot
+        from silk.signals.analysis_kind import ANALYSIS_OP, rawfile_analysis_kind
+        plot = select_plot(raw.native, analysis)
+        if plot is None:
+            plot = raw.native.current_plot
+        is_op = rawfile_analysis_kind(plot) == ANALYSIS_OP
+        resolution[0], resolution[2] = plot, is_op
+    signalName = _source_current_probe_name(module, raw, signalName, signalType, analysis, _plot=plot)
+    from silk.vector_match import collect_vector_candidates
+    first = 0 if is_op else 1
+    key = (signalName, first)
+    if key not in matches:
+        matches[key] = collect_vector_candidates(plot, signalName, signalType, first=first)
+    return module.backend.load_signal(raw, signalName, type=signalType, analysis=analysis,
+                                      _resolved=(plot, matches[key], is_op))
 
 
 def _trapezoid_window(t, y, tstart):
@@ -633,13 +737,47 @@ def xyce_draw_name_map(elem_dict, record):
     *record* is the PDK's ``statistical.record`` (device type -> drawn
     parameters). Returns ``(name_map, params, skipped_types)``: the Xyce
     instance prefix (``'XOFF:XM1'``) -> designer name (``'off.m1'``), the
-    designer name -> its recorded parameter names, and the device types with
-    no ``record`` entry (not recorded). Same walk as :func:`xyce_op_print_terms`.
+    designer name -> its recorded parameter names, and PDK device types present
+    but not recorded, once in encounter order. Explicit targets map full model
+    column identities to final (designer, parameter) pairs; legacy MOS lists
+    retain prefix mappings.
     """
+    from collections.abc import Mapping
     from silk.circuit.emitted_names import emitted_instance_name
+    from silk.pdk.basepdk import PDKDevice
+    from silk.elements.base import AnalogElement
     name_map, params, skipped = {}, {}, []
-    for instance_path, designer_path, name, device in _iter_mos_device_paths(elem_dict):
+    for instance_path, designer_path, name, device in _iter_all_device_paths(elem_dict):
         kind = getattr(device, 'device_name', None)
+        entry = record.get(kind)
+        genuine = (isinstance(device, PDKDevice) or
+                   (isinstance(device, AnalogElement) and
+                    getattr(device, '_is_pdk_device', False) and
+                    getattr(device, '_pdk_device', None) and kind))
+        if isinstance(entry, Mapping):
+            if not genuine:
+                continue
+            leaf = emitted_instance_name(device, name)
+            prefix = ':'.join((instance_path.split('.') if instance_path else [])
+                              + [leaf]).upper()
+            designer = f'{designer_path}.{name}' if designer_path else name
+            labels = []
+            for internal, target in entry.items():
+                for param in target['params']:
+                    label = f'{internal}.{param}'
+                    column = f"{prefix}:{target['xyce_model']}:{param}".upper()
+                    name_map[column] = (designer, label)
+                    labels.append(label)
+            params[designer] = tuple(labels)
+            continue
+        if _is_ideal_passive(device) or not (_device_pin_names(device) >= _MOS_TERMINALS):
+            if (isinstance(device, PDKDevice) or
+                    (isinstance(device, AnalogElement) and
+                     getattr(device, '_is_pdk_device', False) and
+                     getattr(device, '_pdk_device', None) and kind)):
+                if kind not in skipped:
+                    skipped.append(kind)
+            continue
         if kind not in record:
             if kind not in skipped:
                 skipped.append(kind)
@@ -1505,23 +1643,6 @@ def _si_scale(values, base_unit):
 class _ResultsMethods(_Base):
     """Result-loading / signal / plotting methods mixed into ``Module``. Holds no state."""
 
-    def get_output_signal_list(self):
-        """Print a header for the available output signals.
-
-        Raises
-        ------
-        SimulationError
-            If no results file has been loaded. Use :meth:`load_file` first.
-
-        Notes
-        -----
-        This currently prints only the line ``List of signals`` and returns
-        ``None``; use :meth:`get_signal_names` to get the names themselves.
-        """
-        if not self.output_file_available:
-            raise SimulationError('File not loaded. Run load_file first.')
-        print('List of signals')
-
     def load_file(self, dataFile, simulatorType='ngspice'):
         """Point ``read_raw_file()`` at a rawfile.
 
@@ -1529,9 +1650,7 @@ class _ResultsMethods(_Base):
         this module's ``dir_folder``. This lets ``load_file('rawfile.raw')``
         find the module's output from another working directory. If the
         named file differs from the in-memory result of the last run, the
-        cached result is dropped so ``read_raw_file()`` actually opens the
-        file — it used to silently reuse the cache, making this call a
-        no-op in-session.
+        cached result is dropped so ``read_raw_file()`` opens the named file.
 
         ``simulatorType`` names the simulator that produced the file. It is a
         hint only — nothing in the rawfile records it — and is used to
@@ -1548,7 +1667,11 @@ class _ResultsMethods(_Base):
 
         Notes
         -----
-        Nothing is read here; the file is opened by the next result access.
+        Nothing is read here. Call :meth:`read_raw_file` to load results before
+        using :meth:`get_signal_names`, :meth:`load_signal` or :meth:`plot`;
+        these methods do not load a selected file automatically. To load a
+        rawfile and evaluate a testbench's metrics and specs, use
+        ``tb.evaluate(rawfile=path)``.
         If the path differs from the last run's rawfile, the cached results
         and operating conditions are dropped.
         """
@@ -1605,7 +1728,16 @@ class _ResultsMethods(_Base):
         Parameters
         ----------
         signalName : str
-            Rawfile signal name (``'vout'``, ``'xdut.vmid'``).
+            A netlist signal name (``'vout'``, ``'xdut.vmid'``), or a logical
+            source current such as ``'i(vs)'``. A name matching a card in this
+            circuit keeps its raw meaning, even if it also names a source.
+            Logical source lookup requires
+            this reader's circuit and saved current operands. A bare name with
+            ``signalType='I'`` names a physical card, without source-name lookup.
+            Ordinary voltage strings do not resolve designer node paths;
+            use a testbench probe or metric signal slot for those paths.
+            Device-parameter names require the DUT and the run's predeclared
+            probe. Reads do not add saved vectors.
         signalType : str
             ``'V'`` or ``'I'``.
         analysis : {'tran', 'ac', 'dc', 'noise', 'op'}, optional
@@ -1659,24 +1791,37 @@ class _ResultsMethods(_Base):
             from silk.simulation.backend import RawResult
             raw = RawResult(native=self.simResultsAll,
                             source_path=getattr(self, 'results_file', ''))
-        from silk.circuit.node_paths import NodeVoltageRequest, resolve_node_request
-        signalName = resolve_node_request(self, raw, signalName, analysis)
-        from silk.simulation.behavioral_backend import (
-            BEHAVIORAL_COMMAND, refuse_behavioral_probe)
-        if any(plot.command == BEHAVIORAL_COMMAND
-               for plot in getattr(raw.native, 'plots', ())):
-            refuse_behavioral_probe(self, signalName, signalType)
-        if (':' in signalName and not getattr(signalName, '_literal_voltage', False)
-                and not isinstance(signalName, NodeVoltageRequest)):
-            prefix, _, suffix = signalName.rpartition(':')
-            from silk.simulation.backend import DEVICE_OP_PARAMS
-            if suffix in DEVICE_OP_PARAMS:
-                return self._load_device_probe(raw, prefix, suffix,
-                                               analysis=analysis)
-        signalName = _source_current_probe_name(self, raw, signalName,
-                                                signalType, analysis)
-        return self.backend.load_signal(raw, signalName, type=signalType,
-                                        analysis=analysis)
+        from silk.circuit.node_paths import NodeVoltageRequest
+        if (isinstance(signalName, str)
+                and not isinstance(signalName, NodeVoltageRequest)
+                and not getattr(signalName, '_literal_voltage', False)
+                and str(signalType).upper() in ('V', 'I')
+                and signalName.lstrip()[:2].lower() == 'i('):
+            from silk.circuit.module_test import _split_spice_selector, _load_metric_path
+            head, inner = _split_spice_selector(signalName)
+            if head == 'i':
+                from silk.circuit.circuit_elements import ElementType
+                from silk.spice_names import spice_component
+                parts = inner.replace(':', '.').lower().split('.')
+                owner = self
+                known_card = False
+                for part in parts[:-1]:
+                    graph = owner._element_mgr
+                    record = graph._instance_names.get(spice_component(part))
+                    if record is None or record[0] != 'elem_dict':
+                        break
+                    entry = graph.elem_dict[record[1]]
+                    if entry['type'] != ElementType.MODULE:
+                        break
+                    owner = entry['device']
+                else:
+                    known_card = (spice_component(parts[-1])
+                                  in owner._element_mgr._instance_names)
+                if not known_card:
+                    from silk.circuit.node_paths import node_candidates
+                    if node_candidates(self, sources=True, request=inner):
+                        return _load_metric_path(self, signalName, _direct=True, analysis=analysis)
+        return _load_signal(self, raw, signalName, signalType, analysis)
 
     def _load_device_probe(self, raw, designer_name, param, *, analysis=None):
         """Read-time counterpart of the ``'<name>:<param>'`` probe spelling. Re-resolves the device address against THIS module's
@@ -1719,9 +1864,11 @@ class _ResultsMethods(_Base):
         # ngspice preflight (TASK-330.8, reviewer ruling 2026-09-28, fix B):
         # a param the preflight already found unavailable was never saved
         # in this run at all -- raised here directly, never a rawfile read.
-        preflight_unavailable = getattr(
-            getattr(self, 'netlister', None), '_preflight_unavailable_params',
-            None) or {}
+        preflight_unavailable = getattr(raw, '_preflight_unavailable_params', None)
+        if preflight_unavailable is None:
+            preflight_unavailable = getattr(
+                getattr(self, 'netlister', None), '_preflight_unavailable_params',
+                None) or {}
         preflight_result = preflight_unavailable.get((designer_name, param))
         if preflight_result is not None:
             raise self.backend.preflight_unavailable_error(

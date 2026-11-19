@@ -207,19 +207,10 @@ _KIND_ANALYSIS = {
     ANALYSIS_OP: 'op',
 }
 
-#: The analysis words a caller may pass as ``analysis=``. DERIVED from the
-#: translation above rather than authored again: it is, by construction, the
-#: set of words :func:`plot_silk_analysis` can return. It equals
-#: ``SILK_ANALYSES`` (silk/signals/kinds.py) PLUS ``'op'``: ``'op'`` is a
-#: real, selectable silk analysis, but is deliberately kept OUT of
-#: ``SILK_ANALYSES`` (the published metric-schema vocabulary) so it can never
-#: become a legal ``SignalKind.produced_by`` / ``@metric(domain=...)`` value
-#: by construction; widening the schema vocabulary to include it is a
-#: schema compatibility change. ``SILK_ANALYSES`` lives in
-#: that module — a deliberate LEAF with a pinned importer list, and reading
-#: it from here to validate a keyword is not worth widening that list
-#: (``tests/test_multi_analysis_plots.py`` asserts
-#: ``SELECTABLE_ANALYSES == SILK_ANALYSES + ('op',)``).
+#: The accepted ``analysis=`` selector words, in order:
+#: ``('tran', 'ac', 'dc', 'noise', 'op')``. A selected analysis must be
+#: available in the test/results and compatible with the metric. This is
+#: distinct from the four-word metric-schema vocabulary ``SILK_ANALYSES``.
 SELECTABLE_ANALYSES = tuple(_KIND_ANALYSIS.values())
 
 

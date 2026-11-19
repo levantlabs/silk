@@ -66,12 +66,16 @@ def test_declare_spec_rejects_duplicate_local_key_before_appending(tmp_path):
         key='dc_gain',
     )
 
-    with pytest.raises(DuplicateNameError, match='dc_gain'):
+    with pytest.raises(DuplicateNameError, match='dc_gain') as caught:
         top.declare_spec(
             name='Renamed display', metric='gain', op='>=', target=60.0,
             key='dc_gain',
         )
 
+    message = str(caught.value)
+    assert message.startswith("Spec key 'dc_gain' is already declared on module 'top'")
+    assert 'module-wide' in message and 'testbenches' in message
+    assert 'distinct key=' in message and 'display name can stay the same' in message
     assert top._specs == [first]
 
 

@@ -144,3 +144,16 @@ def test_default_single_plot_ambiguity_names_the_real_plot():
         NgspiceSignal.from_rawfile(raw, 'xx1[0].mid', 'V')
     assert 'Transient Analysis' in str(exc.value)
     assert '(unnamed plot)' not in str(exc.value)
+
+
+@pytest.mark.parametrize('kind', ['V', 'I'])
+@pytest.mark.parametrize('first', [0, 1])
+def test_one_read_batch_preserves_each_requests_candidate_union(kind, first):
+    from silk.vector_match import collect_vector_candidates
+    raw = _raw('i(Vs[0])', 'I(vs<0>)', 'vs<0>', 'I(XDUT:VS<0>)',
+               '@i.xdut.ib[current]', 'v(vs<0>)', 'i(vs<0>))', 'noise_out')
+    plot = raw.plots[0]
+    requests = ('Vs[0]', 'vs<0>', 'i(vs<0>)', 'xdut.vs[0]',
+                '@i.xdut.ib[current]', 'noise_out', 'absent')
+    expected = [collect_vector_candidates(plot, name, kind, first=first) for name in requests]
+    assert collect_vector_candidates(plot, '', kind, first=first, _requests=requests) == expected

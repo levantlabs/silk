@@ -1,19 +1,20 @@
-"""Graph-backed node voltage addresses; raw vector acquisition stays in the backend."""
+"""Graph-backed node and source addresses; raw acquisition stays in the backend."""
 from dataclasses import dataclass
 from types import SimpleNamespace
 import warnings
 
 from silk.circuit.placement_reference import LiteralVoltageName, _resolve_path
-from silk.exceptions import CircuitError
+from silk.exceptions import CircuitError, SimulationError
 from silk.vector_match import collect_vector_candidates, first_row
 
 
 @dataclass(frozen=True)
 class NodeCandidate:
-    """One authored node in one placement, before flattened-name disambiguation."""
+    """One authored node or source in one placement, before address disambiguation."""
     components: tuple
     chain: tuple
     leaf: str
+    source = None
 
     @property
     def designer(self):
@@ -21,24 +22,56 @@ class NodeCandidate:
 
     @property
     def address(self):
+        if self.source is not None:
+            layout = getattr(self.source, 'physical_layout', None)
+            terms = layout().current_terms if layout is not None else ((self.source.instance_name, 1),)
+            return tuple((_resolve_path(self.chain, card, follow_ports=False), sign)
+                         for card, sign in terms)
         return LiteralVoltageName(_resolve_path(self.chain, self.leaf))
 
 
-def node_candidates(module):
-    """Enumerate records, retaining dotted-name collisions and wired port aliases."""
+def node_candidates(module, *, sources=False, request=None):
+    """Structural addresses; sources=None includes nodes and sources in one walk."""
     from silk.circuit.circuit_elements import ElementType
+    if sources is not False:
+        from silk.circuit.emitted_names import emitted_submodule_name
+        from silk.sources._layout import source_instances
 
-    def walk(mod, components=(), chain=(), active=()):
+    def walk(mod, components=(), chain=(), active=(), remaining=request):
         if id(mod) in active:
             return
-        for name in dict.fromkeys((*mod.net_dict, *(mod.pin_list or {}))):
-            yield NodeCandidate(components, chain, name)
-        for key, entry in mod.elem_dict.items():
+        if sources is not False:
+            selected = (mod.sig_sources_dict if remaining is None else
+                        {name: source for name, source in mod.sig_sources_dict.items()
+                         if str(name).lower() == remaining.lower()})
+            for name, source, _ in source_instances(selected) if selected else ():
+                record = NodeCandidate(components, chain, name)
+                object.__setattr__(record, 'source', source)
+                yield record
+                if remaining is not None:
+                    break  # Preserve the existing case-equivalent source-key order.
+        if sources is not True:
+            for name in dict.fromkeys((*mod.net_dict, *(mod.pin_list or {}))):
+                yield NodeCandidate(components, chain, name)
+        # A complete source leaf cannot name a descendant placement.
+        if sources is True and remaining is not None and '.' not in remaining:
+            return
+        elements = mod.elem_dict if sources is False else getattr(mod, 'elem_dict', {})
+        for key, entry in elements.items():
             if entry.get('type') == ElementType.MODULE:
+                tail = remaining
+                if sources and remaining is not None:
+                    prefixes = {str(key).lower(), 'x' + str(key).lower(),
+                                emitted_submodule_name(str(key)).lower()}
+                    tail = next((remaining[len(prefix) + 1:] for prefix in prefixes
+                                 if remaining.lower().startswith(prefix + '.')), None)
+                    if tail is None:
+                        continue
                 yield from walk(entry['device'], (*components, key),
-                                (*chain, (mod, key, entry)), (*active, id(mod)))
+                                (*chain, (mod, key, entry)), (*active, id(mod)), tail)
 
-    return list(walk(module)) if module is not None else []
+    normalized = request.replace(':', '.') if sources and request is not None else request
+    return list(walk(module, remaining=normalized)) if module is not None else []
 
 
 def _targets(records, *, ignore_unconnected=False):
@@ -53,7 +86,9 @@ def _targets(records, *, ignore_unconnected=False):
             raise
         # Literal leaf punctuation and hierarchy punctuation have different
         # Xyce forms even when their flattened dot spelling is identical.
-        key = frozenset(form.casefold() for form in address.voltage_forms())
+        key = (tuple((card.casefold(), sign) for card, sign in address)
+               if isinstance(address, tuple) else
+               frozenset(form.casefold() for form in address.voltage_forms()))
         targets.setdefault(key, address)
     return list(targets.values())
 
@@ -87,7 +122,18 @@ def node_request(module, name):
     return NodeVoltageRequest(name, known_designer=any(r.designer == name for r in records))
 
 
-def _warn(request, targets):
+def _warn(request, targets, *, signal_type='V'):
+    if signal_type == 'I':
+        alternatives = []
+        for terms in targets:
+            alternatives.append(' + '.join(
+                ('' if sign == 1 else f'{sign} * ') + f'tb.probe({card!r}, \'I\')'
+                for card, sign in terms))
+        warnings.warn(
+            f'Current request i({str(request).lower()}) also names a different source. '
+            'The emitted reading is used; select the other current with '
+            + ' or '.join(alternatives) + '.', UserWarning, stacklevel=4)
+        return
     warnings.warn(
         f'Node request {str(request)!r} also matches designer spelling '
         f'{str(request)!r}. The emitted reading is used; select the designer '
@@ -115,47 +161,88 @@ def resolve_node_request(module, raw, request, analysis=None):
                                   _save_list_inventory(module) if module is not None else [])
 
 
-def resolve_node_inventory(plot, request, records, physical):
+def resolve_node_inventory(plot, request, records, physical, *, signal_type='V', known_designer=False, _matches=None):
     """Scalar node semantics over already-enumerated circuit facts.
 
     The viewer uses this same proof without walking the graph for each alias.
     """
-    original = collect_vector_candidates(plot, str(request), first=first_row(plot))
+    def rows(target):
+        if signal_type == 'I':
+            terms = target if isinstance(target, tuple) else ((target, 1),)
+            found = []
+            first = first_row(plot)
+            for card, sign in terms:
+                key = (card, first)
+                if _matches is None:
+                    indices = collect_vector_candidates(plot, card, 'I', first=first)
+                else:
+                    if key not in _matches:
+                        _matches[key] = collect_vector_candidates(plot, card, 'I', first=first)
+                    indices = _matches[key]
+                found.append((tuple(indices), sign))
+            return tuple(found)
+        return tuple(collect_vector_candidates(plot, target, first=first_row(plot)))
+
+    first = first_row(plot)
+    key = (str(request), first)
+    if _matches is None:
+        original = collect_vector_candidates(plot, str(request), signal_type, first=first)
+    else:
+        if key not in _matches:
+            _matches[key] = collect_vector_candidates(plot, str(request), signal_type, first=first)
+        original = _matches[key]
     if len(original) > 1:
         return request  # Preserve the backend's AmbiguousSignalError.
     matching = [r for r in records if r.designer == request]
     if original:
         designer = _targets(matching, ignore_unconnected=True)
-        if designer and any(collect_vector_candidates(plot, target, first=first_row(plot)) != original
-                            for target in designer):
-            _warn(request, designer)
+        original_rows = ((tuple(original), 1),) if signal_type == 'I' else tuple(original)
+        if designer and any(rows(target) != original_rows for target in designer):
+            _warn(request, designer, signal_type=signal_type)
         return request
 
     # A structurally known emitted node still wins when omitted by a save list.
-    inventory = SimpleNamespace(vectors=[SimpleNamespace(name=f'v({a})') for a in physical])
-    emitted = collect_vector_candidates(inventory, str(request), first=0)
+    inventory = SimpleNamespace(vectors=[SimpleNamespace(name=f'{signal_type.lower()}({a})') for a in physical])
+    emitted = collect_vector_candidates(inventory, str(request), signal_type, first=0)
     designer = _targets(matching, ignore_unconnected=bool(emitted))
     if emitted:
         old = {str(physical[i]).casefold() for i in emitted}
-        if designer and old != {str(a).casefold() for a in designer}:
-            _warn(request, designer)
+        targets = ({str(card).casefold() for terms in designer for card, _ in terms}
+                   if signal_type == 'I' else {str(a).casefold() for a in designer})
+        if designer and old != targets:
+            _warn(request, designer, signal_type=signal_type)
         return request
+    # One structural current target needs no row-identity comparison: the
+    # loader will check its operands once when acquiring them.
+    if signal_type == 'I' and len(designer) == 1:
+        return designer[0]
     # In a dot-separated result two structural forms may reach the same
     # physical row. Deduplicate that proven identity, retaining unsaved
     # candidates (absence is not evidence that two targets are identical).
     unique = {}
     for target in designer:
-        rows = tuple(collect_vector_candidates(plot, target, first=first_row(plot)))
-        key = ('rows', rows) if rows else ('address', tuple(sorted(target.voltage_forms())))
+        matched = rows(target)
+        complete = (all(indices for indices, _ in matched) if signal_type == 'I' else bool(matched))
+        address = target if signal_type == 'I' else tuple(sorted(target.voltage_forms()))
+        key = ('rows', matched) if complete else ('address', address)
         unique.setdefault(key, target)
     designer = list(unique.values())
     if len(designer) > 1:
+        if signal_type == 'I':
+            raise CircuitError(
+                f'Source path {str(request)!r} is ambiguous: distinct physical current '
+                f'terms {designer!r}. Use the explicit physical current cards.')
         raise CircuitError(
             f'Node path {str(request)!r} is ambiguous: distinct physical nodes '
             f'{list(map(str, designer))!r}. Use a placement net reference '
             f'(child(...).net(...)) or an emitted path.')
     if designer:
         return designer[0]
+    if signal_type == 'I':
+        if known_designer:
+            raise SimulationError(f'Source {str(request)!r} is no longer present in this circuit; '
+                               'declare a new source probe or use an explicit raw current.')
+        return request
     hint = dut_hint(records, request)
     if hint:
         raise CircuitError(f'Node {str(request)!r} is absent from this bench.{hint}')

@@ -1069,6 +1069,21 @@ def test_generate_testbenches_points_accepts_si_string():
     compile(code, "<generated>", "exec")
 
 
+@pytest.mark.parametrize("kind", ["ac", "noise"])
+@pytest.mark.parametrize("bad_points", [1.5, "1.5", "invalid", 0, -1, True, 10**400, "1e400"])
+def test_generate_testbenches_bad_points_names_test_and_field(kind, bad_points):
+    spec = _tb_spec_with_points(bad_points)
+    test = spec["tests"][0]
+    test["name"] = "frequency_response"
+    test["analyses"][0]["kind"] = kind
+    if kind == "noise":
+        test["sources"] = [{"instance": "vin", "type": "VoltageSource",
+                            "positive": "in", "negative": "gnd", "dc": 0}]
+        test["analyses"][0]["source"] = "vin"
+    with pytest.raises(TestbenchSpecError, match=r"frequency_response.*points"):
+        Generator().generate_testbenches(spec)
+
+
 @pytest.mark.parametrize("bad_points", [
     "10.5",
     "x); import os #",
@@ -1270,3 +1285,117 @@ def test_authored_variable_domain_collision_refuses_before_write(tmp_path, direc
     with pytest.raises(ValueError, match='clashes with voltage domain'):
         Generator().generate_to_file(spec, str(target))
     assert target.read_text() == 'keep me' if exists else not target.exists()
+
+
+@pytest.mark.parametrize('testbench', [False, True])
+@pytest.mark.parametrize('value,literal', [
+    (1.23456789e-9, '1.23456789e-09'),
+    (-1.23456789e-9, '-1.23456789e-09'),
+    (123456789.123, '123456789.123'),
+    (-123456789.123, '-123456789.123'),
+    (1.2345678901234567e-9, '1.23456789012346e-09'),
+    (123456789012345.0, '123456789012345.0'),
+    (1.7976931348623157e308, '1.7976931348623157e+308'),
+    (-1.7976931348623157e308, '-1.7976931348623157e+308'),
+    (1e-9, '1e-09'), (40e-9, '4e-08'), (2.5e6, '2.5e+06'),
+    (1e6, '1e+06'), (1.0, '1.0'), (0.0, '0.0'), (-0.0, '-0.0'),
+    (0.8022651269, '0.8022651269'),
+    (0.1 + 0.2, '0.30000000000000004'),
+    (0.001, '0.001'), (0.000999999999, '0.000999999999'),
+    (999999.999999, '999999.999999'),
+    (1000000.00001, '1000000.00001'),
+    (12345678901234567890, '12345678901234567890'),
+    (1, '1'), ('1.23456789n', "'1.23456789n'"),
+])
+def test_generated_numeric_component_precision(value, literal, testbench):
+    """Generated factory calls retain precision, float type and exact spellings."""
+    from silk.elements import ElementLibrary
+    spec = {'circuit_name': 'precision', 'ports': {}, 'ideal_elements': [
+        {'type': 'resistor', 'instance': 'r',
+         'nets': {'p': 'out', 'n': 'gnd'}, 'params': {'value': value}},
+    ]}
+    def generate():
+        if testbench:
+            return Generator().generate_testbenches({'circuit_name': 'precision',
+                'tests': [dict(spec, name='measure', dut_portmap={})]})
+        return Generator().generate(spec)
+
+    code = generate()
+    compile(code, '<precision>', 'exec')
+    line = next(line.strip() for line in code.splitlines()
+                if line.strip().startswith(('mod.add(', 'tb.add(')))
+    assert f'value={literal})' in line
+    element = eval(line.split('.add(', 1)[1][:-1], {'elements': ElementLibrary()})
+    expected = eval(literal)
+    if isinstance(expected, (int, float)):
+        assert element.value == expected
+        assert type(element.value) is type(expected)
+        # Rebuild the input spec from the constructed component, not interface metadata.
+        spec['ideal_elements'][0]['params']['value'] = element.value
+        assert generate() == code
+
+
+@pytest.mark.parametrize('testbench', [False, True])
+@pytest.mark.parametrize('analysis_spec', [
+    {'type': 'transient', 'step': 1.23456789e-9, 'stop': 123456789.123},
+    {'type': 'ac', 'fstart': 1.23456789e-9, 'fstop': 123456789.123},
+    {'type': 'dc', 'source': 'vin', 'start': 1.23456789e-9,
+     'stop': 123456789.123, 'step': 1.23456789e-9},
+    {'type': 'noise', 'source': 'vin', 'fstart': 1.23456789e-9,
+     'fstop': 123456789.123},
+])
+def test_generated_analysis_numeric_precision(testbench, analysis_spec):
+    source = {'type': 'VoltageSource', 'instance': 'vin',
+              'positive': 'out', 'negative': 'gnd', 'dc': 1.0}
+    if testbench:
+        code = Generator().generate_testbenches({'circuit_name': 'precision',
+            'tests': [{'name': 'measure', 'dut_portmap': {}, 'sources': [source],
+                       'analyses': [dict(analysis_spec, kind=analysis_spec['type'])]}]})
+    else:
+        code = Generator().generate({'circuit_name': 'precision',
+            'sources': [source], 'simulation': analysis_spec})
+    compile(code, '<precision>', 'exec')
+    line = next(line for line in code.splitlines() if '.add_sim_type(' in line)
+    assert '1.23456789e-09' in line
+    assert '123456789.123' in line
+
+
+def test_generated_domain_and_array_numeric_precision():
+    import ast
+    spec = {'circuit_name': 'precision', 'ports': {},
+        'voltage_domains': {'rail': {'nominal': 123456789.123,
+            'tolerance': 1.23456789e-9, 'min': 1.23456789e-9,
+            'max': 123456789.123}},
+        'devices': [{'type': 'nmos1p8', 'instance': 'm', 'array': 2,
+            'nets': {'d': 'out', 'g': 'out', 's': 'gnd', 'b': 'gnd'},
+            'params': {'w': 1.23456789e-9, 'l': 123456789.123}},
+            {'type': 'nmos1p8', 'instance': 'scalar',
+             'nets': {'d': 'out', 'g': 'out', 's': 'gnd', 'b': 'gnd'},
+             'params': {'w': 1.23456789e-9, 'l': 123456789.123}}],
+        'ideal_elements': [{'type': 'resistor', 'instance': 'r', 'array': 2,
+            'nets': [{'p': 'out', 'n': 'gnd'}, {'p': 'out', 'n': 'gnd'}],
+            'params': {'value': 1.23456789e-9}},
+            {'type': 'resistor', 'instance': 'broadcast', 'array': 2,
+             'nets': {'p': 'out', 'n': 'gnd'},
+             'params': {'value': 123456789.123}}]}
+    code = Generator().generate(spec)
+    tree = ast.parse(code)
+    domain = next(n for n in ast.walk(tree) if isinstance(n, ast.Call)
+                  and isinstance(n.func, ast.Name) and n.func.id == 'VoltageDomain')
+    assert {k.arg: ast.literal_eval(k.value) for k in domain.keywords} == {
+        'nominal': 123456789.123, 'tolerance': 1.23456789e-9,
+        'min': 1.23456789e-9, 'max': 123456789.123}
+    from silk import load_pdk
+    from silk.elements import ElementLibrary
+    capture = _CaptureModule()
+    ns = {'pdk': load_pdk('sky130'), 'elements': ElementLibrary(), 'mod': capture}
+    for line in code.splitlines():
+        if line.startswith(('mod.add(', 'for i in ', '__silk_')):
+            exec(line, ns)
+    assert [device.params['w'] for device in capture.added[:3]] == [
+        1.23456789e-9, 1.23456789e-9, 1.23456789e-9]
+    assert [device.params['l'] for device in capture.added[:3]] == [
+        123456789.123, 123456789.123, 123456789.123]
+    assert [element.value for element in capture.added[3:]] == [
+        1.23456789e-9, 1.23456789e-9, 123456789.123, 123456789.123]
+    compile(code, '<precision>', 'exec')

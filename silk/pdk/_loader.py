@@ -172,9 +172,19 @@ def load_pdk(name, *, pdk_root=None, library_location=None, corner=None,
         parse_statistical(lib_conf['statistical'], root, m['name'])
         if lib_conf.get('statistical') else None)
 
-    return cls(yaml_path, lib, user_units=umode,
+    pdk = cls(yaml_path, lib, user_units=umode,
                corners=corners,
                default_corner=corner or lib_conf['default_corner'],
                extra_includes=extra, pdk_name=m['name'], osdi_files=osdi,
                xyce_library_location=xyce_lib, xyce_extra_includes=xyce_extra,
                statistical=statistical)
+
+    if statistical is not None:
+        from silk.exceptions import PDKError
+        for index, (devices, message) in enumerate(statistical.process_warnings):
+            unknown = sorted(set(devices) - set(pdk.model_names))
+            if unknown:
+                raise PDKError(
+                    f"PDK {m['name']!r}: library.statistical.process.warnings[{index}] "
+                    f"contains unknown catalog device types: {', '.join(unknown)}")
+    return pdk

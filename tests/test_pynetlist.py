@@ -732,21 +732,6 @@ class TestGetSignalNames:
 
 
 
-class TestGetOutputSignalList:
-
-    def test_raises_when_file_not_loaded(self, empty_netlist):
-        """get_output_signal_list raises CircuitError when no file loaded."""
-        with pytest.raises(CircuitError, match='not loaded'):
-            empty_netlist.get_output_signal_list()
-
-    def test_prints_when_file_available(self, empty_netlist, capsys):
-        """get_output_signal_list prints when file is available."""
-        empty_netlist.output_file_available = True
-        empty_netlist.get_output_signal_list()
-        captured = capsys.readouterr()
-        assert 'List of signals' in captured.out
-
-
 # ---------------------------------------------------------------------------
 # Tracking-enabled paths with mocked database
 # ---------------------------------------------------------------------------

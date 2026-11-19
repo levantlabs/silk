@@ -55,6 +55,8 @@ def test_op_transient_and_measured_current(tmp_path, pdk, backend, cls, sign, sl
     assert voltage.y[0] == pytest.approx(sign * (dc + initial), abs=1e-8)
     current = _load_metric_path(mod, 'i(stim)')
     np.testing.assert_allclose(current.y, -voltage.y, atol=1e-8)
+    np.testing.assert_array_equal(mod.load_signal('i(stim)', 'I').x, current.x)
+    np.testing.assert_allclose(mod.load_signal('i(stim)', 'I').y, current.y, atol=1e-8)
     if slot in ('pulse', 'sine', 'pwl', 'waveform'):
         np.testing.assert_allclose(voltage.y, sign * mod.sig_sources_dict['stim'].to_numpy(voltage.x), atol=1e-7)
 
@@ -110,6 +112,8 @@ def test_nested_array_current_sum_and_ac_refusal(tmp_path, pdk, backend):
     voltage = tb.probe('out')
     tb.run()
     np.testing.assert_allclose(current.y, -voltage.y, atol=1e-8)
+    np.testing.assert_array_equal(tb.netlist.load_signal('i(xdut.xleaf[0].stim[0])', 'I').x, current.x)
+    np.testing.assert_allclose(tb.netlist.load_signal('i(xdut.xleaf[0].stim[0])', 'I').y, current.y, atol=1e-8)
     np.testing.assert_allclose(_load_metric_path(tb.netlist, 'i(xdut.xleaf[0].stim[0])').y,
                                current.y, atol=1e-8)
     raw_name = 'xdut:xleaf<0>:Istim<0>__silk_dc' if backend == 'xyce' else 'xdut.xleaf<0>.Istim<0>__silk_dc'

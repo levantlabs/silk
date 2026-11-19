@@ -457,7 +457,7 @@ def test_selected_prepare_reads_authored_bench_edits(tmp_path, edit):
         else:
             tb.set_simulator_options(reltol=3e-4)
         text = Path(selected.prepare()).read_text()
-        assert selected.netlist is tb.netlist
+        assert selected.netlist.sim_analysis_dict is tb.netlist.sim_analysis_dict
         if edit == 'source':
             assert 'Vvin vin 0 DC 2\n' in text
         elif edit == 'add_source':
@@ -717,3 +717,65 @@ def test_prepare_default_keeps_old_generation_hook_signature(tmp_path, monkeypat
         assert Path(tb.prepare(**options)).is_file()
     finally:
         dut.close()
+
+
+def test_scalar_workers_still_run_in_calling_process(tmp_path, replacement_backend, monkeypatch):
+    import os
+    tb = _replacement_bench(tmp_path)
+    simulate = tb._simulate_run
+    pids = []
+
+    def observing(spec):
+        pids.append(os.getpid())
+        return simulate(spec)
+
+    monkeypatch.setattr(tb, '_simulate_run', observing)
+    result = tb.run(n_workers=2)
+    assert result.metrics['gain'] == 10.0
+    assert pids == [os.getpid()]
+
+
+def test_declared_workers_dispatch_to_real_processes(tmp_path, replacement_backend, monkeypatch):
+    import os
+    monkeypatch.setattr('silk.simulation.executor.os.cpu_count', lambda: 2)
+    from pathlib import Path
+    tb = _replacement_bench(tmp_path)
+    tb.set_corners(['tt', 'ss', 'ff'])
+    simulate = ModuleTestbench._simulate_run
+
+    def recording(spec):
+        result = simulate(spec)
+        Path(result.netlist.results_file).with_name('worker.pid').write_text(str(os.getpid()))
+        return result
+
+    monkeypatch.setattr(ModuleTestbench, '_simulate_run', staticmethod(recording))
+    result = tb.run(n_workers=2)
+    assert list(result.reports) == ['tt', 'ss', 'ff']
+    assert all(int(Path(report.rawfile_path).with_name('worker.pid').read_text()) != os.getpid()
+               for report in result.values())
+
+
+def test_scalar_workers_keep_run_test_storage(tmp_path, replacement_backend):
+    dut, tb = _build_lowpass_tb(str(tmp_path), db_path=str(tmp_path / 'runs.db'))
+    try:
+        dut.create_circuit_version()
+        report = dut.run_test(tb.test_name, n_workers=2, store=True)
+        assert report.metrics['vout_final'] == 1.25
+        assert report.storage['metrics_stored'] == 1
+        assert report.storage['specs_stored'] == 1
+        assert report.storage['cached'] is False
+    finally:
+        dut.close()
+
+
+@pytest.mark.parametrize('output_mode', ['new', 'overwrite'])
+def test_declared_workers_keep_output_mode(tmp_path, replacement_backend, output_mode):
+    from pathlib import Path
+    tb = _replacement_bench(tmp_path).set_corners(['tt', 'ss', 'ff'])
+    tb.module.set_output_options(mode=output_mode)
+    first = tb.run(n_workers=2, run_label='check')
+    second = tb.run(n_workers=2, run_label='check')
+    for key in first.reports:
+        assert Path(first[key].rawfile_path).is_file()
+        assert 'run~check' in first[key].rawfile_path
+        assert (first[key].rawfile_path == second[key].rawfile_path) == (output_mode == 'overwrite')

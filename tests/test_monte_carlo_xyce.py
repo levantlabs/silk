@@ -124,3 +124,90 @@ def test_new_campaign_preserves_corner_outputs(pair_tb, workers):
         assert Path(first[(corner, 1)].run.deck_path).parent.parent == root
         assert Path(second[(corner, 0)].run.deck_path).parent.parent != root
     assert all(p.read_bytes() == data for p, data in saved.items())
+
+
+def test_prepare_external_sample_uses_derived_seed(pair_tb, tmp_path):
+    import subprocess
+    from pathlib import Path
+    from silk import settings
+    from silk.circuit.monte_carlo import derive_sample_seed
+    tb = pair_tb.set_monte_carlo(3, seed=11)
+    expected = tb.run()[('tt', 2)].metrics['offset']
+    deck = Path(tb.prepare(corner='tt', sample=2))
+    remote = tmp_path / 'remote'
+    remote.mkdir()
+    # Xyce writes its RAW output to the path in the deck's .PRINT card.
+    raw = remote / 'returned.raw'
+    text = deck.read_text().replace(str(tb.netlist._run_files.rawfile_path), str(raw))
+    copied = remote / 'deck.cir'
+    copied.write_text(text)
+    completed = subprocess.run(
+        [settings.get('SILK_XYCE_BIN'), '-randseed',
+         str(derive_sample_seed(tb.monte_carlo.seed, 2)), str(copied)],
+        cwd=remote, capture_output=True, text=True, timeout=60)
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    report = tb.evaluate('tt', rawfile=raw)
+    assert report.metrics['offset'] == pytest.approx(expected, abs=1e-12)
+    assert report.provenance.run_origin == 'external-rawfile'
+    assert report.provenance.seed is None
+
+
+@pytest.mark.parametrize('variation', ['mismatch', 'process', 'both'])
+def test_resistor_draws_match_exact_sample_cells_and_preserve_metrics(tmp_path, variation):
+    from pathlib import Path
+    from tests.test_monte_carlo_ngspice import build_resistor_bench
+    tb = build_resistor_bench(tmp_path, 'xyce')
+    off = tb.run_monte_carlo(1, seed=9, variation=variation, output_mode='new')
+    on = tb.run_monte_carlo(2, seed=9, variation=variation, record_draws=True, output_mode='new')
+    again = (tb.run_monte_carlo(1, seed=9, variation=variation, record_draws=True, output_mode='new')
+             if variation == 'mismatch' else on)
+    assert not on.failed
+    assert on.draws.raw is False
+    assert set(on.draws.columns) == {(name, label) for name in ('dut.r1', 'dut.r[0]')
+                                    for label in ('rbody.rsh', 'rhead.rsh')}
+    for key, report in on.reports.items():
+        if key in off.reports:
+            assert report.metrics == off.reports[key].metrics
+            np.testing.assert_array_equal(
+                report.sim_results.load_signal('i(vbias)', 'I').y,
+                off.reports[key].sim_results.load_signal('i(vbias)', 'I').y)
+        if key in again.reports:
+            assert report.metrics == again.reports[key].metrics
+            np.testing.assert_array_equal(on.draws.values[key], again.draws.values[key])
+        files = list(Path(report.rawfile_path).parent.glob('*.res'))
+        assert len(files) == 1
+        header, row = [line.split() for line in files[0].read_text().splitlines() if line.strip()][:2]
+        cells = {c.upper(): float(v) for c, v in zip(header[1:], row[1:])}
+        for (device, label), value in report._mc_draws.items():
+            leaf = 'R1' if device == 'dut.r1' else 'R<0>'
+            target, param = label.split('.')
+            assert value == cells[f'XDUT:XM{leaf}:{target.upper()}_MODEL:{param.upper()}']
+    assert on.seeds[('tt', 0)] != on.seeds[('tt', 1)]
+    assert np.any(on.draws.values[('tt', 0)] != on.draws.values[('tt', 1)])
+    from silk.circuit import spec_report as codec
+    restored = codec.results_from_dict(codec.results_to_dict(on))
+    assert restored.draws.columns == on.draws.columns
+    assert restored.draws.raw is on.draws.raw
+    for key in on.draws.values:
+        np.testing.assert_array_equal(restored.draws.values[key], on.draws.values[key])
+    with pytest.warns(UserWarning):
+        fitted = restored.sensitivity('current', by='device')
+    assert fitted.method == 'correlation'
+    assert {row.name for row in fitted.rows} == {'dut.r1', 'dut.r[0]'}
+
+
+
+def test_mixed_resistor_mos_worker_draws_preserve_keys_and_values(tmp_path):
+    from tests.test_monte_carlo_ngspice import build_resistor_bench
+    serial = build_resistor_bench(tmp_path / 'serial', 'xyce', mixed=True).run_monte_carlo(
+        2, seed=13, record_draws=True)
+    workers = build_resistor_bench(tmp_path / 'workers', 'xyce', mixed=True).run_monte_carlo(
+        2, seed=13, record_draws=True, n_workers=2)
+    assert not serial.failed and not workers.failed
+    assert serial.draws.columns == workers.draws.columns
+    assert serial.seeds == workers.seeds
+    assert set(serial.draws.columns) >= {('dut.m', 'vth0'), ('dut.r1', 'rbody.rsh'),
+                                        ('dut.r[0]', 'rhead.rsh')}
+    for key in serial.reports:
+        assert serial.reports[key].metrics == workers.reports[key].metrics
+        np.testing.assert_array_equal(serial.draws.values[key], workers.draws.values[key])

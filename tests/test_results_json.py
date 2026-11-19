@@ -194,11 +194,13 @@ def test_grid_coordinates_allow_unconfigured_axes(point):
     assert list(restored.reports) == [point]
 
 
-def test_monte_carlo_metadata_draws_and_empty_inventory_roundtrip():
+@pytest.mark.parametrize('raw', [True, False])
+def test_monte_carlo_metadata_draws_and_empty_inventory_roundtrip(raw):
     import numpy as np
     from silk.circuit.monte_carlo_draws import DrawTable
     source = grid_collection(True)
-    source.draws = DrawTable((('m1', 'vth'),), {key: np.array([.3]) for key in source.seeds}, True)
+    source.draws = DrawTable((('dut.r1', 'rbody.rsh'), ('dut.r1', 'rhead.rsh')),
+                             {key: np.array([.3, .4]) for key in source.seeds}, raw, ('res_xhpo',))
     source.rerun_samples = (next(iter(source.seeds)),)
     restored = api.results_from_dict(api.results_to_dict(source))
     assert restored._rerun_hook is None
@@ -207,6 +209,11 @@ def test_monte_carlo_metadata_draws_and_empty_inventory_roundtrip():
     assert restored.rerun_samples == source.rerun_samples
     assert restored._conditions == source._conditions
     assert restored.draws.columns == source.draws.columns
+    assert restored.draws.raw is raw
+    assert restored.draws.skipped_types == ('res_xhpo',)
+    point = next(iter(restored.seeds))[0]
+    assert restored.point(point).draws.skipped_types == ('res_xhpo',)
+    assert restored.corner(point[0]).draws.skipped_types == ('res_xhpo',)
     for key in source.draws.values:
         np.testing.assert_array_equal(restored.draws.values[key], source.draws.values[key])
     empty = CornerResults({}, run_inventory=[], metric_names=['gain'], check_declarations=[])

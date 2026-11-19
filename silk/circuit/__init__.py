@@ -1,5 +1,5 @@
 """silk.circuit — the central design object."""
-from silk.circuit.emitted_names import validate_instance_name, validate_net_name
+from silk.circuit.emitted_names import validate_instance_name, validate_net_name, validate_port_name
 from silk.circuit.modules import Module
 from silk.circuit.variable import Variable
 from silk.circuit.module_test import ModuleTestbench
@@ -23,8 +23,9 @@ from silk.circuit.report import CircuitReport, generate_report
 from silk.circuit.report_diff import ReportDiff, diff_reports
 from silk.circuit.emitted_names import ElementNames, element_names, source_element_names
 
-__all__ = ["validate_instance_name", "validate_net_name", "Module", "ModuleTestbench", "MetricHandle", "Variable",
+__all__ = ["validate_instance_name", "validate_net_name", "validate_port_name", "Module", "ModuleTestbench", "MetricHandle", "Variable",
            "SpecReport", "SpecResult", "CornerResults", "MonteCarloResults",
+           "TestFailure", "RunRecord",
            "ElementType", "PortDir", "PortRole", "Port",
            "Net", "PortBinding",
            "VoltageDomain",

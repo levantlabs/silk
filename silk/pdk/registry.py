@@ -4,6 +4,8 @@ import os
 
 import yaml
 
+from silk.utils._compat import yaml_safe_loader
+
 
 class PDKRegistryError(ValueError):
     """Raised for an unknown, duplicate or malformed PDK manifest.
@@ -28,7 +30,7 @@ def _scan():
     for path in sorted(glob.glob(os.path.join(_DATA_DIR, '*.pdk.yaml'))):
         try:
             with open(path) as f:
-                m = yaml.safe_load(f)
+                m = yaml.load(f, Loader=yaml_safe_loader)
         except (OSError, yaml.YAMLError) as e:
             raise PDKRegistryError(f'malformed manifest {path}: {e}')
         if not isinstance(m, dict) or 'name' not in m:

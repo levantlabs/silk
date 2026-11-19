@@ -687,5 +687,2398 @@
     "expected": {
       "error": true
     }
+  },
+  {
+    "name": "device full designer name",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(vd)",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xcore.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xm1<0>.m[vth]",
+            "selectable": true
+          }
+        ],
+        "node_paths": {
+          "version": 1,
+          "vectors": [
+            {
+              "name": "time",
+              "selectable": false
+            },
+            {
+              "name": "v(vd)",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xcore.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xm1<0>.m[vth]",
+              "selectable": true
+            }
+          ],
+          "paths": [
+            {
+              "name": "dut.d",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    1
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 1,
+                  "rows": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.core.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 2,
+                  "rows": [
+                    3
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.M1[0]:vth",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 3,
+                  "rows": [
+                    4
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "options": {
+      "signals": [
+        "dut.MN:gm"
+      ]
+    },
+    "expected": {
+      "masks": [
+        [
+          false,
+          false,
+          true,
+          false,
+          false
+        ]
+      ],
+      "diagnostics": []
+    }
+  },
+  {
+    "name": "device probe spelling",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(vd)",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xcore.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xm1<0>.m[vth]",
+            "selectable": true
+          }
+        ],
+        "node_paths": {
+          "version": 1,
+          "vectors": [
+            {
+              "name": "time",
+              "selectable": false
+            },
+            {
+              "name": "v(vd)",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xcore.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xm1<0>.m[vth]",
+              "selectable": true
+            }
+          ],
+          "paths": [
+            {
+              "name": "dut.d",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    1
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 1,
+                  "rows": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.core.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 2,
+                  "rows": [
+                    3
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.M1[0]:vth",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 3,
+                  "rows": [
+                    4
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "options": {
+      "signals": [
+        "MN:gm"
+      ]
+    },
+    "expected": {
+      "masks": [
+        [
+          false,
+          false,
+          true,
+          false,
+          false
+        ]
+      ],
+      "diagnostics": []
+    }
+  },
+  {
+    "name": "device nested probe spelling",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(vd)",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xcore.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xm1<0>.m[vth]",
+            "selectable": true
+          }
+        ],
+        "node_paths": {
+          "version": 1,
+          "vectors": [
+            {
+              "name": "time",
+              "selectable": false
+            },
+            {
+              "name": "v(vd)",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xcore.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xm1<0>.m[vth]",
+              "selectable": true
+            }
+          ],
+          "paths": [
+            {
+              "name": "dut.d",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    1
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 1,
+                  "rows": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.core.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 2,
+                  "rows": [
+                    3
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.M1[0]:vth",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 3,
+                  "rows": [
+                    4
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "options": {
+      "signals": [
+        "core.MN:gm"
+      ]
+    },
+    "expected": {
+      "masks": [
+        [
+          false,
+          false,
+          false,
+          true,
+          false
+        ]
+      ],
+      "diagnostics": []
+    }
+  },
+  {
+    "name": "device nested designer spelling",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(vd)",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xcore.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xm1<0>.m[vth]",
+            "selectable": true
+          }
+        ],
+        "node_paths": {
+          "version": 1,
+          "vectors": [
+            {
+              "name": "time",
+              "selectable": false
+            },
+            {
+              "name": "v(vd)",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xcore.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xm1<0>.m[vth]",
+              "selectable": true
+            }
+          ],
+          "paths": [
+            {
+              "name": "dut.d",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    1
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 1,
+                  "rows": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.core.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 2,
+                  "rows": [
+                    3
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.M1[0]:vth",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 3,
+                  "rows": [
+                    4
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "options": {
+      "signals": [
+        "dut.core.MN:gm"
+      ]
+    },
+    "expected": {
+      "masks": [
+        [
+          false,
+          false,
+          false,
+          true,
+          false
+        ]
+      ],
+      "diagnostics": []
+    }
+  },
+  {
+    "name": "device array spelling",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(vd)",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xcore.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xm1<0>.m[vth]",
+            "selectable": true
+          }
+        ],
+        "node_paths": {
+          "version": 1,
+          "vectors": [
+            {
+              "name": "time",
+              "selectable": false
+            },
+            {
+              "name": "v(vd)",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xcore.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xm1<0>.m[vth]",
+              "selectable": true
+            }
+          ],
+          "paths": [
+            {
+              "name": "dut.d",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    1
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 1,
+                  "rows": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.core.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 2,
+                  "rows": [
+                    3
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.M1[0]:vth",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 3,
+                  "rows": [
+                    4
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "options": {
+      "signals": [
+        "M1[0]:vth"
+      ]
+    },
+    "expected": {
+      "masks": [
+        [
+          false,
+          false,
+          false,
+          false,
+          true
+        ]
+      ],
+      "diagnostics": []
+    }
+  },
+  {
+    "name": "device array designer spelling",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(vd)",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xcore.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xm1<0>.m[vth]",
+            "selectable": true
+          }
+        ],
+        "node_paths": {
+          "version": 1,
+          "vectors": [
+            {
+              "name": "time",
+              "selectable": false
+            },
+            {
+              "name": "v(vd)",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xcore.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xm1<0>.m[vth]",
+              "selectable": true
+            }
+          ],
+          "paths": [
+            {
+              "name": "dut.d",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    1
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 1,
+                  "rows": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.core.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 2,
+                  "rows": [
+                    3
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.M1[0]:vth",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 3,
+                  "rows": [
+                    4
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "options": {
+      "signals": [
+        "dut.M1[0]:vth"
+      ]
+    },
+    "expected": {
+      "masks": [
+        [
+          false,
+          false,
+          false,
+          false,
+          true
+        ]
+      ],
+      "diagnostics": []
+    }
+  },
+  {
+    "name": "device case folded",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(vd)",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xcore.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xm1<0>.m[vth]",
+            "selectable": true
+          }
+        ],
+        "node_paths": {
+          "version": 1,
+          "vectors": [
+            {
+              "name": "time",
+              "selectable": false
+            },
+            {
+              "name": "v(vd)",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xcore.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xm1<0>.m[vth]",
+              "selectable": true
+            }
+          ],
+          "paths": [
+            {
+              "name": "dut.d",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    1
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 1,
+                  "rows": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.core.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 2,
+                  "rows": [
+                    3
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.M1[0]:vth",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 3,
+                  "rows": [
+                    4
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "options": {
+      "signals": [
+        "DUT.mn:GM"
+      ]
+    },
+    "expected": {
+      "masks": [
+        [
+          false,
+          false,
+          true,
+          false,
+          false
+        ]
+      ],
+      "diagnostics": []
+    }
+  },
+  {
+    "name": "device exclusion",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(vd)",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xcore.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xm1<0>.m[vth]",
+            "selectable": true
+          }
+        ],
+        "node_paths": {
+          "version": 1,
+          "vectors": [
+            {
+              "name": "time",
+              "selectable": false
+            },
+            {
+              "name": "v(vd)",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xcore.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xm1<0>.m[vth]",
+              "selectable": true
+            }
+          ],
+          "paths": [
+            {
+              "name": "dut.d",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    1
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 1,
+                  "rows": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.core.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 2,
+                  "rows": [
+                    3
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.M1[0]:vth",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 3,
+                  "rows": [
+                    4
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "options": {
+      "exclude": [
+        "dut.MN:gm"
+      ]
+    },
+    "expected": {
+      "masks": [
+        [
+          false,
+          true,
+          false,
+          true,
+          true
+        ]
+      ],
+      "diagnostics": []
+    }
+  },
+  {
+    "name": "device exclusion by probe spelling",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(vd)",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xcore.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xm1<0>.m[vth]",
+            "selectable": true
+          }
+        ],
+        "node_paths": {
+          "version": 1,
+          "vectors": [
+            {
+              "name": "time",
+              "selectable": false
+            },
+            {
+              "name": "v(vd)",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xcore.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xm1<0>.m[vth]",
+              "selectable": true
+            }
+          ],
+          "paths": [
+            {
+              "name": "dut.d",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    1
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 1,
+                  "rows": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.core.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 2,
+                  "rows": [
+                    3
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.M1[0]:vth",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 3,
+                  "rows": [
+                    4
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "options": {
+      "exclude": [
+        "core.MN:gm"
+      ]
+    },
+    "expected": {
+      "masks": [
+        [
+          false,
+          true,
+          true,
+          false,
+          true
+        ]
+      ],
+      "diagnostics": []
+    }
+  },
+  {
+    "name": "device unknown parameter",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(vd)",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xcore.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xm1<0>.m[vth]",
+            "selectable": true
+          }
+        ],
+        "node_paths": {
+          "version": 1,
+          "vectors": [
+            {
+              "name": "time",
+              "selectable": false
+            },
+            {
+              "name": "v(vd)",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xcore.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xm1<0>.m[vth]",
+              "selectable": true
+            }
+          ],
+          "paths": [
+            {
+              "name": "dut.d",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    1
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 1,
+                  "rows": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.core.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 2,
+                  "rows": [
+                    3
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.M1[0]:vth",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 3,
+                  "rows": [
+                    4
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "options": {
+      "signals": [
+        "MN:gx"
+      ]
+    },
+    "expected": {
+      "error": true
+    }
+  },
+  {
+    "name": "device selector takes no voltage wrapper",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(vd)",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xcore.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xm1<0>.m[vth]",
+            "selectable": true
+          }
+        ],
+        "node_paths": {
+          "version": 1,
+          "vectors": [
+            {
+              "name": "time",
+              "selectable": false
+            },
+            {
+              "name": "v(vd)",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xcore.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xm1<0>.m[vth]",
+              "selectable": true
+            }
+          ],
+          "paths": [
+            {
+              "name": "dut.d",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    1
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 1,
+                  "rows": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.core.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 2,
+                  "rows": [
+                    3
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.M1[0]:vth",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 3,
+                  "rows": [
+                    4
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "options": {
+      "signals": [
+        "v(dut.MN:gm)"
+      ]
+    },
+    "expected": {
+      "error": true
+    }
+  },
+  {
+    "name": "device wrong container",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(vd)",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xcore.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xm1<0>.m[vth]",
+            "selectable": true
+          }
+        ],
+        "node_paths": {
+          "version": 1,
+          "vectors": [
+            {
+              "name": "time",
+              "selectable": false
+            },
+            {
+              "name": "v(vd)",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xcore.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xm1<0>.m[vth]",
+              "selectable": true
+            }
+          ],
+          "paths": [
+            {
+              "name": "dut.d",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    1
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 1,
+                  "rows": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.core.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 2,
+                  "rows": [
+                    3
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.M1[0]:vth",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 3,
+                  "rows": [
+                    4
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "options": {
+      "signals": [
+        "other.MN:gm"
+      ]
+    },
+    "expected": {
+      "error": true
+    }
+  },
+  {
+    "name": "device ambiguous exact spelling",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(vd)",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xcore.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xm1<0>.m[vth]",
+            "selectable": true
+          },
+          {
+            "name": "@m.other[gm]",
+            "selectable": true
+          }
+        ],
+        "node_paths": {
+          "version": 1,
+          "vectors": [
+            {
+              "name": "time",
+              "selectable": false
+            },
+            {
+              "name": "v(vd)",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xcore.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xm1<0>.m[vth]",
+              "selectable": true
+            },
+            {
+              "name": "@m.other[gm]",
+              "selectable": true
+            }
+          ],
+          "paths": [
+            {
+              "name": "dut.d",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    1
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 1,
+                  "rows": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.core.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 2,
+                  "rows": [
+                    3
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.M1[0]:vth",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 3,
+                  "rows": [
+                    4
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.mn:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 9,
+                  "rows": [
+                    5
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "options": {
+      "signals": [
+        "dut.MN:gm"
+      ]
+    },
+    "expected": {
+      "error": true
+    }
+  },
+  {
+    "name": "device unknown kind rejected",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(vd)",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xcore.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xm1<0>.m[vth]",
+            "selectable": true
+          }
+        ],
+        "node_paths": {
+          "version": 1,
+          "vectors": [
+            {
+              "name": "time",
+              "selectable": false
+            },
+            {
+              "name": "v(vd)",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xcore.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xm1<0>.m[vth]",
+              "selectable": true
+            }
+          ],
+          "paths": [
+            {
+              "name": "dut.d",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    1
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.MN:gm",
+              "kind": "bogus",
+              "targets": [
+                {
+                  "id": 1,
+                  "rows": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.core.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 2,
+                  "rows": [
+                    3
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.M1[0]:vth",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 3,
+                  "rows": [
+                    4
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "options": {
+      "signals": [
+        "dut.MN:gm"
+      ]
+    },
+    "expected": {
+      "error": true
+    }
+  },
+  {
+    "name": "device target id reused with different rows rejected",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(vd)",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xcore.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xm1<0>.m[vth]",
+            "selectable": true
+          }
+        ],
+        "node_paths": {
+          "version": 1,
+          "vectors": [
+            {
+              "name": "time",
+              "selectable": false
+            },
+            {
+              "name": "v(vd)",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xcore.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xm1<0>.m[vth]",
+              "selectable": true
+            }
+          ],
+          "paths": [
+            {
+              "name": "dut.d",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    1
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 1,
+                  "rows": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.core.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 2,
+                  "rows": [
+                    3
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.M1[0]:vth",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 3,
+                  "rows": [
+                    4
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.X:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    2
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "options": {
+      "signals": [
+        "dut.X:gm"
+      ]
+    },
+    "expected": {
+      "error": true
+    }
+  },
+  {
+    "name": "device emitted precedence",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(vd)",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xcore.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xm1<0>.m[vth]",
+            "selectable": true
+          },
+          {
+            "name": "MN:gm",
+            "selectable": true
+          }
+        ],
+        "node_paths": {
+          "version": 1,
+          "vectors": [
+            {
+              "name": "time",
+              "selectable": false
+            },
+            {
+              "name": "v(vd)",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xcore.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xm1<0>.m[vth]",
+              "selectable": true
+            },
+            {
+              "name": "MN:gm",
+              "selectable": true
+            }
+          ],
+          "paths": [
+            {
+              "name": "dut.d",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    1
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 1,
+                  "rows": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.core.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 2,
+                  "rows": [
+                    3
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.M1[0]:vth",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 3,
+                  "rows": [
+                    4
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "options": {
+      "signals": [
+        "MN:gm"
+      ]
+    },
+    "expected": {
+      "masks": [
+        [
+          false,
+          false,
+          false,
+          false,
+          false,
+          true
+        ]
+      ],
+      "diagnostics": [
+        {
+          "kind": "emitted-precedence",
+          "selector": "MN:gm",
+          "keyword": "signals"
+        }
+      ]
+    }
+  },
+  {
+    "name": "device glob over designer names",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(vd)",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xcore.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xm1<0>.m[vth]",
+            "selectable": true
+          }
+        ],
+        "node_paths": {
+          "version": 1,
+          "vectors": [
+            {
+              "name": "time",
+              "selectable": false
+            },
+            {
+              "name": "v(vd)",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xcore.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xm1<0>.m[vth]",
+              "selectable": true
+            }
+          ],
+          "paths": [
+            {
+              "name": "dut.d",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    1
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 1,
+                  "rows": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.core.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 2,
+                  "rows": [
+                    3
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.M1[0]:vth",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 3,
+                  "rows": [
+                    4
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "options": {
+      "signals": [
+        "dut.*:gm"
+      ]
+    },
+    "expected": {
+      "masks": [
+        [
+          false,
+          false,
+          true,
+          true,
+          false
+        ]
+      ],
+      "diagnostics": []
+    }
+  },
+  {
+    "name": "device glob over probe spelling",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(vd)",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xcore.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xm1<0>.m[vth]",
+            "selectable": true
+          }
+        ],
+        "node_paths": {
+          "version": 1,
+          "vectors": [
+            {
+              "name": "time",
+              "selectable": false
+            },
+            {
+              "name": "v(vd)",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xcore.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xm1<0>.m[vth]",
+              "selectable": true
+            }
+          ],
+          "paths": [
+            {
+              "name": "dut.d",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    1
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 1,
+                  "rows": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.core.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 2,
+                  "rows": [
+                    3
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.M1[0]:vth",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 3,
+                  "rows": [
+                    4
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "options": {
+      "signals": [
+        "*:gm"
+      ]
+    },
+    "expected": {
+      "masks": [
+        [
+          false,
+          false,
+          true,
+          true,
+          false
+        ]
+      ],
+      "diagnostics": []
+    }
+  },
+  {
+    "name": "device glob with literal array bracket",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(vd)",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xcore.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xm1<0>.m[vth]",
+            "selectable": true
+          }
+        ],
+        "node_paths": {
+          "version": 1,
+          "vectors": [
+            {
+              "name": "time",
+              "selectable": false
+            },
+            {
+              "name": "v(vd)",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xcore.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xm1<0>.m[vth]",
+              "selectable": true
+            }
+          ],
+          "paths": [
+            {
+              "name": "dut.d",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    1
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 1,
+                  "rows": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.core.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 2,
+                  "rows": [
+                    3
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.M1[0]:vth",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 3,
+                  "rows": [
+                    4
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "options": {
+      "signals": [
+        "M1[0]:*"
+      ]
+    },
+    "expected": {
+      "masks": [
+        [
+          false,
+          false,
+          false,
+          false,
+          true
+        ]
+      ],
+      "diagnostics": []
+    }
+  },
+  {
+    "name": "device glob exclusion",
+    "plots": [
+      {
+        "vectors": [
+          {
+            "name": "time",
+            "selectable": false
+          },
+          {
+            "name": "v(vd)",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xcore.xmmn.m[gm]",
+            "selectable": true
+          },
+          {
+            "name": "@m.xdut.xm1<0>.m[vth]",
+            "selectable": true
+          }
+        ],
+        "node_paths": {
+          "version": 1,
+          "vectors": [
+            {
+              "name": "time",
+              "selectable": false
+            },
+            {
+              "name": "v(vd)",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xcore.xmmn.m[gm]",
+              "selectable": true
+            },
+            {
+              "name": "@m.xdut.xm1<0>.m[vth]",
+              "selectable": true
+            }
+          ],
+          "paths": [
+            {
+              "name": "dut.d",
+              "targets": [
+                {
+                  "id": 0,
+                  "rows": [
+                    1
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 1,
+                  "rows": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.core.MN:gm",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 2,
+                  "rows": [
+                    3
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dut.M1[0]:vth",
+              "kind": "device",
+              "targets": [
+                {
+                  "id": 3,
+                  "rows": [
+                    4
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "options": {
+      "exclude": [
+        "dut.*:gm"
+      ]
+    },
+    "expected": {
+      "masks": [
+        [
+          false,
+          true,
+          false,
+          false,
+          true
+        ]
+      ],
+      "diagnostics": []
+    }
   }
 ]

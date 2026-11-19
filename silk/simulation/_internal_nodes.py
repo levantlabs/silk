@@ -34,8 +34,9 @@ def require_filterable(module, corner):
 def _certificate():
     from importlib.resources import files
     import yaml
-    return yaml.safe_load(files('silk.pdk').joinpath(
-        'data/sky130-internal-node-certificate.yaml').read_text())
+    from silk.utils._compat import yaml_safe_loader
+    return yaml.load(files('silk.pdk').joinpath(
+        'data/sky130-internal-node-certificate.yaml').read_text(), Loader=yaml_safe_loader)
 
 
 def _verify_models(module, corner):

@@ -1337,13 +1337,21 @@ def _fmt_value(v: Any) -> str:
 
     A variable reference object emits the variable expression; it
     has already been checked by :func:`_validate_variables`.
+
+    Keep existing float literals that round-trip exactly; otherwise round
+    small or large floats to 15 significant digits. Preserve an exact finite
+    literal if rounding would overflow. Other values use repr().
     """
     if isinstance(v, dict) and 'variable' in v:
         return _var_ref_expr(v)
     if isinstance(v, float):
-        # Use scientific notation for very small/large values
+        # Preserve exact existing literals; otherwise use 15-digit rounding.
         if v != 0 and (abs(v) < 1e-3 or abs(v) >= 1e6):
-            return f'{v:g}'
+            literal = f'{v:g}'
+            if float(literal) == v:
+                return literal
+            rounded = float(f'{v:.15g}')
+            return repr(rounded if math.isfinite(rounded) else v)
         return repr(v)
     return repr(v)
 

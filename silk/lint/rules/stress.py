@@ -334,6 +334,16 @@ def _device_stress_outcomes(module, rule_id, severity, *, skipped=False):
     measurement with different availability semantics.
     """
     behavioral = bool(getattr(module, '_behavioral_mode', False))
+    behavioral_arrays = None
+    behavioral_time = None
+    if behavioral:
+        native = getattr(getattr(module, '_raw', None), 'native', None)
+        if native is None:
+            native = getattr(module, 'simResultsAll', None)
+        if native is not None:
+            from silk.simulation.behavioral_backend import behavioral_net_arrays
+            behavioral_arrays = behavioral_net_arrays(native)
+            behavioral_time = native.vectors[0].data
     small_signal = not behavioral and _spice_results_are_small_signal(module)
     available = not skipped and (behavioral or getattr(module, 'sim_results_loaded', False))
     devices = (_behavioral_devices(module) if behavioral else
@@ -352,7 +362,8 @@ def _device_stress_outcomes(module, rule_id, severity, *, skipped=False):
         if not ratings or any(value == 'unrated' for value in pairs.values()):
             reasons.append('no_ratings')
         waves = {}
-        t = getattr(module, '_behavioral_t', None) if behavioral else None
+        t = (behavioral_time if behavioral_arrays is not None else
+             getattr(module, '_behavioral_t', None)) if behavioral else None
         xlabel = 'time' if behavioral else None
         if small_signal:
             reasons.append('small_signal')
@@ -365,7 +376,8 @@ def _device_stress_outcomes(module, rule_id, severity, *, skipped=False):
                     continue
                 if behavioral:
                     net = module.net_dict.get(node)
-                    y = getattr(net, 'voltage', None) if net is not None else None
+                    y = (behavioral_arrays.get(node) if behavioral_arrays is not None else
+                         getattr(net, 'voltage', None) if net is not None else None)
                     if y is None and _is_ground_node(node):
                         waves[pin] = None
                         continue

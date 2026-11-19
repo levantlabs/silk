@@ -66,6 +66,9 @@ def test_declaration_before_and_after_external_file_has_same_raw_precedence(tmp_
     for p in (before, after):
         with pytest.warns(UserWarning, match=r'dut.mid.*xdut.mid'):
             np.testing.assert_array_equal(p.y, [1., 1.5])
+    with warnings.catch_warnings(record=True) as direct_warnings:
+        np.testing.assert_array_equal(tb.netlist.load_signal('dut.mid').y, [1., 1.5])
+    assert not direct_warnings
 
 
 def test_raw_ambiguity_cannot_be_hidden_by_graph(tmp_path):
@@ -74,6 +77,8 @@ def test_raw_ambiguity_cannot_be_hidden_by_graph(tmp_path):
     load(tb, tmp_path, ['v(dut.x1[0].mid)', 'v(dut.x1<0>.mid)', 'v(xdut.xx1<0>.mid)'])
     with pytest.raises(AmbiguousSignalError):
         _ = p.y
+    with pytest.raises(AmbiguousSignalError):
+        tb.netlist.load_signal('dut.x1[0].mid')
 
 
 def test_dotted_instance_is_refused_but_nested_selector_works(tmp_path):
@@ -108,7 +113,7 @@ def test_analysis_corner_and_reread_use_selected_inventory(tmp_path):
     np.testing.assert_array_equal(p.y, [1., 1.5])
     with pytest.warns(UserWarning):
         np.testing.assert_array_equal(tb.probe('dut.mid', analysis='ac').y, [1., 1.5])
-    tb._sweep_table = {'tt': first}
+    tb.evaluate(rawfile=first, corner='tt')
     np.testing.assert_array_equal(p.corner('tt').y, [1., 1.5])
     load(tb, tmp_path, ['v(vout)', 'v(xdut.mid)'], filename='second.raw')
     np.testing.assert_array_equal(p.y, [2., 2.5])
@@ -374,7 +379,7 @@ def test_retained_corner_literal_object_voltage_preserves_kind(tmp_path):
     add_legacy_net(module, 'literal:gm')
     stage = tb.add_module(module, 'colon', {'out': 'vout'})
     path = load(tb, tmp_path, ['v(xcolon.literal:gm)'])
-    tb._sweep_table = {'tt': path}
+    tb.evaluate(rawfile=path, corner='tt')
     probe = tb.probe(stage.net('literal:gm'))
     np.testing.assert_array_equal(probe.corner('tt').y, [1., 1.5])
 
@@ -729,3 +734,31 @@ def test_declarative_xyce_noise_reads_csv_with_electrical_rawfile(tmp_path, path
     actual = _load_metric_path(mod, path, analysis='noise')
     np.testing.assert_array_equal(actual.y, expected.y)
     assert len(actual.y) == 121
+
+
+@pytest.mark.parametrize('wrapped', ['v(out)', 'v(noise_out)', 'v(i(sense))'])
+def test_direct_wrapped_raw_voltage_keeps_exact_row(tmp_path, wrapped):
+    from silk import sources
+    tb = bench(tmp_path)
+    tb.add_source(sources.VoltageSource('sense', 'vout', '0', dc=9))
+    load(tb, tmp_path, [wrapped, wrapped[2:-1], 'i(vsense)'])
+    np.testing.assert_array_equal(tb.netlist.load_signal(wrapped).y, [1., 1.5])
+
+
+def test_direct_typed_and_literal_voltage_keep_identity(tmp_path):
+    from silk.circuit.node_paths import NodeVoltageRequest
+    from silk.circuit.placement_reference import LiteralVoltageName
+    tb = bench(tmp_path)
+    load(tb, tmp_path, ['v(vout)', 'v(xdut.mid)'])
+    np.testing.assert_array_equal(tb.netlist.load_signal(NodeVoltageRequest('dut.mid')).y, [2., 2.5])
+    np.testing.assert_array_equal(tb.netlist.load_signal(LiteralVoltageName('vout')).y, [1., 1.5])
+    with pytest.raises(CircuitError, match='no longer present'):
+        tb.netlist.load_signal(NodeVoltageRequest('removed.mid', known_designer=True))
+
+
+def test_direct_designer_voltage_stays_raw_while_probe_resolves(tmp_path):
+    tb = bench(tmp_path)
+    load(tb, tmp_path, ['v(xdut.mid)'])
+    with pytest.raises(SimulationError, match='not found'):
+        tb.netlist.load_signal('dut.mid')
+    np.testing.assert_array_equal(tb.probe('dut.mid').y, [1., 1.5])

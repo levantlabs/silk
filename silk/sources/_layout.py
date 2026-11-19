@@ -83,8 +83,8 @@ def physical_source_card(request, cards):
     return None
 
 
-def current_source_card(sources, request, elements=None):
-    """Match a logical or physical current source; keep the matched card."""
+def current_source_card(sources, request, elements=None, *, physical_only=False):
+    """Match a current source and its card; physical_only excludes authored aliases."""
     from silk.sources.classes import CurrentSource
     token = _current_request_key(request)
     for name, source, prefix in source_instances(sources, elements):
@@ -94,14 +94,10 @@ def current_source_card(sources, request, elements=None):
         card = physical_source_card(request, cards)
         if card is not None:
             return source, card
-        if token in (_current_request_key(name),
+        if not physical_only and token in (_current_request_key(name),
                      _current_request_key(prefix + source.instance_name)):
             return source, None
     return None, None
-
-
-def current_source_for_request(sources, request, elements=None):
-    return current_source_card(sources, request, elements)[0]
 
 
 def refuse_ac_current(source):

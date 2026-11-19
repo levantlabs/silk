@@ -84,6 +84,8 @@ def test_behavioral_probe_table(tmp_path, pdk, row, name, selector, expected, re
         error = SimulationError if row == 'node-current' else NotSupportedError
         with pytest.raises(error, match=reason):
             probe.y
+        with pytest.raises(error, match=reason):
+            tb.netlist.load_signal(name, selector)
     else:
         np.testing.assert_allclose(probe.y, expected)
         assert probe.type == ('current' if selector == 'I' else 'voltage')

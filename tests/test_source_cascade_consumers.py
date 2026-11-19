@@ -87,6 +87,8 @@ def test_logical_current_does_not_replace_a_missing_operand_with_authored_values
     src = sources.CurrentSource('bias', 'a', '0', dc=.2, pwl=[0, .5, 1, 1])
     tb = _bench(tmp_path, [saved], [src], data=[[.2, .2]])
     with pytest.raises(SimulationError):
+        tb.netlist.load_signal('i(bias)')
+    with pytest.raises(SimulationError):
         tb.probe('i(bias)').y
     from silk.circuit.module_test import _load_metric_path
     with pytest.raises(SimulationError):
@@ -248,7 +250,14 @@ def test_logical_current_default_plot_selects_each_corners_operands(tmp_path, si
         bench.netlist.simulator = simulator
         benches.append(bench)
     tb = benches[0]
+    from silk.circuit.test_placement import EvidenceResults
     tb._sweep_table = {label: str(tmp_path / label / 's.raw') for label in ('tt', 'ff')}
+    tb._sweep_states = {}
+    for label, bench in zip(('tt', 'ff'), benches):
+        reader = EvidenceResults(bench.netlist, _retained=True)
+        tb._sweep_states[label] = {
+            name: value for name, value in vars(reader).items()
+            if name not in {'_module', '_evidence_owner', 'backend'}}
     current = tb.probe('i(stim)', analysis='tran')
     np.testing.assert_allclose(current.corner('ff').y, [3.5, 4])
     fig = tb.plot(show=False)
@@ -272,6 +281,83 @@ def test_logical_current_corner_ac_keeps_typed_refusal(tmp_path, simulator):
     write_rawfile(path, RawFile([RawPlot({'plotname': 'AC Analysis', 'title': 'ac'},
         [RawVector('frequency', 'frequency', data=np.array([1., 2.]))],
         npoints=2, real=True, padded=True)]))
-    tb._sweep_table = {'tt': str(path)}
+    tb.evaluate(rawfile=str(path), corner='tt')
     with pytest.raises(NotSupportedError, match='ac=.*0 V VoltageSource'):
         tb.probe('i(stim)', analysis='ac').corner('tt')
+
+
+@pytest.mark.parametrize('cls,rows,want', [
+    (sources.VoltageSource, ['vbias__silk_pwl'], [-.7, -1.2]),
+    (sources.CurrentSource, ['@ibias__silk_pwl[current]', '@ibias__silk_dc[current]'], [.7, 1.2]),
+])
+@pytest.mark.parametrize('selector', ['V', 'I'])
+def test_direct_logical_waveform_current_uses_saved_operands(tmp_path, cls, rows, want, selector):
+    source = cls('bias', 'a', '0', dc=99, pwl=[0, .5, 1, 1])
+    data = [[-.7, -1.2]] if cls is sources.VoltageSource else [[.5, 1], [.2, .2]]
+    tb = _bench(tmp_path, rows, [source], data=data)
+    before = source.to_spice()
+    direct = tb.netlist.load_signal('i(bias)', selector, analysis='tran')
+    np.testing.assert_array_equal(direct.x, [0, 1e-8])
+    np.testing.assert_allclose(direct.y, want)
+    assert source.to_spice() == before
+    assert tb._probe_registry == []
+
+
+def test_op_bias_list_physical_and_logical_request_shapes(tmp_path):
+    from silk.circuit import element_names
+    from silk.signals.rawfile import RawFile, RawPlot, RawVector, write_rawfile
+    single = sources.VoltageSource('supply', 'a', '0', dc=99)
+    split = sources.CurrentSource('bias', 'a', '0', dc=99, pwl=[0, .5, 1, 1])
+    tb = _bench(tmp_path, [], [single, split])
+    path = tmp_path / 'op.raw'
+    write_rawfile(path, RawFile([RawPlot({'plotname': 'Operating Point'}, [
+        RawVector('v(a)', 'voltage', data=np.array([1.2])),
+        RawVector('i(vsupply)', 'current', data=np.array([-.003])),
+        RawVector('@ibias__silk_pwl[current]', 'current', data=np.array([.005])),
+        RawVector('@ibias__silk_dc[current]', 'current', data=np.array([-.002])),
+    ], npoints=1, real=True, padded=True)]))
+    tb.netlist.load_file(str(path))
+    tb.netlist.read_raw_file()
+    physical = tb.netlist.load_signal('i(vsupply)', 'I', analysis='op')
+    np.testing.assert_array_equal(physical.x, [0.])
+    np.testing.assert_array_equal(physical.y, [-.003])
+    logical = tb.netlist.load_signal(element_names(single).current_probe, 'I', analysis='op')
+    np.testing.assert_array_equal(logical.x, physical.x)
+    np.testing.assert_array_equal(logical.y, physical.y)
+    summed = tb.netlist.load_signal(element_names(split).current_probe, 'I', analysis='op')
+    np.testing.assert_array_equal(summed.x, [0.])
+    np.testing.assert_allclose(summed.y, [.003])
+
+
+
+@pytest.mark.parametrize('name', ['ik', 'ibias', 'xdut.xcore.ib', 'dut.core.ib'])
+def test_unresolved_current_capture_refuses_before_emission(tmp_path, name):
+    from silk.exceptions import CircuitError
+    with pytest.raises(CircuitError, match='current probe.*' + name.replace('.', r'\.') ):
+        PySpiceNetlister(None).generate_output_block(
+            str(tmp_path), {'tran': Transient(1e-9, 1e-6)},
+            current_probe_names=[name], source_instance_names=['Iik', 'Iibias'])
+
+
+def test_restricted_capture_keeps_registered_inductor_current(tmp_path):
+    from silk import Module
+    from silk.elements import ElementLibrary
+    mod = Module(None, str(tmp_path), 'inductor.cir', None)
+    mod.add(ElementLibrary().inductor('coil', p='out', n='0', value=1e-3))
+    text = PySpiceNetlister(None).generate_output_block(
+        str(tmp_path), {'tran': Transient(1e-9, 1e-8)}, save_list=['out'],
+        elem_dict=mod.elem_dict, current_probe_names=['Lcoil'], source_instance_names=[])
+    assert 'i(Lcoil)' in text
+
+
+def test_native_device_current_preserves_default_save_all_bytes(tmp_path):
+    netlister = PySpiceNetlister(None)
+    args = (str(tmp_path), {'tran': Transient(step=1e-9, stop=1e-6)})
+    plain = netlister.generate_output_block(*args, save_device_currents=True)
+    probed = netlister.generate_output_block(*args, save_device_currents=True,
+        current_probe_names=['@rload[i]'])
+    assert probed == plain
+    assert '.save all' in probed and '@rload[i]' not in probed
+    selected = netlister.generate_output_block(*args,
+        save_list=['out'], current_probe_names=['@rload[i]'])
+    assert '@rload[i]' in selected

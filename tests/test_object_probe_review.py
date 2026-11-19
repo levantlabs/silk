@@ -41,8 +41,9 @@ def test_summed_current_is_one_probe_after_copy(tmp_path, method):
     other = copy.deepcopy(tb) if method == 'deepcopy' else pickle.loads(pickle.dumps(tb))
     assert len(other._probe_registry) == 1
     logical = other._probe_registry[0]
-    assert logical.__dict__.get('_logical_probe') is True
-    assert len(list(_unbound_leaves(logical))) == 2
+    assert logical.__dict__['_source_request'] == (
+        'stim', (('Istim__silk_wave', 1), ('Istim__silk_dc', 1)))
+    assert list(_unbound_leaves(logical)) == [logical]
     assert len(list(_unbound_leaves(logical, logical_probes=True))) == 1
     assert all(x._bench() is other for x in _unbound_leaves(logical))
     vectors = [RawVector('time','time',data=np.array([0.,1.])),
@@ -53,10 +54,12 @@ def test_summed_current_is_one_probe_after_copy(tmp_path, method):
     other.netlist.load_file(str(path))
     other.netlist.read_raw_file()
     np.testing.assert_allclose(logical.y, [1.2, 2.2])
+    assert other._metrics[-1]['extractor'](other.netlist) == pytest.approx(1.7)
     import matplotlib.pyplot as plt
     fig = other.plot(show=False)
     try:
         assert len(fig.axes) == 1
+        assert len(fig.axes[0].lines) == 1
         np.testing.assert_allclose(fig.axes[0].lines[0].get_ydata(), [1.2, 2.2])
     finally:
         plt.close(fig)

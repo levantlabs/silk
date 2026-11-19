@@ -106,9 +106,9 @@ def test_signature_preserves_behavioral_numeric_precision(tmp_path, change, labe
              else next(iter(tb.netlist.sim_analysis_dict.values())))
     text = value.to_spice()
     if change == 'source':
-        value.dc = 1.0000000000001
+        value.dc = 1.0000000000000002
     else:
-        value.step = 1.0000000000001e-9
+        value.step = 1.0000000000000002e-9
     assert value.to_spice() == text  # SPICE formatting is deliberately lossy.
     assert label in changed_inputs(original, _signature(tb))
 

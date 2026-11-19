@@ -85,8 +85,11 @@ for `LintReport`/`CoverageReport` themselves.
 
 ## Reporting a PVT grid
 
-Pass the whole result collection to `generate_report`. This is the 27-point
-OTA grid from the agent guide (sky130 models and ngspice required):
+Pass the whole result collection to `generate_report`. The **PVT Grid**
+section summarizes each supplied corner or Monte Carlo collection, including
+runs without temperature, supply or Variable sweeps. A single run in the
+test-results dictionary appears as a one-run table. This example uses the
+27-point OTA grid from the agent guide (sky130 models and ngspice required).
 
 ```python
 from pathlib import Path
@@ -192,8 +195,10 @@ explanation naming the module. Empty sections are omitted. Reports without a
 grid retain **Spec Reconciliation**. The stored reconciliation and live spec
 measurements remain unchanged.
 
-Monte Carlo grids show the same spec extrema table, followed by a yield table
-for each point and spec and an **All points (informational)** pooled row.
+Monte Carlo summaries show the worst sample index and add **Mean (pooled)**
+and **Sample std (pooled)** across usable samples from all points, including
+for metrics without checks. The spec table is followed by a yield table for
+each point and spec and an **All points (informational)** pooled row.
 Yields and 95% Wilson intervals come from the recorded collection and use
 three significant digits, retaining trailing zeros. **FAIL** counts samples that ran but did not meet that
 spec; **No report** counts runs that produced no report. The per-sample table
@@ -206,9 +211,8 @@ the collection's per-point requirement; a pooled yield cannot override a
 failing point.
 
 JSON stores the collection evidence and summary inputs. Reloading renders the
-same grid without the bench, rawfiles or calibration. Single-run and
-corner-only grid presentation remains unchanged. Reports carrying producer
-records show compact run details as described below.
+same tables without the bench, rawfiles or calibration. Reports carrying
+producer records show compact run details as described below.
 
 ## Saving and loading
 
@@ -685,7 +689,7 @@ Neither supplied means `test_results: null`; an explicit empty input stays an
 empty collection. Generation snapshots supplied evidence and derives operating
 point tables, warning sections and provenance from its successful records, in
 order. It never runs tests or discovers test evidence from live benches.
-Reconciliation still comes from `module.reconcile_specs()` independently.
+Stored reconciliation comes from `module.reconcile_specs()`. For `test_results=` dictionaries and corner or Monte Carlo collections, the rendered report displays checks in result tables and shows uncovered reconciliation outcomes separately. With `spec_reports=[...]`, the spec display comes from reconciliation.
 
 **Complete test evidence is supported in CircuitReport JSON v3–v5.**
 Unversioned/v1/v2 files load with absent evidence represented as `None` and

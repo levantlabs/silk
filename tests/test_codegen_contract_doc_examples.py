@@ -173,3 +173,43 @@ class TestBehavioralSourceExample:
         code = Generator().generate(spec)
         assert ("ckt.add(sources.BehavioralVoltage('bv1', positive='vout', "
                 "negative='gnd', expression='v(vin) * 2'))") in code
+
+
+@pytest.mark.slow
+@needs_pdk
+@needs_ngspice
+@pytest.mark.parametrize(("analysis", "word"), [
+    ({"kind": "dc", "source": "vvg", "start": 0.8, "stop": 1.2, "step": 0.2}, "dc"),
+    ({"kind": "transient", "step": 1e-9, "stop": 10e-9}, "tran"),
+])
+def test_generated_plot_only_device_parameter_is_saved_and_read(tmp_path, analysis, word):
+    from silk import load_pdk
+    from silk.circuit.circuit_elements import PortDir
+    from silk.circuit.modules import Module
+    from silk.codegen.testbench_generator import generate_testbenches
+
+    pdk = load_pdk('sky130')
+    dut = Module('sky130', str(tmp_path), 'dut.cir', pdk_details=pdk, module_name='dut')
+    dut.define_module_ports({'d': PortDir.OUT, 'g': PortDir.IN, 's': PortDir.GROUND})
+    dut.add(pdk.nmos1p8('MN', d='d', g='g', s='s', b='s', w=1.0, l=0.15))
+    code = generate_testbenches({"circuit_name": "dut", "tests": [{
+        "name": "sweep", "dut_portmap": {"d": "vd", "g": "vg", "s": "0"},
+        "sources": [
+            {"type": "VoltageSource", "instance": "vd", "positive": "vd",
+             "negative": "0", "dc": 1.0},
+            {"type": "VoltageSource", "instance": "vg", "positive": "vg",
+             "negative": "0", "dc": 1.0},
+        ],
+        "analyses": [analysis],
+        "probes": [{"signal": "MN:gm", "analysis": word}],
+        "metrics": [{"name": "vth", "type": "final_value", "signal": "MN:vth"}],
+    }]})
+    namespace = {}
+    exec(code, namespace)
+    namespace['_attach_sweep'](dut)
+
+    report = dut._tests['sweep'].run('tt')
+    gm = report.sim_results.load_signal('MN:gm', analysis=word)
+    assert len(gm.y) > 1
+    assert all(value > 0 for value in gm.y)
+    assert 0 < report.metrics['vth'] < 1

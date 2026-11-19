@@ -337,10 +337,42 @@ class NoDriverRule(Rule):
         "on a pass-through net inside a hierarchy (the parent drives it "
         "through the port). The module's own OUT port is not the other "
         "party: a net that reaches an OUT port with nothing driving it is a "
-        "floating output and is reported."
+        "floating output and is reported. "
+        "Driver or reference evidence passes through voltage-source output pairs "
+        "in either orientation, at any voltage, and through chains."
     )
 
     def check(self, module: Module) -> Iterator[InterfaceViolation]:
+        from silk.sources import (VoltageSource, BehavioralVoltage,
+                                  VoltageControlledVoltageSource,
+                                  CurrentControlledVoltageSource)
+
+        voltage_sources = {
+            name for name, source in module.sig_sources_dict.items()
+            if isinstance(source, (VoltageSource, BehavioralVoltage,
+                                   VoltageControlledVoltageSource,
+                                   CurrentControlledVoltageSource))
+        }
+        # Use the registered bindings so terminal net names follow rewiring.
+        terminals = defaultdict(list)
+        all_bindings = {}
+        for name, net in module.net_dict.items():
+            bs = [b for b in net.pins if b.kind in _RELEVANT_KINDS]
+            own = _own_port_binding(module, name)
+            if own is not None:
+                bs.append(own)
+            all_bindings[name] = bs
+            for b in bs:
+                if (b.kind == 'source' and b.instance in voltage_sources
+                        and b.port in ('positive', 'negative', 'out_pos', 'out_neg')):
+                    terminals[b.instance].append(name)
+        neighbours = defaultdict(set)
+        for source_name, pair in terminals.items():
+            if len(pair) == 2:
+                left, right = pair
+                neighbours[left].add((right, source_name))
+                neighbours[right].add((left, source_name))
+
         for net_name, bindings in _iter_module_net_bindings(module).items():
             if _is_ground_node(net_name):
                 continue
@@ -359,6 +391,36 @@ class NoDriverRule(Rule):
             # outside-driven port is the other party: nothing to say
             # (TASK-46). Presence only — never a driver for INT-001.
             if any(b.kind in _OTHER_PARTY_KINDS for b in bindings):
+                continue
+            # Only suppress an existing report. Exclude the output of each
+            # voltage source crossed on this path, not separate source drivers.
+            pending = [(net_name, frozenset(), frozenset())]
+            reached_evidence = False
+            while pending:
+                reached, crossed, visited = pending.pop()
+                if reached in visited:
+                    continue
+                visited = visited | {reached}
+                bs = all_bindings.get(reached, [])
+                roles = [b for b in bs if b.role is not None]
+                supply = (roles and all(b.role in ('power', 'ground') for b in roles)
+                          and any(b.role == 'ground'
+                                  or not getattr(b, 'role_inferred', False)
+                                  for b in roles))
+                if (_is_ground_node(reached) or supply
+                        or any(b.kind in _OTHER_PARTY_KINDS for b in bs)
+                        or any(b.direction == 'output'
+                               and not (b.kind == 'source'
+                                        and b.instance in crossed)
+                               for b in bs)):
+                    reached_evidence = True
+                    break
+                pending.extend(
+                    (other, crossed | {source_name}, visited)
+                    for other, source_name in neighbours[reached]
+                    if other not in visited
+                )
+            if reached_evidence:
                 continue
             names = ', '.join(f'{b.instance}.{b.port}({b.direction})' for b in bindings)
             yield InterfaceViolation(

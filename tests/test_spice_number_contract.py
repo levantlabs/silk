@@ -22,12 +22,14 @@ I16), in five parts:
    a second table, and round-trips with ``silk.utils.format_spice_value``.
 """
 import json
+import math
 import re
 import shutil
 import subprocess
 import warnings
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from tests._silk_sources import silk_py_files
@@ -357,3 +359,85 @@ class TestPublicEntryPoint:
         assert silk_utils.parse_spice_value(
             silk_utils.format_spice_value(value)
         ) == pytest.approx(value, rel=1e-12)
+
+
+@pytest.mark.parametrize('value,expected', [
+    (1.23456789012e15, '1234.56789012T'),
+    (1.23456789e9, '1.23456789G'),
+    (27343750.0, '27.34375Meg'),
+    (123456.789, '123.456789k'),
+    (.8022651269, '0.8022651269'),
+    (1.23456789e-6, '1.23456789u'),
+    (1.23456789e-9, '1.23456789n'),
+    (1.23456789e-12, '1.23456789p'),
+    (1.23456789e-15, '1.23456789f'),
+    (40e-9, '40n'), (.1 + .2, '0.3'),
+    (1 / 3, '0.333333333333333'),
+    (999.9999999, '999.9999999'),
+    (math.nextafter(1000., 0), '1000'),
+    (math.nextafter(.001, 0), '1000u'),
+    (.001, '0.001'), (1000, '1k'),
+    (math.nextafter(1e-6, 0), '1000n'),
+    (math.nextafter(1e-15, 0), '1e-15'),
+    (2.5e-18, '2.5e-18'), (1e20, '100000000T'),
+    (1e308, '1e+296T'),
+])
+@pytest.mark.parametrize('sign', [1, -1])
+def test_format_precision_and_original_magnitude_suffix(value, expected, sign):
+    assert silk_utils.format_spice_value(sign * value) == ('-' if sign < 0 else '') + expected
+
+
+@pytest.mark.parametrize('value,expected', [
+    (0., '0'), (-0., '0'), ('1.234567890123456789n', '1.234567890123456789n'),
+    ('{2*w}', '{2*w}'), ('  0.802265126900  ', '  0.802265126900  '),
+])
+def test_format_zero_and_supplied_text(value, expected):
+    assert silk_utils.format_spice_value(value) == expected
+
+
+def test_precise_source_emission_and_structure_identity(tmp_path):
+    from tests.test_run_files import _module
+    from tests.refactor.battery import hash_of
+
+    precise = _module(tmp_path / 'precise')
+    rounded = _module(tmp_path / 'rounded')
+    precise.sig_sources_dict['vin'].dc = .8022651269
+    rounded.sig_sources_dict['vin'].dc = .802265
+    precise_deck = Path(precise.generate_netlist()).read_text()
+    rounded_deck = Path(rounded.generate_netlist()).read_text()
+    assert 'DC 0.8022651269' in precise_deck
+    assert 'DC 0.802265 ' in rounded_deck
+    assert hash_of(precise) != hash_of(rounded)
+    precise.sig_sources_dict['vin'].dc = .802265
+    assert hash_of(precise) == hash_of(rounded)
+
+
+@pytest.mark.parametrize('dtype', [np.float16, np.float32])
+@pytest.mark.parametrize('value,expected', [
+    (0.1, '0.1'), (1.8, '1.8'), (-0.1, '-0.1'), (-1.8, '-1.8'),
+    (0.0, '0'), (-0.0, '0'), (1500, '1.5k'), (-1500, '-1.5k'),
+    (1e-5, '10u'), (-1e-5, '-10u'),
+])
+def test_low_precision_numpy_short_decimal(dtype, value, expected):
+    assert _fmt(dtype(value)) == expected
+
+
+@pytest.mark.parametrize('value,expected', [
+    (np.nextafter(np.float16(0), np.float16(1)), '60n'),
+    (np.float16(65504), '65.5k'),
+    (np.float32(1e-40), '1e-40'),
+    (np.finfo(np.float32).max, '3.4028235e+26T'),
+])
+def test_low_precision_numpy_extremes(value, expected):
+    assert _fmt(value) == expected
+
+
+@pytest.mark.parametrize('dtype', [float, np.float64])
+@pytest.mark.parametrize('value,expected', [
+    (0.1, '0.1'), (1.8, '1.8'), (-1.8, '-1.8'),
+    (0.1 + 0.2, '0.3'), (1e-5, '10u'),
+    (.8022651269, '0.8022651269'), (1.2345678901234567, '1.23456789012346'),
+    (float(np.float32(0.1)), '0.100000001490116'),
+])
+def test_double_precision_inputs_keep_existing_format(dtype, value, expected):
+    assert _fmt(dtype(value)) == expected

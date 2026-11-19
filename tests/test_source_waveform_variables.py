@@ -30,8 +30,7 @@ What is proved here:
   waveform ones in this file (AC #4).
 * **Plain values are untouched.** Every waveform's plain-float/SI-string text
   is pinned byte for byte: resolution shares ``_resolve_value`` with the device
-  path but *not* ``_fmt``, which would have rewritten ``27343750.0`` as
-  ``27.3438Meg``.
+  path but *not* ``_fmt``, which writes ``27343750.0`` as ``27.34375Meg``.
 * **A real deck, and a real simulation.** A generated netlist for the task's
   own reproducer, and a slow ngspice leg that sweeps a sine amplitude on an RC
   low-pass and measures a different output amplitude per point.
@@ -361,9 +360,9 @@ class TestPassivesStillRefuse:
 # ---------------------------------------------------------------------------
 
 class TestPlainValuesAreUntouched:
-    """Resolution is shared with the device path; FORMATTING is not. ``_fmt``
-    would have written ``27343750.0`` as ``27.3438Meg`` — six significant
-    digits and a suffix — rewriting every deck silk has ever emitted."""
+    """Resolution is shared with the device path; formatting is not.
+    ``_fmt`` writes ``27343750.0`` as ``27.34375Meg``; waveform tokens
+    preserve ``27343750.0``."""
 
     @pytest.mark.parametrize('wave,expected', [
         (Pulse(0, 1.8, td=0, tr='1n', tf='1n', pw='10n', per='20n'),

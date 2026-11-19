@@ -6,6 +6,7 @@ import pytest
 
 from silk import Module, sources
 from silk.circuit import TestFailure
+from silk.circuit.test_failure import attach_failure_info
 from silk.circuit.circuit_elements import PortDir
 from silk.exceptions import SimulationAborted
 from silk.simulation import Transient, analysis
@@ -77,7 +78,8 @@ def test_unpicklable_exception_keeps_original_identity():
     err = Local('local failure')
     err.handle = lambda: None            # not picklable
     outcome = pickle.loads(pickle.dumps(_RunOutcome(error=err)))
-    failure = TestFailure.from_outcome(outcome)
+    attach_failure_info(outcome.error, outcome)
+    failure = TestFailure.from_exception(outcome.error)
     assert failure.error_type == 'Local'
     assert failure.error_class.endswith('Local')
     assert failure == {'error': 'local failure'}
@@ -350,11 +352,13 @@ def test_same_class_lossy_fallback_is_not_original():
     err.handle = lambda: None                     # same importable class survives
     outcome = pickle.loads(pickle.dumps(_RunOutcome(error=err)))
     assert type(outcome.error) is ValueError and not hasattr(outcome.error, 'handle')
-    failure = TestFailure.from_outcome(outcome)
+    attach_failure_info(outcome.error, outcome)
+    failure = TestFailure.from_exception(outcome.error)
     assert failure.error_class == 'builtins.ValueError'
     assert not failure.exception_is_original
     clean = pickle.loads(pickle.dumps(_RunOutcome(error=ValueError('fine'))))
-    assert TestFailure.from_outcome(clean).exception_is_original
+    attach_failure_info(clean.error, clean)
+    assert TestFailure.from_exception(clean.error).exception_is_original
 
 
 def test_failure_node_validation_and_version(tmp_path):
@@ -749,3 +753,52 @@ def test_equivalent_benches_share_only_when_capture_requests_match(
         top.close()
         first.close()
         second.close()
+
+
+@pytest.mark.parametrize('error', [ValueError('evaluation broke'), SimulationAborted(
+    'aborted', simulator='ngspice', reason='r', data_rows=0, log_path='/a/o.log')])
+def test_from_exception_preserves_attached_evidence(error):
+    record = _record()
+    attach_failure_info(error, run=record)
+    failure = TestFailure.from_exception(error)
+    assert failure.exception is error
+    assert failure.run is record
+    assert failure == {'error': str(error)}
+    assert failure.exception_is_original
+    assert failure.error_type == type(error).__name__
+
+
+def test_from_outcome_is_removed():
+    assert not hasattr(TestFailure, 'from_outcome')
+
+
+def test_direct_run_catch_converts_failure(pdk, tmp_path):
+    dut, tb = _behavioral_bench(pdk, tmp_path, fail=True)
+    try:
+        with pytest.raises(RuntimeError, match='model broke') as caught:
+            tb.run()
+        failure = TestFailure.from_exception(caught.value)
+        assert failure.exception is caught.value
+        assert failure.error_type == 'RuntimeError'
+        assert failure.details == {}
+        assert failure.run is not None
+        assert failure.run.launch_id
+    finally:
+        dut.close()
+
+
+def test_direct_run_prelaunch_refusal_has_no_record(pdk, tmp_path, monkeypatch):
+    from silk.exceptions import SimulationError
+    dut, tb = _behavioral_bench(pdk, tmp_path)
+    def refuse(*args, **kwargs):
+        raise SimulationError('not launched')
+    monkeypatch.setattr(tb, '_prepare_run', refuse)
+    try:
+        with pytest.raises(SimulationError, match='not launched') as caught:
+            tb.run()
+        failure = TestFailure.from_exception(caught.value)
+        assert failure.exception is caught.value
+        assert failure.run is None
+        assert failure.details == {}
+    finally:
+        dut.close()

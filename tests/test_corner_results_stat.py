@@ -137,8 +137,8 @@ def test_grid_table_preserves_order_conditions_and_spec_keys(tmp_path):
 
 
 @pytest.mark.parametrize('value,expected', [(59.0,'FAIL'), (61.0,'PASS'),
-    (float('nan'),'UNAVAILABLE'), (None,'UNAVAILABLE'), (1+2j,'UNAVAILABLE'),
-    ('extractor failed','UNAVAILABLE'), (float('inf'),'PASS')])
+    (float('nan'),'FAIL'), (None,'FAIL'), (1+2j,'FAIL'),
+    ('extractor failed','FAIL'), (float('inf'),'PASS')])
 def test_check_cells_use_captured_measurement_evidence(value, expected):
     key = ('tt', 27.0, 1.8)
     report = SpecReport('ac','amp',{'gain':value}).check('gain floor','gain','>=',60,spec_key='floor')

@@ -3,6 +3,8 @@
 import re
 from numbers import Real
 
+import numpy as np
+
 # An SI prefix earns its place only when it removes exponent noise. Below this
 # band we emit u/n/p/f, above it k/Meg/G/T; inside it, a bare decimal.
 _PLAIN_LO, _PLAIN_HI = 1e-3, 1e3
@@ -15,6 +17,13 @@ _SUFFIXES = [
 
 def _fmt(value) -> str:
     """Format a value with an SI suffix for SPICE output.
+
+    Numeric values use up to 15 significant digits; trailing zeroes are omitted.
+    The plain-decimal band and SI suffix are selected from the value before
+    rounding. Values below the smallest suffix use scientific notation. This
+    formatting does not guarantee a bit-identical floating-point round trip.
+
+    NumPy float16 and float32 inputs use their shortest decimal spelling before SI scaling. This applies only while the input retains its NumPy dtype; Python float and NumPy float64 inputs keep the 15-significant-digit rule.
 
     Strings pass through unchanged. Large and small magnitudes take an SI suffix,
     because there it is what makes the number readable::
@@ -40,6 +49,8 @@ def _fmt(value) -> str:
         raise NotSupportedError('SPICE value: statistical declarations are behavioural-only in v1')
     if isinstance(value, str):
         return value
+    if isinstance(value, np.floating) and value.dtype.itemsize < 8:
+        value = float(str(value))
     if value == 0:
         return '0'
 
@@ -47,15 +58,15 @@ def _fmt(value) -> str:
     abs_val = abs(value)
 
     if _PLAIN_LO <= abs_val < _PLAIN_HI:
-        formatted = f'{abs_val:g}'
+        formatted = f'{abs_val:.15g}'
         return f'-{formatted}' if negative else formatted
 
     for threshold, suffix in _SUFFIXES:
         if abs_val >= threshold:
-            formatted = f'{abs_val / threshold:g}{suffix}'
+            formatted = f'{abs_val / threshold:.15g}{suffix}'
             return f'-{formatted}' if negative else formatted
 
-    formatted = f'{abs_val:g}'
+    formatted = f'{abs_val:.15g}'
     return f'-{formatted}' if negative else formatted
 
 

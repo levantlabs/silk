@@ -48,6 +48,7 @@ the two colon-suffix sets are disjoint; a ``'v(...)'`` wrapper always
 bypasses the device branch; and an unrecognised colon suffix is refused
 listing both sets.
 """
+import json
 import math
 import os
 
@@ -798,3 +799,559 @@ class TestRealXyce:
         t.probe('M1:gmbs')                     # not in XYCE_OP_CAPABILITY
         with pytest.raises(ValueError, match='XYCE_OP_CAPABILITY|N\\(\\)/ID\\(\\)'):
             _prepared_deck(t)
+
+
+@pytest.mark.slow
+@needs_ngspice
+@needs_pdk
+@pytest.mark.parametrize('save_params', [False, True])
+def test_retained_corner_uses_full_device_reader_and_original_declarations(save_params):
+    import numpy as np
+    dut, tb = _single_bench()
+    tb.add_sim_type(analysis.Transient(step=1e-9, stop=5e-9))
+    dut.save_device_params = save_params
+    probe = tb.probe('M1:gm')
+    reports = tb.run_corners(['tt', 'ss'])
+    expected = {}
+    for key, report in reports.items():
+        expected[key] = report.sim_results.load_signal('M1:gm').y.copy()
+        np.testing.assert_array_equal(probe.corner(key).y, expected[key])
+        assert report.sim_results.save_device_params == save_params
+    assert not np.array_equal(expected['tt'], expected['ss'])
+    tb.netlist.sim_analysis_dict.clear()
+    tb.netlist.sim_analysis_dict['ac'] = analysis.AC('dec', 2, 1, 10)
+    tb.netlist.save_device_params = not save_params
+    tb.netlist._pending_device_probes = set()
+    for key, report in reports.items():
+        np.testing.assert_array_equal(report.sim_results.load_signal('M1:gm').y, expected[key])
+        np.testing.assert_array_equal(probe.corner(key).y, expected[key])
+
+
+@pytest.mark.slow
+@needs_ngspice
+@needs_pdk
+def test_retained_preflight_reason_survives_live_declaration_changes(monkeypatch):
+    from silk.circuit.modules_results import PreflightResult
+    from silk.circuit.spice_netlister import PySpiceNetlister
+    refusal = PreflightResult(False, 'probe-control', 'frozen-preflight.log', 'unavailable')
+    monkeypatch.setattr(PySpiceNetlister, '_ngspice_param_preflight',
+                        lambda *args, **kwargs: refusal)
+    dut, tb = _single_bench()
+    tb.add_sim_type(analysis.Transient(step=1e-9, stop=5e-9))
+    tb.probe('M1:cgso')
+    tb.add_metric('unavailable', lambda module: module.load_signal('M1:cgso').y[-1])
+    reports = tb.run_corners(['tt', 'ss'], n_workers=1)
+    tb.netlist.netlister._preflight_unavailable_params = {}
+    tb.netlist._pending_device_probes = set()
+    for key, report in reports.items():
+        assert report.metric_errors['unavailable']
+        assert report.sim_results._raw._preflight_unavailable_params
+        with pytest.raises(SimulationError, match='cgso') as error:
+            report.sim_results.load_signal('M1:cgso')
+        assert 'AFTER' not in str(error.value)
+        assert 'preflight log: frozen-preflight.log' in str(error.value)
+        with pytest.raises(SimulationError, match='cgso'):
+            tb.probe('M1:cgso').corner(key)
+
+
+@pytest.mark.slow
+@needs_ngspice
+@needs_pdk
+def test_retained_reader_methods_use_own_source_currents():
+    from pathlib import Path
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from silk.circuit.modules_results import _trapezoid_window
+    from silk.simulation.generation import read_retained
+    dut, tb = _single_bench()
+    dut.save_device_currents = True
+    tb.add_sim_type(analysis.Transient(step=1e-9, stop=5e-9))
+    reports = tb.run_corners(['tt', 'ss'])
+    currents = []
+    for report in reports.values():
+        reader = report.sim_results
+        expected_raw = tb.netlist.backend.load_raw(report.rawfile_path)
+        expected = tb.netlist.backend.load_signal(expected_raw, 'vvd', type='I')
+        actual = reader.load_signal('vvd', 'I')
+        np.testing.assert_array_equal(actual.y, expected.y)
+        currents.append(actual.y[-1])
+        assert reader.get_signal_names(raw=True) == [v.name for v in expected_raw.native.vectors]
+        np.testing.assert_array_equal(
+            reader.backend.load_signal(type(expected_raw)(read_retained(reader), report.rawfile_path),
+                                       'vvd', type='I').y, expected.y)
+        assert Path(reader.view(open=False, inline=True)).is_file()
+        figure = reader.plot('vvd:I', show=False)
+        np.testing.assert_allclose(figure.axes[0].lines[0].get_ydata(),
+                                   reader._auto_scale(expected.y, 'A')[0])
+        plt.close(figure)
+        annotations = reader.annotate_currents(force=True)
+        assert annotations.results_file == report.rawfile_path
+        pin = next(pin for pin in reader.net_dict['vd'].pins if pin.instance == 'vd')
+        assert abs(pin.avg_current) == pytest.approx(abs(_trapezoid_window(expected.x, expected.y, None)[0]))
+        assert all(v._data is None for p in reader.simResultsAll.plots for v in p.vectors)
+    assert currents[0] != currents[1]
+
+
+# ---------------------------------------------------------------------------
+# evaluate(rawfile=...) in a process that never ran or prepared the test.
+# ---------------------------------------------------------------------------
+
+def _external_raw_for(tb, corner='tt'):
+    """Prepare *tb*, simulate its deck outside silk, return the raw path."""
+    import subprocess
+    from pathlib import Path
+    from silk.simulation.runner import ngspice_executable
+    deck = Path(tb.prepare(corner=corner))
+    files = tb.netlist._run_files
+    completed = subprocess.run(
+        [ngspice_executable(), '-b', '-r', files.rawfile_path,
+         '-o', files.logfile_path, str(deck)],
+        cwd=files.directory, capture_output=True, text=True, timeout=120)
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    return files.rawfile_path
+
+
+def _gm_final(signal):
+    return float(signal.y[-1])
+
+
+@pytest.mark.slow
+@needs_ngspice
+@needs_pdk
+class TestEvaluateRawfileDeviceProbes:
+    VECTOR = '@m.xdut.xmm1.msky130_fd_pr__nfet_01v8[gm]'
+
+    def _bench(self, with_metric=True):
+        dut, tb = _single_bench()
+        tb.add_sim_type(analysis.Op())
+        gm = tb.probe('M1:gm')
+        if with_metric:
+            tb.add_metric('gm_metric', lambda sig: float(sig.y[-1]), sig=gm)
+        return dut, tb, gm
+
+    def _external(self):
+        _, producer, _ = self._bench()
+        raw = _external_raw_for(producer)
+        return raw
+
+    def test_fresh_bench_reads_declared_probe_and_metric(self):
+        raw = self._external()
+        _, tb, gm = self._bench()
+        report = tb.evaluate(rawfile=raw, corner='tt')
+        expected = float(tb.netlist.load_signal(self.VECTOR.lower()).y[-1])
+        assert expected > 0
+        assert _gm_final(gm) == pytest.approx(expected, rel=1e-12)
+        assert report.metrics['gm_metric'] == pytest.approx(expected, rel=1e-12)
+        assert not report.metric_errors
+
+    def test_probe_created_after_evaluate_still_refused(self):
+        raw = self._external()
+        _, tb, _ = self._bench()
+        tb.evaluate(rawfile=raw, corner='tt')
+        late = tb.probe('M1:gds')
+        with pytest.raises(SimulationError, match='AFTER'):
+            late.y
+        tb.evaluate()
+        with pytest.raises(SimulationError, match='AFTER'):
+            late.y
+
+    def test_explicit_reevaluate_admits_probe_present_in_file(self):
+        # Producer declares both parameters; the consumer declares gm first.
+        _, producer, _ = self._bench()
+        producer.probe('M1:gds')
+        raw = _external_raw_for(producer)
+        _, tb, _ = self._bench()
+        tb.evaluate(rawfile=raw, corner='tt')
+        late = tb.probe('M1:gds')
+        with pytest.raises(SimulationError, match='AFTER'):
+            late.y
+        tb.evaluate(rawfile=raw, corner='tt')
+        assert float(late.y[-1]) > 0
+
+    def test_declared_parameter_missing_from_file_is_availability_error(self):
+        raw = self._external()
+        _, tb, _ = self._bench(with_metric=False)
+        missing = tb.probe('M1:gds')
+        tb.evaluate(rawfile=raw, corner='tt')
+        with pytest.raises(SimulationError) as excinfo:
+            missing.y
+        assert 'AFTER' not in str(excinfo.value)
+
+    def test_invalid_declaration_keeps_previous_snapshot(self):
+        raw = self._external()
+        _, tb, gm = self._bench()
+        tb.evaluate(rawfile=raw, corner='tt')
+        before = list(tb.netlist._pending_device_probes)
+        tb.probe('M1:gds')
+        with pytest.raises(Exception):
+            tb.evaluate(rawfile=raw, corner='nonexistent-corner-xyz',
+                        temperature='not-a-temperature')
+        assert list(tb.netlist._pending_device_probes) == before
+        assert _gm_final(gm) > 0
+
+
+# ---------------------------------------------------------------------------
+# Simulator-free evaluate(rawfile=...): raw data written with write_rawfile.
+# ---------------------------------------------------------------------------
+
+def _op_raw(path, gm, vector):
+    import numpy as np
+    from silk.signals.rawfile import RawPlot, RawVector, write_rawfile
+    header = {'title': 't', 'date': 'd', 'plotname': 'Operating Point',
+              'flags': 'real'}
+    write_rawfile(path, RawPlot(
+        header,
+        [RawVector('v(d)', 'voltage', (), np.array([1.0])),
+         RawVector(vector, 'conductance', (), np.array([gm]))],
+        1, True, None))
+
+
+_NG_GM = '@m.xdut.xmm1.msky130_fd_pr__nfet_01v8[gm]'
+_XY_GM = 'N(XDUT:XMM1:gm)'
+
+
+@needs_pdk
+@pytest.mark.parametrize('simulator,vector', [
+    ('ngspice', _NG_GM), ('xyce', _XY_GM)], ids=['ngspice', 'xyce'])
+class TestEvaluateRawfileSimulatorFree:
+    def _bench(self, simulator, metric=True):
+        dut, tb = _single_bench()
+        dut.simulator = simulator
+        tb.netlist.simulator = simulator
+        tb.add_sim_type(analysis.Op())
+        gm = tb.probe('M1:gm')
+        if metric:
+            tb.add_metric('gm_metric', lambda sig: float(sig.y[-1]), sig=gm)
+        return tb, gm
+
+    def test_declared_probe_and_metric_read_native_vector(
+            self, tmp_path, simulator, vector):
+        raw = str(tmp_path / 'ext.raw')
+        _op_raw(raw, 2.5e-4, vector)
+        tb, gm = self._bench(simulator)
+        report = tb.evaluate(rawfile=raw, corner='tt')
+        assert float(gm.y[-1]) == pytest.approx(2.5e-4)
+        assert report.metrics['gm_metric'] == pytest.approx(2.5e-4)
+        assert not report.metric_errors
+
+    def test_missing_vector_is_availability_not_lifecycle(
+            self, tmp_path, simulator, vector):
+        raw = str(tmp_path / 'ext.raw')
+        _op_raw(raw, 2.5e-4, vector.replace('gm', 'gds'))
+        tb, gm = self._bench(simulator, metric=False)
+        tb.evaluate(rawfile=raw, corner='tt')
+        with pytest.raises(SimulationError) as excinfo:
+            gm.y
+        assert 'AFTER' not in str(excinfo.value)
+
+    def test_late_probe_refused_until_explicit_reevaluate(
+            self, tmp_path, simulator, vector):
+        raw = str(tmp_path / 'ext.raw')
+        _op_raw(raw, 2.5e-4, vector.replace('gm', 'gds'))
+        tb, gm = self._bench(simulator, metric=False)
+        tb.evaluate(rawfile=raw, corner='tt')
+        late = tb.probe('M1:gds')
+        with pytest.raises(SimulationError, match='AFTER'):
+            late.y
+        tb.evaluate(rawfile=raw, corner='tt')
+        assert float(late.y[-1]) == pytest.approx(2.5e-4)
+
+
+@needs_pdk
+def test_selected_placements_read_their_own_external_files(tmp_path):
+    dut, tb = _single_bench()
+    tb.add_sim_type(analysis.Op())
+    top = Module(None, str(tmp_path / 'top'), 'top.cir', None)
+    top.add_module(dut, 'one', d='a', g='ga', s='0', b='0')
+    top.add_module(dut, 'two', d='b', g='gb', s='0', b='0')
+    one = top.get_test('probechk', instance='one')
+    two = top.get_test('probechk', instance='two')
+    gm_one = one.probe('M1:gm')
+    gm_two = two.probe('M1:gm')
+    raw_one, raw_two = str(tmp_path / 'one.raw'), str(tmp_path / 'two.raw')
+    vec = lambda inst: f'@m.x{inst}.xdut.xmm1.msky130_fd_pr__nfet_01v8[gm]'
+    _op_raw(raw_one, 1.0e-4, vec('one'))
+    _op_raw(raw_two, 3.0e-4, vec('two'))
+    one.evaluate(rawfile=raw_one, corner='tt')
+    two.evaluate(rawfile=raw_two, corner='tt')
+    assert float(gm_one.y[-1]) == pytest.approx(1.0e-4)
+    assert float(gm_two.y[-1]) == pytest.approx(3.0e-4)
+
+
+# ---------------------------------------------------------------------------
+# TASK-820: tb.device_probe_address('M1:gm') -- the exact raw vector address
+# and designer label, with no simulation. The prepared deck is the oracle.
+# ---------------------------------------------------------------------------
+import re
+import shutil
+import subprocess
+from pathlib import Path
+
+_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _deck_device_addresses(deck, backend):
+    """Every device-parameter vector the deck asks the simulator to save."""
+    if backend == 'xyce':
+        printed = [ln for ln in deck.splitlines()
+                   if ln.lower().startswith('.print')]
+        return re.findall(r'(?:\bN|\bID)\([^)]*\)', ' '.join(printed))
+    return re.findall(r'"(@m[^"]*)"', '\n'.join(
+        ln for ln in deck.splitlines() if ln.lstrip().startswith('save ')))
+
+
+def _addr_bench(backend='ngspice', analysis_obj=None):
+    dut, t = _single_bench()
+    dut.simulator = backend
+    t.add_sim_type(analysis_obj or analysis.Op())
+    return dut, t
+
+
+class TestDeviceProbeAddress:
+    @pytest.mark.parametrize('backend', ['ngspice', 'xyce'])
+    @pytest.mark.parametrize('corner', ['tt', 'ss'])
+    def test_address_equals_deck_save_argument(self, backend, corner):
+        dut, t = _addr_bench(backend)
+        before = t.device_probe_address('M1:gm')
+        assert before['label'] == 'dut.M1:gm'
+        assert set(before) == {'address', 'label'}
+        t.probe('M1:gm')
+        deck_path = t.prepare(corner=corner)
+        deck = Path(deck_path).read_text()
+        assert _deck_device_addresses(deck, backend) == [before['address']]
+        assert t.device_probe_address('M1:gm') == before
+        if backend == 'ngspice':
+            assert before['address'] == (
+                '@m.xdut.XMM1.msky130_fd_pr__nfet_01v8[gm]')
+        else:
+            assert before['address'] == 'N(XDUT:XMM1:MSKY130_FD_PR__NFET_01V8:GM)'
+
+    @pytest.mark.parametrize('backend', ['ngspice', 'xyce'])
+    def test_id_and_parameter_normalisation(self, backend):
+        dut, t = _addr_bench(backend)
+        got = t.device_probe_address('M1:GM')
+        assert got['label'] == 'dut.M1:gm'
+        t.probe('M1:gm')
+        t.probe('M1:id')
+        deck = _prepared_deck(t)
+        ident = t.device_probe_address('M1:id')
+        assert ident['label'] == 'dut.M1:id'
+        # sky130 declares gm and id: both are saved, and the deck is the oracle
+        assert sorted(_deck_device_addresses(deck, backend)) == sorted(
+            [got['address'], ident['address']])
+
+    def test_nested_designer_path_keeps_case_and_label(self):
+        stage, _ = _single_bench()
+        dut = Module('sky130', scratch_dir(), 'outer.cir', pdk_details=_sky130(),
+                     module_name='outer')
+        dut.define_module_ports({'d': PortDir.OUT, 'g': PortDir.IN,
+                                 's': PortDir.GROUND, 'b': PortDir.GROUND})
+        mapping = {'d': 'd', 'g': 'g', 's': 's', 'b': 'b'}
+        dut.add_module(stage, 'Core', nets=mapping)
+        t = dut.create_test('nested')
+        t.add_module_under_test(mapping)
+        t.add_sim_type(analysis.Op())
+        got = t.device_probe_address('Core.M1:vth')
+        assert got['label'] == 'dut.Core.M1:vth'
+        t.probe('Core.M1:vth')
+        deck = _prepared_deck(t)
+        assert _deck_device_addresses(deck, 'ngspice') == [got['address']]
+
+    def test_contract_wording_in_docstring_and_reference(self):
+        from silk.circuit.module_test import ModuleTestbench
+        sentence = ('Noise-only tests and ammeter-wrapper mode are refused by '
+                    'prepare()/run(). prepare() also refuses parameters '
+                    'needing auxiliary ngspice preflight; run() performs '
+                    'that preflight.')
+        doc = ' '.join(ModuleTestbench.device_probe_address.__doc__.split())
+        ref = ' '.join((_ROOT / 'docs/api-reference.md').read_text().split())
+        ref = ref.replace('`prepare()`', 'prepare()').replace('`run()`', 'run()')
+        assert sentence in ref
+        assert sentence in doc
+        assert 'neither validates capture support' in doc
+
+    def test_lookup_before_any_probe_and_corner_independent(self):
+        dut, t = _addr_bench()
+        a = t.device_probe_address('M1:gm')
+        assert t.device_probe_address('M1:gm') == a
+
+    @pytest.mark.parametrize('path, exc, words', [
+        ('N1:gm', ValueError, ("N1", "gm")),
+        ('M1:foo', ValueError, ("foo",)),
+        ('M1:gm_id', ValueError, ("gm_id",)),
+        ('M1:d', ValueError, ("M1:d",)),
+        ('M1', ValueError, ("M1",)),
+        ('v(M1:gm)', ValueError, ("v(M1:gm)",)),
+        ('', ValueError, ()),
+        (5, TypeError, ()),
+        (None, TypeError, ()),
+    ])
+    def test_bad_input_and_resolver_errors(self, path, exc, words):
+        dut, t = _addr_bench()
+        with pytest.raises(exc) as info:
+            t.device_probe_address(path)
+        for word in words:
+            assert word in str(info.value)
+
+    def test_error_matches_prepare_error_for_unknown_device(self):
+        dut, t = _addr_bench()
+        t.probe('N1:gm')
+        with pytest.raises(ValueError) as from_prepare:
+            _prepared_deck(t)
+        with pytest.raises(ValueError) as from_lookup:
+            t.device_probe_address('N1:gm')
+        assert str(from_lookup.value) == str(from_prepare.value)
+
+    def test_non_mos_device_refused(self):
+        dut = Module('sky130', scratch_dir(), 'dut.cir',
+                     pdk_details=_sky130(), module_name='dut')
+        dut.define_module_ports({'a': PortDir.INOUT, 'b': PortDir.INOUT})
+        with dut:
+            elements.resistor('r1', p='a', n='b', value=1000)
+        t = dut.create_test('probechk')
+        t.add_module_under_test({'a': 'va', 'b': 'vb'})
+        with pytest.raises(ValueError, match='not a MOS-shaped device') as info:
+            t.device_probe_address('r1:gm')
+        assert 'r1' in str(info.value) and 'gm' in str(info.value)
+
+    def test_device_outside_the_dut_refused(self):
+        stage, _ = _single_bench()
+        dut = Module('sky130', scratch_dir(), 'outer.cir', pdk_details=_sky130(),
+                     module_name='outer')
+        dut.define_module_ports({'d': PortDir.OUT, 'g': PortDir.IN,
+                                 's': PortDir.GROUND, 'b': PortDir.GROUND})
+        mapping = {'d': 'd', 'g': 'g', 's': 's', 'b': 'b'}
+        t = dut.create_test('outside')
+        t.add_module_under_test(mapping)
+        t.add_module(stage, 'helper', nets=mapping)      # a bench helper, not the DUT
+        with pytest.raises(ValueError, match='helper.M1'):
+            t.device_probe_address('helper.M1:gm')
+
+    def test_lookup_has_no_side_effects(self, monkeypatch):
+        dut, t = _addr_bench()
+        t.probe('M1:vth')
+        registry = list(t._probe_registry)
+        pending = getattr(t.netlist, '_pending_device_probes', None)
+
+        def boom(*a, **k):
+            raise AssertionError('the lookup must not launch or prepare anything')
+        monkeypatch.setattr(subprocess, 'Popen', boom)
+        monkeypatch.setattr(subprocess, 'run', boom)
+        monkeypatch.setattr(type(t), 'prepare', boom)
+        monkeypatch.setattr(type(t), 'run', boom)
+        monkeypatch.setattr(type(t), 'evaluate', boom)
+        t.device_probe_address('M1:gm')
+        assert t._probe_registry == registry
+        assert len(t._probe_registry) == 1
+        assert getattr(t.netlist, '_pending_device_probes', None) == pending
+        assert t.results_file is None
+
+    def test_prepare_still_refuses_what_the_lookup_does_not_check(self):
+        # Controls: the lookup is not a capture-support check.
+        dut, t = _addr_bench(analysis_obj=analysis.Noise(
+            output='vd', ref=None, source='vg', variation='dec', points=10,
+            fstart=1e3, fstop=1e6))
+        t.probe('M1:gm')
+        assert t.device_probe_address('M1:gm')['label'] == 'dut.M1:gm'
+        with pytest.raises(SimulationError, match='Noise'):
+            t.prepare(corner='tt')
+        dut, t = _single_bench()
+        dut.save_device_currents = True
+        dut.terminal_current_method = 'ammeter_wrapper'
+        t.add_sim_type(analysis.Transient(step=1e-9, stop=5e-9))
+        t.probe('M1:gm')
+        assert t.device_probe_address('M1:gm')['label'] == 'dut.M1:gm'
+        with pytest.raises(SimulationError, match='ammeter_wrapper'):
+            t.prepare(corner='tt')
+        from silk.exceptions import NotSupportedError
+        dut, t = _addr_bench()
+        t.probe('M1:cgso')
+        assert t.device_probe_address('M1:cgso')['label'] == 'dut.M1:cgso'
+        with pytest.raises(NotSupportedError, match='cgso'):
+            t.prepare(corner='tt')
+
+
+# --- selector guarantee on real raw files ----------------------------------
+
+def _raw_plot_names(raw_path):
+    from silk.signals.rawfile import read_rawfile
+    raw = read_rawfile(str(raw_path))
+    return [[v.name for v in plot.vectors[1:]] for plot in raw.plots]
+
+
+def _js_matches(names, selector):
+    node = shutil.which('node')
+    if not node:
+        pytest.skip('Node is required for the JavaScript selector check')
+    script = """
+import {matchesSelector} from './silk/signals/view/assets/selectors.mjs';
+const {names, selector} = JSON.parse(process.argv[1]);
+console.log(JSON.stringify(names.map(n => matchesSelector(n, selector))));
+"""
+    out = subprocess.run(
+        [node, '--input-type=module', '-e', script,
+         json.dumps({'names': names, 'selector': selector})],
+        cwd=_ROOT, check=True, capture_output=True, text=True)
+    return json.loads(out.stdout)
+
+
+def _strip_wrapper(name):
+    m = re.fullmatch(r'(?:v|i)\((.*)\)', name, flags=re.IGNORECASE)
+    return m.group(1) if m else name
+
+
+def _assert_selects_the_row(raw_path, address):
+    """The address selects exactly one native row in EVERY plot, in every case
+    variant, with silk's Python matches_selector, select_for_payload and the
+    JavaScript matchesSelector."""
+    from silk.signals.view.select import matches_selector, select_for_payload
+    plots = _raw_plot_names(raw_path)
+    assert plots
+    for names in plots:
+        want = [i for i, n in enumerate(names)
+                if _strip_wrapper(n).lower() == address.lower()]
+        assert len(want) == 1, (address, names)
+        for selector in (address, address.lower(), address.upper()):
+            got = [i for i, n in enumerate(names) if matches_selector(n, selector)]
+            assert got == want, (selector, names)
+            js = [i for i, hit in enumerate(_js_matches(names, selector)) if hit]
+            assert js == want, ('js', selector, names)
+            mask = select_for_payload([names], signals=[selector])[0]
+            assert [i for i, m in enumerate(mask) if m] == want, selector
+
+
+@needs_ngspice
+@needs_pdk
+class TestAddressOnRealRawFiles:
+    @pytest.mark.parametrize('kind', ['op', 'tran'])
+    @pytest.mark.parametrize('param', ['gm', 'id'])
+    def test_ngspice(self, kind, param):
+        sim = (analysis.Op() if kind == 'op'
+               else analysis.Transient(step=1e-9, stop=3e-9))
+        dut, t = _addr_bench('ngspice', sim)
+        sig = t.probe(f'M1:{param}')
+        before = t.device_probe_address(f'M1:{param}')
+        report = dut.run_test('probechk', corner='tt')
+        sig.y                                             # the vector is readable
+        assert t.device_probe_address(f'M1:{param}') == before
+        _assert_selects_the_row(report.rawfile_path, before['address'])
+        t.evaluate(rawfile=report.rawfile_path)
+        assert t.device_probe_address(f'M1:{param}') == before
+
+
+@needs_pdk
+@pytest.mark.requires_xyce
+@pytest.mark.skipif(not _have_xyce, reason='Xyce binary or sky130 PDK not present')
+class TestAddressOnRealXyceRawFiles:
+    @pytest.mark.parametrize('param', ['gm', 'id'])
+    def test_xyce(self, monkeypatch, param):
+        monkeypatch.setenv('SILK_XYCE_BIN', _XYCE_BIN)
+        dut, t = _addr_bench('xyce')
+        sig = t.probe(f'M1:{param}')
+        before = t.device_probe_address(f'M1:{param}')
+        report = dut.run_test('probechk', corner='tt')
+        sig.y
+        assert t.device_probe_address(f'M1:{param}') == before
+        _assert_selects_the_row(report.rawfile_path, before['address'])
+        t.evaluate(rawfile=report.rawfile_path)
+        assert t.device_probe_address(f'M1:{param}') == before

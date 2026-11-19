@@ -105,7 +105,7 @@ class TestCompositionRebinding:
         parent.add_module(block, 'inst', nets={'out': 'out', 'vss': '0'})
         entry = parent.list_test_entries()[0]
         assert entry.test is parent.get_test('measure', instance='inst')
-        assert entry.test.netlist is template.netlist
+        assert entry.test.netlist.sim_analysis_dict is template.netlist.sim_analysis_dict
         leaves = _leaves(template)
         assert leaves
         assert all(leaf._bench_or_none() is template for leaf in leaves)

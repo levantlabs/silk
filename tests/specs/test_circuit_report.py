@@ -261,12 +261,12 @@ def test_placement_labels_in_all_renderers_and_saved_identity(tmp_path):
                      report._render_spec_reconciliation_md(),
                      report._render_metrics_terminal()):
         assert '$' not in rendered
-        for label in ('gain (instance u0)', 'gain (instance u0/u1)',
-                      'gain (instance u1)', 'gain (instance u%2F0/x%25)'):
+        for label in ('gain (instance u0)', 'gain (instance u0.u1)',
+                      'gain (instance u1)', 'gain (instance u%2F0.x%25)'):
             assert label in rendered
     summary = report.spec_reconciliation.summary()
     assert '$' not in summary
-    assert all(label in summary for label in ('(instance u0)', '(instance u0/u1)', '(instance u1)'))
+    assert all(label in summary for label in ('(instance u0)', '(instance u0.u1)', '(instance u1)'))
     path = tmp_path / 'placements.json'
     report.save_json(path)
     loaded = CircuitReport.load_json(path)

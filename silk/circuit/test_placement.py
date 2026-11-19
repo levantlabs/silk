@@ -18,7 +18,8 @@ _SELECTED_PROBE_CALLS = frozenset({'probe', 'probe_bus'})
 @dataclass
 class TestEvidence:
     values: dict = field(default_factory=lambda: {
-        '_sweep_table': {}, '_mc_samples': None, '_record_measurements': True,
+        '_sweep_table': {}, '_sweep_states': {}, '_sweep_generations': {},
+        '_mc_samples': None, '_record_measurements': True,
         '_cache': {},
     })
     report: object = None
@@ -307,6 +308,8 @@ class SelectedTestbench:
             if name == 'metrics':
                 return dict(getattr(self._authored, '_metric_values', {}))
             value = getattr(self._authored, name)
+            if name == 'netlist':
+                return None if value is None else _SelectedNetlist(self)
         if not callable(value):
             return value
 
@@ -351,6 +354,103 @@ class SelectedTestbench:
                         result._bench = self
                 return self if result is self._authored else result
         return call
+
+
+class _SelectedNetlist:
+    """Shared circuit configuration with late-bound selected result reads."""
+    _RESULT_METHODS = frozenset({
+        'view', 'load_signal', 'get_signal_names', 'plot', 'read_raw_file',
+        'annotate_currents',
+    })
+    _EXECUTION_METHODS = frozenset({
+        'load_file', 'run_simulator', 'simulate', 'simulate_behavioral',
+    })
+
+    def __init__(self, selected):
+        object.__setattr__(self, '_selected', selected)
+
+    def _module(self):
+        self._selected._entry()
+        return self._selected._authored.netlist
+
+    @property
+    def __class__(self):
+        return self._selected._authored.netlist.__class__
+
+    def _unavailable(self, name):
+        raise ConfigurationError(
+            f'Selected test {self._selected._authored.test_name!r} at '
+            f'{self._selected._owner_path!r} has no retained results for '
+            f'{name!r}. Call run() or evaluate(rawfile=...) on the selected test first.')
+
+    def _reader(self, name):
+        with execution_scope(self._selected._entry()):
+            reader = self._selected._authored._result_netlist()
+        if reader is None or not reader.__dict__.get('sim_results_loaded', False):
+            self._unavailable(name)
+        return reader
+
+    def __getattr__(self, name):
+        from silk.circuit.module_test import _SIMULATED_STATE_ATTRS
+        module = self._module()
+        if ((name in _SIMULATED_STATE_ATTRS and name not in {
+                'sim_analysis_dict', 'simulator_options', 'save_device_params',
+                'save_device_currents', 'terminal_current_method', '_pending_device_probes'})
+                or name in {'characterization_context'}):
+            reader = self._reader(name)
+            # Missing result state must never pick up a sibling's latest state.
+            if name not in reader.__dict__:
+                self._unavailable(name)
+            return getattr(reader, name)
+        value = getattr(module, name)
+        if not callable(value):
+            return value
+
+        @wraps(value)
+        def call(*args, **kwargs):
+            if name in self._EXECUTION_METHODS:
+                self._selected._entry()
+                raise ConfigurationError(
+                    f'Selected test {self._selected._authored.test_name!r} at '
+                    f'{self._selected._owner_path!r}: netlist.{name}() cannot '
+                    'publish selected results. Use the selected test\'s run() '
+                    'or evaluate(rawfile=...) instead.')
+            if name in self._RESULT_METHODS:
+                return getattr(self._reader(name), name)(*args, **kwargs)
+            authored = self._module()
+            result = getattr(authored, name)(*args, **kwargs)
+            return self if result is authored else result
+        return call
+
+    def __setattr__(self, name, value):
+        setattr(self._module(), name, value)
+
+    def __delattr__(self, name):
+        delattr(self._module(), name)
+
+    def __enter__(self):
+        module = self._module()
+        result = module.__enter__()
+        return self if result is module else result
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return self._module().__exit__(exc_type, exc_val, exc_tb)
+
+    def __copy__(self):
+        return type(self)(self._selected)
+
+    def __deepcopy__(self, memo):
+        from copy import deepcopy
+        new = type(self).__new__(type(self))
+        memo[id(self)] = new
+        object.__setattr__(new, '_selected', deepcopy(self._selected, memo))
+        return new
+
+    def __reduce_ex__(self, protocol):
+        raise TypeError(
+            'A selected netlist holds a weakref to its root and cannot be pickled '
+            'or sent to a simulation worker. Construct FaultCampaign with the '
+            'authored testbench netlist instead.')
 
 
 def selected_probe_pickle_bindings(root):
@@ -454,12 +554,28 @@ class EvidenceResults:
         # on this circuit view while reading its retained simulation state.
         return self._module.__class__
 
-    def __init__(self, module, *, authored=None):
-        from copy import deepcopy
+    def __init__(self, module, *, authored=None, _retained=False, _state=None):
+        from copy import copy, deepcopy
         from silk.circuit.module_test import _SIMULATED_STATE_ATTRS
         self._module = authored if authored is not None else module
-        state = {name: getattr(module, name) for name in _SIMULATED_STATE_ATTRS
-                 if hasattr(module, name)}
+        values = vars(module)
+        state = (dict(_state) if _state is not None else
+                 {name: values[name] for name in _SIMULATED_STATE_ATTRS
+                  if name in values})
+        if _state is not None:
+            self.__dict__.update(state)
+            from silk.simulation.backend import SimulatorBackend
+            self.backend = SimulatorBackend.get(self.simulator)
+            return
+        # A native-only reader has no RawResult. Keep that explicit so a
+        # waveform read can use its own native data, never the live circuit's.
+        state.setdefault('_raw', None)
+        # External rawfiles have no launch/preparation/sample facts. Snapshot
+        # their absence too, rather than borrowing a later run's metadata.
+        for name in ('_last_sim_corner', '_last_sim_label', '_launch_record',
+                     '_prepared_deck_record', '_mc_sample'):
+            state.setdefault(name, None)
+        state.setdefault('_behavioral_mode', False)
         self.__dict__.update(state)
         conditions = state.get('operating_conditions')
         self.simulator = getattr(conditions, 'backend', None) or self._module.simulator
@@ -470,10 +586,70 @@ class EvidenceResults:
             self._raw = self.backend.load_raw(state['results_file'],
                                                simulator=self.simulator)
         self.characterization_context = getattr(module, 'characterization_context', None)
-        self.sim_analysis_dict = deepcopy(self._module.sim_analysis_dict)
-        self.simulator_options = dict(self._module.simulator_options)
+        self.sim_analysis_dict = deepcopy(
+            getattr(module, 'sim_analysis_dict', self._module.sim_analysis_dict))
+        self.simulator_options = dict(
+            getattr(module, 'simulator_options', self._module.simulator_options))
+        for name in ('save_device_params', 'save_device_currents',
+                     'terminal_current_method', '_pending_device_probes'):
+            setattr(self, name, deepcopy(
+                getattr(module, name, getattr(self._module, name, None))))
         self.dir_folder, path, _ = execution_location(self._module)
         self.netlistname = path.split('/')[-1]
+        self._retained = _retained
+        if _retained:
+            from silk.signals.rawfile import RawFile, read_rawfile
+            from silk.simulation.backend import RawResult
+            from silk.simulation.generation import attach, artifact_read
+            from silk.exceptions import NotSupportedError
+            raw = self._raw
+            native = getattr(raw, 'native', None) if raw is not None else state.get('simResultsAll')
+            if isinstance(native, RawFile) and native.source_path:
+                raw = copy(raw) if raw is not None else RawResult(native, native.source_path)
+                if (getattr(raw, '_generation', None) is None
+                        and getattr(native, '_generation', None) is not None):
+                    raw._generation = native._generation
+                if getattr(raw, '_generation', None) is not None:
+                    with artifact_read(raw, 'rawfile_path') as source:
+                        raw.native = read_rawfile(source, lazy=True)
+                        attach(raw, raw._generation)
+                else:
+                    stores = {id(vector._store): vector._store
+                              for plot in native.plots
+                              for vector in plot.vectors if vector._store is not None}
+                    source = next(iter(stores.values())).path if stores else native.source_path
+                    for store in stores.values():
+                        try:
+                            with open(store.path, 'rb') as handle:
+                                store.check(handle, 'retention')
+                        except OSError as exc:
+                            raise store.error('retention', str(exc)) from exc
+                    indexed = read_rawfile(source, lazy=True)
+                    for store in stores.values():
+                        try:
+                            with open(store.path, 'rb') as handle:
+                                store.check(handle, 'retention')
+                        except OSError as exc:
+                            raise store.error('retention', str(exc)) from exc
+                    raw.native = indexed
+                for plot in raw.native.plots:
+                    for vector in plot.vectors:
+                        vector._cache_data = False
+                self.simResultsAll = raw.native
+            elif (native is None and self.simulator == 'xyce'
+                  and getattr(getattr(raw, 'run_files', None), 'noise_path', None)):
+                # Xyce noise-only evidence is a companion-file descriptor.
+                raw = copy(raw)
+                self.simResultsAll = None
+            else:
+                raise NotSupportedError(
+                    f"Backend {self.simulator!r} cannot retain this result: "
+                    "a rereadable result artifact is required.")
+            raw._preflight_unavailable_params = deepcopy(
+                getattr(raw, '_preflight_unavailable_params',
+                        getattr(getattr(module, 'netlister', None),
+                                '_preflight_unavailable_params', None)) or {})
+            self._raw = raw
 
     def __copy__(self):
         new = type(self).__new__(type(self))
@@ -498,6 +674,11 @@ class EvidenceResults:
         return new
 
     def __reduce_ex__(self, protocol):
+        if '_evidence_owner' not in self.__dict__:
+            from silk.circuit.modules import _reconstruct_module
+            state = dict(self.__dict__)
+            state.pop('backend', None)
+            return _reconstruct_module, (type(self),), state
         raise TypeError(
             'EvidenceResults cannot be pickled: retained results reference a '
             'live circuit and process-local evidence owner. Use copy.copy() '
@@ -505,6 +686,18 @@ class EvidenceResults:
 
     def __getattr__(self, name):
         from types import MethodType
+        from silk.circuit.module_test import _SIMULATED_STATE_ATTRS
+        if (name in _SIMULATED_STATE_ATTRS
+                or name in {'characterization_context'}):
+            owner = self.__dict__.get('_evidence_owner')
+            where = f' for owner {owner[2]!r}' if owner is not None else ''
+            raise ConfigurationError(
+                f'Retained simulation results{where} are missing {name!r}. '
+                'Call run() or evaluate(rawfile=...) on the testbench '
+                'to obtain complete results.')
+        if name == 'backend':
+            from silk.simulation.backend import SimulatorBackend
+            return SimulatorBackend.get(self.simulator)
         module = object.__getattribute__(self, '_module')
         value = getattr(module, name)
         if isinstance(value, MethodType) and value.__self__ is module:
@@ -516,12 +709,16 @@ def publish_report(test, report, module=None):
     selection = current_placement(test)
     if selection is None:
         return
-    results = EvidenceResults(module if module is not None else test.netlist, authored=test.netlist)
+    results = EvidenceResults(module if module is not None else test.netlist, authored=test.netlist, _retained=True)
     from silk.circuit.modules_results import DUT_ELEMENT_NAME
     from silk.circuit.emitted_names import emitted_submodule_name
     results._evidence_owner = (selection.entry._root_ref, selection.entry.module,
                                selection.owner_path, emitted_submodule_name(DUT_ELEMENT_NAME))
     report.sim_results = results
+    test._sweep_states = {
+        key: {name: value for name, value in vars(results).items()
+              if name not in {'_module', '_evidence_owner', 'backend'}}
+        for key in test._sweep_table}
     selection.evidence.report = report
     selection.evidence.results = results
     if selection.evidence.run_id is None:
@@ -538,10 +735,16 @@ def publish_report(test, report, module=None):
 
 def retain_plan(test, reports, *, samples=False):
     """Retain each successful corner/sample under its public sweep label."""
+    from silk.circuit.module_test import _sample_label
+    test._sweep_states = {
+        _sample_label(key) if samples else key: {
+            name: value for name, value in vars(report.sim_results).items()
+            if name not in {'_module', '_evidence_owner', 'backend'}}
+        for key, report in reports.items()
+        if (_sample_label(key) if samples else key) in test._sweep_table}
     selection = current_placement(test)
     if selection is None:
         return
-    from silk.circuit.module_test import _sample_label
     if reports:
         latest = next(reversed(reports.values()))
         selection.evidence.report = latest
@@ -613,6 +816,7 @@ def begin_execution(test):
         record.values.pop('_metric_values', None)
         record.values['_sweep_table'] = {}
         record.values['_sweep_generations'] = {}
+        record.values['_sweep_states'] = {}
         record.values['_mc_samples'] = None
 
 

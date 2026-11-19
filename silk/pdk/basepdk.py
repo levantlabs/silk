@@ -12,12 +12,13 @@ import yaml
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
+from silk.utils._compat import yaml_safe_loader
 from silk.exceptions import CircuitError, DuplicateNameError, UndeclaredNetError, SimulationError, PDKError
 from silk.utils._utils import render_pdk_device_line
 from silk.elements.base import _PIN_UNSET, pin_context, validate_net_token
 
 
-class _StrictSafeLoader(yaml.SafeLoader):
+class _StrictSafeLoader(yaml_safe_loader):
     """SafeLoader that raises on duplicate mapping keys.
 
     PyYAML's default behavior is to silently accept duplicate keys in a

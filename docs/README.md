@@ -13,7 +13,7 @@ components and data come from. Start with the quickstart if you are new to silk.
 | What does this function/class take and return? | [api-reference.md](api-reference.md) |
 | Is there already an example that does this? | [examples.md](examples.md) |
 | What's broken or missing right now? | [known_issues.md](known_issues.md) |
-| What work is queued, and where is its detail? | Maintainers: `backlog task list --plain` (Backlog.md); public release: the [issue tracker](https://github.com/levantlabs/silk/issues). |
+| What work is queued, and where is its detail? | The [issue tracker](https://github.com/levantlabs/silk/issues). |
 | What can silk do, and where is it going? | [capability-roadmap.md](capability-roadmap.md) |
 
 ## Running designs

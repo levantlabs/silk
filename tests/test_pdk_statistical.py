@@ -31,9 +31,9 @@ _DRAWN = {'nmos1p8', 'nmos1p8_lvt', 'nmos3p3_native', 'nmos5v',
 
 def test_record_lists_only_devices_whose_models_draw_mismatch():
     st = load_pdk('sky130').statistical
-    assert set(st.record) == _DRAWN
+    assert set(st.record) == _DRAWN | {'res_hpo'}
     assert all(p == ('vth0', 'toxe', 'voff', 'nfactor')
-               for p in st.record.values())
+               for k, p in st.record.items() if k in _DRAWN)
 
 
 def test_recorded_parameters_are_drawn_by_the_installed_models():
@@ -46,6 +46,8 @@ def test_recorded_parameters_are_drawn_by_the_installed_models():
     with open(pdk.model_list) as f:
         details = yaml.safe_load(f)
     for dev, params in pdk.statistical.record.items():
+        if dev not in _DRAWN:
+            continue
         path = os.path.join(spice, details[dev]['PDKDevice'] + '.pm3.spice')
         if not os.path.isfile(path):
             pytest.skip(f'sky130 model file not installed: {path}')
@@ -115,3 +117,104 @@ def test_doctor_warns_per_missing_statistical_section(monkeypatch, tmp_path):
         row = warned[f'pdk sky130 section {sec}']
         assert sec in row.detail and row.fix
     assert 'pdk sky130 section tt' not in warned
+
+
+@pytest.mark.parametrize('entries', [None, {}, 'bad', [None], [{}],
+    [{'devices': [], 'message': 'reason'}],
+    [{'devices': ['x', 'x'], 'message': 'reason'}],
+    [{'devices': [''], 'message': 'reason'}],
+    [{'devices': [1], 'message': 'reason'}],
+    [{'devices': ['x'], 'message': '   '}],
+    [{'devices': ['x'], 'message': 3}],
+    [{'devices': ['x'], 'message': 'reason', 'extra': True}]])
+def test_process_warning_rejects_malformed_entries(entries):
+    from silk.pdk.statistical import parse_statistical
+    block = {'mismatch': {'sections': {}, 'switch': 'mm'},
+             'process': {'section': 'mc', 'corners': ['tt'], 'switch': 'pr',
+                         'warnings': entries}}
+    with pytest.raises(PDKError, match=r"example.*library.statistical.process.warnings"):
+        parse_statistical(block, '/missing', 'example')
+
+
+def test_process_warning_normalization_and_default():
+    from silk.pdk.statistical import parse_statistical
+    block = {'mismatch': {'sections': {}, 'switch': 'mm'},
+             'process': {'section': 'mc', 'corners': ['tt'], 'switch': 'pr'}}
+    assert parse_statistical(block, '/missing').process_warnings == ()
+    block['process']['warnings'] = []
+    assert parse_statistical(block, '/missing').process_warnings == ()
+    block['process']['warnings'] = [{'devices': ['custom'], 'message': 'reason'}]
+    assert parse_statistical(block, '/missing').process_warnings == ((('custom',), 'reason'),)
+
+
+def test_process_warning_catalog_validation(monkeypatch, tmp_path):
+    import copy
+    from silk.pdk import _loader, registry
+    manifest = copy.deepcopy(registry.manifest('sky130'))
+    manifest['name'] = 'example'
+    manifest['library']['statistical']['process']['warnings'] = [
+        {'devices': ['unknown_type'], 'message': 'reason'}]
+    monkeypatch.setattr(_loader._registry, 'manifest', lambda name: manifest)
+    with pytest.raises(PDKError, match=r"example.*process.warnings\[0\].*unknown_type"):
+        load_pdk('sky130', pdk_root=str(tmp_path))
+    manifest['library']['statistical']['process']['warnings'][0]['devices'] = ['nmos1p8']
+    assert load_pdk('sky130', pdk_root=str(tmp_path)).statistical.process_warnings == (
+        (('nmos1p8',), 'reason'),)
+
+
+@pytest.mark.parametrize('process', [None, [], 'bad'])
+def test_statistical_process_requires_mapping(process):
+    from silk.pdk.statistical import parse_statistical
+    block = {'mismatch': {'sections': {}, 'switch': 'mm'}, 'process': process}
+    with pytest.raises(PDKError, match=r"example.*library.statistical.process must be a mapping"):
+        parse_statistical(block, '/missing', 'example')
+
+
+def test_explicit_resistor_record_targets():
+    st = load_pdk('sky130').statistical
+    assert st.record['res_hpo'] == {
+        'rbody': {'params': ('rsh',), 'xyce_model': 'rbody_model'},
+        'rhead': {'params': ('rsh',), 'xyce_model': 'rhead_model'}}
+
+
+@pytest.mark.parametrize('entry', [{}, {'rbody': {}},
+    {'rbody': {'params': [], 'xyce_model': 'body'}},
+    {'rbody': {'params': ['rsh', 'RSH'], 'xyce_model': 'body'}},
+    {'rbody': {'params': ['rsh'], 'xyce_model': 'body.bad'}},
+    {'rbody\n': {'params': ['rsh'], 'xyce_model': 'body'}},
+    {'rbody': {'params': ['rsh'], 'xyce_model': "body'"}},
+    {'rbody': {'params': ['rsh'], 'xyce_model': 'same'},
+     'rhead': {'params': ['RSH'], 'xyce_model': 'SAME'}}])
+def test_explicit_record_rejects_malformed_targets(entry):
+    from silk.pdk.statistical import parse_statistical
+    block = {'mismatch': {'sections': {}, 'switch': 'mm', 'record': {'res': entry}},
+             'process': {'section': 'mc', 'corners': ['tt'], 'switch': 'pr'}}
+    with pytest.raises(PDKError, match=r'library.statistical.mismatch.record.res'):
+        parse_statistical(block, '/missing')
+
+
+@pytest.mark.parametrize('target,field,value', [
+    ('rbody', 'params', 'rsh'), ('rbody', 'params', [1]),
+    ('rbody', 'params', ['rsh\n']), ('rbody', 'params', ["rsh'"]),
+    ('rbody', 'xyce_model', None), ('rbody', 'xyce_model', 'body[0]'),
+    ('r.body', 'params', ['rsh']), ('rbody[0]', 'params', ['rsh'])])
+def test_explicit_record_token_failures_name_device_target_and_field(target, field, value):
+    from silk.pdk.statistical import parse_statistical
+    entry = {'params': ['rsh'], 'xyce_model': 'body'}
+    entry[field] = value
+    block = {'mismatch': {'sections': {}, 'switch': 'mm', 'record': {'res': {target: entry}}},
+             'process': {'section': 'mc', 'corners': ['tt'], 'switch': 'pr'}}
+    with pytest.raises(PDKError) as error:
+        parse_statistical(block, '/missing')
+    assert f'library.statistical.mismatch.record.res.{target}' in str(error.value)
+    assert field in str(error.value) or '.target' in str(error.value)
+
+
+def test_explicit_record_refuses_case_duplicate_targets():
+    from silk.pdk.statistical import parse_statistical
+    block = {'mismatch': {'sections': {}, 'switch': 'mm', 'record': {'res': {
+        'rbody': {'params': ['rsh'], 'xyce_model': 'body'},
+        'RBODY': {'params': ['rsh'], 'xyce_model': 'head'}}}},
+        'process': {'section': 'mc', 'corners': ['tt'], 'switch': 'pr'}}
+    with pytest.raises(PDKError, match='res.RBODY.*duplicate target'):
+        parse_statistical(block, '/missing')

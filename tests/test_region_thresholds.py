@@ -285,3 +285,18 @@ def test_doctor_json_handles_mapping_tag_node_kind(tmp_path, monkeypatch, text, 
     assert row['fix']
     assert str(path) in row['detail']
     assert key in row['detail']
+
+
+@pytest.mark.parametrize('text,key', [
+    ('version: 1\nversion: 1\npdks: {}\n', 'version'),
+    ('version: 1\npdks:\n  custom: {}\n  custom: {}\n', 'pdks.custom'),
+    ('version: 1\npdks:\n  custom:\n    min_current_a: 1\n    min_current_a: 2\n',
+     'pdks.custom.min_current_a'),
+])
+def test_nested_duplicate_keys_keep_exact_reason(tmp_path, text, key):
+    from silk.circuit.region_thresholds import load_thresholds_file, RegionThresholdsError
+    path = tmp_path / 'duplicate.yaml'
+    path.write_text(text)
+    with pytest.raises(RegionThresholdsError) as caught:
+        load_thresholds_file(path)
+    assert str(caught.value) == f'{path}: {key}: duplicate key'

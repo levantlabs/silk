@@ -187,7 +187,35 @@ class TestFailure(dict):
 
     @classmethod
     def from_exception(cls, error):
-        """The failure for *error*, using the evidence attached when it was raised."""
+        """Return a new failure record for the supplied exception.
+
+        Use evidence attached by silk's run handling when available, preserving
+        ``error_type``, ``error_class``, ``details``, ``run`` and the original/
+        fallback flag. The mapping is ``{'error': str(error)}``; ``exception``
+        is the supplied *error*, and the details dictionary is copied.
+
+        Without attached evidence, derive the actual exception's class name
+        and dotted path, set ``run=None`` and ``exception_is_original=True``.
+        ``SimulationAborted`` (including subclasses) supplies ``simulator``,
+        ``reason``, ``data_rows`` and ``log_path`` in ``details``; other errors
+        have empty details. A log path alone does not create a ``RunRecord``.
+
+        For example, catch an error from ``tb.run()`` and pass it here to get
+        the record that ``run_all_tests()`` would store for that test. An
+        ordinary evaluation error can carry a run record too. A prelaunch
+        refusal normally has none, but ``run=None`` can also mean the launch
+        is unknown; not every error from ``tb.run()`` has a record.
+
+        With attached worker evidence, the type, class and details describe
+        the original error even if *error* is a reconstructed stand-in.
+        ``exception_is_original=False`` also covers lost attributes when the
+        class survives; the flag does not promise object identity across
+        processes. This method keeps *error* itself; separate JSON/pickle
+        transport can later leave ``exception=None``.
+
+        This does not run a test, inspect prior bench state, recover collection
+        failures or files, or guarantee that recorded files still exist.
+        """
         info = getattr(error, '_silk_failure', None)
         if info is None:
             error_type, error_class, details = failure_facts(error)
@@ -198,13 +226,6 @@ class TestFailure(dict):
                    exception=error, run=info['run'],
                    exception_is_original=info['original'])
 
-    @classmethod
-    def from_outcome(cls, outcome, run=None):
-        error = outcome.error
-        return cls(str(error), error_type=outcome.error_type,
-                   error_class=outcome.error_class, details=outcome.details,
-                   exception=error, run=outcome.run if run is None else run,
-                   exception_is_original=not outcome.error_fallback)
 
 
 def _rebuild_failure(error, error_type, error_class, details, packed, run, original):

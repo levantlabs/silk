@@ -72,6 +72,22 @@ silk.examples.design_loop_walkthrough`; §7 below). Read that after §4.
    emit_view(tb.results_file, 'view.html')
    ```
 
+   A selected test (`right = top.get_test(name, instance='right')`) also supports
+   `right.netlist.view()` and `right.netlist.load_signal('out')`: result reads
+   use right's latest retained run, including through a saved netlist or saved
+   `view` callable. Before right has evidence, or after a failed replacement,
+   result reads raise `ConfigurationError` naming the test and selected route.
+   Run `right.run()` or `right.evaluate(rawfile=...)` first. After corner or
+   Monte Carlo sweeps, this shortcut shows the last successful retained run in
+   request/plan order; view another member with `report.sim_results.view()`.
+
+   Configuration and nested objects remain shared with the authored bench.
+   The selected netlist passes `isinstance(..., Module)` but is a different
+   object from the authored `tb.netlist`. Its `load_file()`, `run_simulator()`,
+   `simulate()` and `simulate_behavioral()` refuse: execute/evaluate through
+   the selected test instead. See [selected handles](api-reference.md#module)
+   for copy, identity and fault-campaign details.
+
    For one shareable HTML file, pass `inline=True`; otherwise keep the
    `.data.js` and `.stamp.js` sidecars beside the HTML.
 
@@ -97,7 +113,7 @@ silk.examples.design_loop_walkthrough`; §7 below). Read that after §4.
 | `silk.sources` | Voltage / current / controlled / behavioral sources and waveform shapes. |
 | `Signal` / `NgspiceSignal` | 1-D waveform with `.x`, `.y`, and arithmetic operators. `.plot(ax=...)` is AC-aware: real signals plot as x vs y; complex AC sweeps default to magnitude-in-dB on a log-frequency axis (override with `mode=`/`logx=`). |
 | `Transient` / `AC` / `DC` / `Noise` | Analysis type objects passed to `add_sim_type()`. |
-| `silk.metrics` | **The** metric library, organised by what each metric measures: AC/waveform (`dc_gain_dB`, `bandwidth_3dB`, `phase_margin`), ADC / spectral / timing / noise. |
+| `silk.metrics` | **The** metric library, organised by what each metric measures: AC/waveform (`dc_gain_dB`, `bandwidth_3dB`, `phase_margin`), ADC / spectral / timing / noise. Check the [complete list of `silk.metrics` functions](metrics-library.md) before writing a measurement function. |
 | `silk.specs` | `Spec`, `Measurement`, `CalibrationBinding` — first-class hierarchical spec objects. |
 
 
@@ -227,7 +243,7 @@ dc_tb.add_source(sources.VoltageSource(
     'drive', positive='vin', negative='0', dc=0))
 dc_tb.add_sim_type(DC('drive', 0, 1, 0.25))
 dc_out = dc_tb.probe('vout', analysis='dc')
-dc_tb.add_metric('top_V', lambda sig: float(sig.y[-1]), sig=dc_out)
+dc_tb.add_metric('top_V', final_value, sig=dc_out)
 dc_report = dc_tb.run()
 assert dc_out.x.tolist() == [0, 0.25, 0.5, 0.75, 1]
 assert dc_out.y.tolist() == [0, 0.5, 1, 1.5, 2]
@@ -415,6 +431,8 @@ results = tb.run_corners()    # → CornerResults over tt/ff/ss/sf/fs
 `tb.set_supply_voltage(1.8)`, which sets the rail's DC value before the deck is
 emitted and confirms it against the deck that runs. Pass `source='vdd'` when the
 bench has several candidate rails and none carries a declared `POWER` role.
+A DC source alone does not declare the report's supply; use
+`tb.set_supply_voltage(..., source=...)` to configure and record it.
 `run(temperature=...)` and `run(voltage=...)` do not configure the circuit —
 both are deprecated assertions that what you already configured is what will be
 applied. Native `tb.netlist.set_simulator_options(temp=85)` is the same single
@@ -451,6 +469,25 @@ point = ('tt', 125.0, 1.62)
 report = res[point]
 waveform = vout.point(point)
 ```
+
+**Workers.** `n_workers=N` runs up to N simulations at once and returns the
+same results, in the same order, as a serial run. The default (`None` or `1`)
+is serial; `'all'` uses the CPU count. It is accepted by `tb.run`,
+`dut.run_test`, `dut.run_all_tests`, `tb.run_corners`, `tb.run_monte_carlo`,
+`Optimizer.sweep` and `FaultCampaign`. Each parallel SPICE worker launches a
+separate simulator process, so choose N for available memory as well as CPU
+count. Behavioral runs stay in-process whatever N is. See
+[Monte Carlo chunks](monte-carlo.md#several-samples-in-one-ngspice-process)
+and [parallel design points](optimizer.md#parallel-design-points-n_workers).
+
+A spec registered with `tb.add_spec(...)` is checked at every point where that
+test runs. For a requirement limited to one grid point, check that the point
+succeeded, select its report with `res[point]`, and compare
+`report.metrics[name]` with the limit after the run; this manual comparison
+does not add a spec verdict to the collection. A callable metric can inspect
+`ckt.operating_conditions.scalar('corner')` and
+`ckt.operating_conditions.scalar('temperature')` instead of private state;
+unknown conditions return `None`.
 
 Expansion order is corner, temperature, supply, then sample. A list of length
 one still requests a collection. With no list, `run()` still returns one
@@ -1154,12 +1191,12 @@ def build_source_follower(*, c_load=_CLOAD, w_follower=10.0) -> Module:
     return mod
 ```
 
-When a metric extractor needs a knob (e.g. `i_ref` for
-a current-copy error), bind it into the lambda with a default argument:
-`tb.add_metric(name, lambda ckt, iref=i_ref: _error(ckt, iref))`. In the
-function form a scalar knob needs no closure at all — extra keywords are
-forwarded to the metric: `tb.add_metric(name, settling_time, sig=probe,
-tol=0.01)`.
+In the function form, extra keywords are forwarded to the metric:
+`tb.add_metric(name, settling_time, sig=probe, initial=initial_level,
+tol=0.01)`, where `initial_level` is the step's starting level.
+For a callable extractor that combines measurements into a current-copy
+error, bind its reference-current knob with a default argument:
+`tb.add_metric(name, lambda ckt, iref=i_ref: _error(ckt, iref))`.
 
 `source_follower_example.py`, `current_mirror_example.py`,
 `two_stage_miller_ota_example.py`, and `abo_th_example.py` all follow this.
@@ -1467,10 +1504,11 @@ before calling `mod.add_constraint(...)`. Calling without the import raises
 Everything is re-exported from the `silk.metrics` top level, so one import
 line covers AC characterization and ADC dynamic metrics together.
 
-For settled measurements, use `average(sig, start=..., end=...)` (an
-x-weighted mean) alongside `peak_to_peak(sig, start=..., end=...)` to check
-steadiness. `final_value(sig)` only reads the last sample; it does not prove
-settling. `value_at(sig, x=...)` reads/interpolates a point. For a step,
+For settled measurements, use `average(sig, start=..., end=...)` for an
+x-weighted mean, `minimum` and `maximum` with the same bounds for extrema,
+and `peak_to_peak(sig, start=..., end=...)` to check steadiness.
+`final_value(sig)` only reads the last sample; it does not prove settling.
+`value_at(sig, x=...)` reads/interpolates a point. For a step,
 `settling_time(sig, initial=..., target=..., tol=..., start=...)` finds the
 last-out-of-band settling time; it has no `end` argument, so use
 `window(sig, start, end)` first to restrict the trace. `window` returns a
@@ -1562,7 +1600,7 @@ Check these details when reading a current or running a `.dc` sweep:
   `VoltageSource(name, ...)` emits as `V<name>`; waveform sources use separate
   waveform and DC-offset cards. Use the logical probe `tb.probe('i(vout)')`
   for a source named `vout`, or load it with the `'I'` signal type:
-  `ckt.load_signal('vvout', 'I')` for a source named `'vout'`. There is no
+  `ckt.load_signal('vvout', 'I')` for a DC/AC-only voltage source named `'vout'`. There is no
   current vector for a node — put a (0 V if needed) voltage source where you
   want an ammeter. For output resistance, normalize the current by the actual
   AC node voltage, then take the reciprocal real admittance near DC (recipe
@@ -1577,6 +1615,9 @@ Check these details when reading a current or running a `.dc` sweep:
   operating point. If the block has one (bandgap, reference, oscillator), keep a
   transient with a supply ramp alongside the sweep — that is the only thing
   proving the circuit actually *starts*.
+  Startup timing can depend on solver tolerances; before accepting a small
+  timing margin, rerun with tighter tolerances using
+  `tb.set_simulator_options(...)`.
 
 ### `save_device_currents` is a transient-only opt-in
 

@@ -925,6 +925,7 @@ def _snapshot(tb, selected, specs, index, *, extra=()):
     """Identities and, separately, frozen contents of everything a campaign
     must not touch."""
     import copy
+    import pickle
 
     def spec_state(sp):
         measurements = list(sp.measurements.all_items())  # every owner entry
@@ -944,7 +945,14 @@ def _snapshot(tb, selected, specs, index, *, extra=()):
     live = {n: netlist.__dict__.get(n, _ABSENT) for n in attrs}
     return {
         'ids': {k: (v, v.report, v.results, v.run_id) for k, v in index.records.items()},
-        'record_contents': {k: copy.deepcopy(dict(v.values))
+        # Rawfile/analysis objects have identity equality. Preserve all old
+        # value comparisons and compare the new owner-free records by their
+        # full serialized contents, with their identities checked separately.
+        'record_contents': {k: copy.deepcopy(dict(
+            v.values, _sweep_states=pickle.dumps(v.values.get('_sweep_states', {}))))
+                            for k, v in index.records.items()},
+        'sweep_state_ids': {k: {point: (state, dict(state))
+                                 for point, state in v.values.get('_sweep_states', {}).items()}
                             for k, v in index.records.items()},
         'corner_readers': {k: dict(v.corners) for k, v in index.records.items()},
         'reader_ids': {k: {n: x for n, x in vars(v.results).items()}
@@ -973,6 +981,14 @@ def _assert_unchanged(before, after):
     for key, objs in before['ids'].items():
         assert all(a is b for a, b in zip(after['ids'][key], objs))
     assert after['record_contents'] == before['record_contents']
+    assert after['sweep_state_ids'].keys() == before['sweep_state_ids'].keys()
+    for key, points in before['sweep_state_ids'].items():
+        assert after['sweep_state_ids'][key].keys() == points.keys()
+        for point, (state, fields) in points.items():
+            current, current_fields = after['sweep_state_ids'][key][point]
+            assert current is state
+            assert current_fields.keys() == fields.keys()
+            assert all(current_fields[name] is value for name, value in fields.items())
     assert after['corner_readers'].keys() == before['corner_readers'].keys()
     for key, mapping in before['corner_readers'].items():
         assert after['corner_readers'][key].keys() == mapping.keys()

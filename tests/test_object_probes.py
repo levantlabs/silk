@@ -228,7 +228,7 @@ def test_selected_aggregate_contexts_and_analysis_override(tmp_path):
     top, tb, stage = selected_bus(tmp_path)
     one = top.get_test('bus', instance='one')
     two = top.get_test('bus', instance='two')
-    assert one.netlist is two.netlist
+    assert one.netlist.sim_analysis_dict is two.netlist.sim_analysis_dict
     p = one.probe(stage.d[8:10])
     q = two.probe(stage.d[8:10], analysis='tran')
     assert all(leaf._bench() is one for leaf in _unbound_leaves(p.as_int()))
@@ -275,9 +275,15 @@ def test_aggregate_retained_corner_sample_and_snapshot(tmp_path):
     p = tb.probe(stage.d)
     raw(tb, tmp_path, ['xstage.d[8]', 'xstage.d[9]'])
     path = str(tmp_path / 'literal.raw')
+    from silk.circuit.test_placement import EvidenceResults
+    reader = EvidenceResults(tb.netlist, _retained=True)
     tb._sweep_table = {'ff': path}
+    tb._sweep_states = {'ff': {
+        name: value for name, value in vars(reader).items()
+        if name not in {'_module', '_evidence_owner', 'backend'}}}
     np.testing.assert_array_equal(p.as_int().corner('ff').y, [3., 3.])
     from silk.circuit.module_test import _sample_label
+    tb._sweep_states = {_sample_label(('tt', 2)): tb._sweep_states['ff']}
     tb._sweep_table = {_sample_label(('tt', 2)): path}
     tb._mc_samples = {('tt', 2): path}
     np.testing.assert_array_equal(p.as_int().sample(('tt', 2)).y, [3., 3.])
@@ -454,11 +460,15 @@ def test_selected_aggregate_retained_corner_and_sample(tmp_path):
     raw(tb, tmp_path, ['xdut.xstage.d[8]', 'xdut.xstage.d[9]'])
     selected.evaluate(rawfile=str(tmp_path / 'literal.raw'))
     np.testing.assert_array_equal(p.corner('tt').y, [3., 3.])
+    np.testing.assert_array_equal(p.point('tt').y, [3., 3.])
     from silk.circuit.test_placement import execution_scope
     from silk.circuit.module_test import _sample_label
     with execution_scope(selected._entry()):
         tb._mc_samples = {('tt', 4): str(tmp_path / 'literal.raw')}
+        tb._sweep_states = {_sample_label(('tt', 4)): tb._sweep_states['tt']}
         tb._sweep_table = {_sample_label(('tt', 4)): str(tmp_path / 'literal.raw')}
+    with pytest.raises(UnboundSignalError, match='Monte Carlo.*sample'):
+        p.point(('tt', 4))
     np.testing.assert_array_equal(p.sample(('tt', 4)).y, [3., 3.])
 
 

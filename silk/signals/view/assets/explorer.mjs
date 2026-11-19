@@ -202,6 +202,9 @@ export function probeFor(vector, part) {
   return { probe: { name: lower, type: 'V', transform: transform } };
 }
 
+// Silk's own designer-relative device-parameter probe spelling, e.g. core.MN:gm.
+const DEVICE_PROBE_RE = /^[^()\s:]+:[A-Za-z0-9_]+$/;
+
 function vectorOf(sig) {
   if (sig.group) return sig.group;
   return sig.renamed ? sig.name.replace(/#\d+$/, '') : sig.name;
@@ -266,7 +269,11 @@ export function traceIdentityOf(payload, plotIdx, name, seen) {
   if (sig.role !== 'coordinate' && Object.prototype.hasOwnProperty.call(sig, 'node_probe')) {
     var node = sig.node_probe;
     if (node === null) mapped = {probe:null, reason:'no unique checked node probe for this source row'};
-    else if (!node || typeof node.name !== 'string' || !['V', 'I'].includes(node.type) ||
+    else if (node && node.type === 'D' && typeof node.name === 'string' && DEVICE_PROBE_RE.test(node.name)) {
+      // A device-parameter vector is real; a complex part has no tb.probe form.
+      mapped = record.part == null ? {probe:{name:node.name, type:'D', transform:null}} :
+        {probe:null, reason:'a device parameter vector has no magnitude or phase part'};
+    } else if (!node || typeof node.name !== 'string' || !['V', 'I'].includes(node.type) ||
              !node.name.startsWith(node.type.toLowerCase() + '(') || !node.name.endsWith(')')) {
       mapped = {probe:null, reason:'invalid checked node probe'};
     } else if (record.part == null || record.part === 'mag' || record.part === 'phase') {
@@ -505,8 +512,10 @@ export function createExplorer(root, options = {}) {
               vectorOf(sig) !== meta.vectors[row].name) throw new TypeError('node_paths source_row mismatch');
           if (Object.prototype.hasOwnProperty.call(sig, 'node_probe') && sig.node_probe !== null) {
             const probe = sig.node_probe;
-            if ((!terms && !meta.vectors[row].selectable) || !probe || !['V', 'I'].includes(probe.type) ||
-                typeof probe.name !== 'string' || !probe.name.startsWith(probe.type.toLowerCase() + '(') || !probe.name.endsWith(')')) {
+            const deviceProbe = probe && probe.type === 'D' && !terms && typeof probe.name === 'string' &&
+              DEVICE_PROBE_RE.test(probe.name);
+            if ((!terms && !meta.vectors[row].selectable) || !probe || (!deviceProbe && (!['V', 'I'].includes(probe.type) ||
+                typeof probe.name !== 'string' || !probe.name.startsWith(probe.type.toLowerCase() + '(') || !probe.name.endsWith(')')))) {
               throw new TypeError('invalid node_probe');
             }
           }

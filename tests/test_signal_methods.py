@@ -836,3 +836,16 @@ class TestInterpolateAxisPolicy600:
             r.y, [y0[3], (y0[4] + y0[5]) / 2, y0[0], y0[-1]])
         np.testing.assert_array_equal(s.x, x0)
         np.testing.assert_array_equal(s.y, y0)
+
+
+@pytest.mark.parametrize('samples,expected', [
+    ([-3., 4.], [3., 4.]), ([3+4j, 5-12j], [5., 13.]),
+])
+def test_abs_matches_magnitude_values_and_metadata(samples, expected):
+    sig = _ac_sig([1., 10.], samples)
+    result, magnitude = abs(sig), sig.mag()
+    np.testing.assert_array_equal(result.y, expected)
+    np.testing.assert_array_equal(result.x, [1., 10.])
+    assert type(result) is type(magnitude)
+    for attr in ('name', 'type', 'xlabel', 'ylabel'):
+        assert getattr(result, attr) == getattr(magnitude, attr)

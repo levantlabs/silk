@@ -174,3 +174,17 @@ def test_node_vector_match_contract():
         cwd=ROOT, capture_output=True, text=True, timeout=120,
     )
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize('kind', ['V', 'I'])
+def test_batched_candidates_preserve_direct_wrapped_duplicate_and_bracket_rows(kind):
+    from silk.vector_match import collect_vector_candidates
+    wrapper = kind.lower()
+    names = ['time', 'bare', f'{wrapper}(wrapped)', '@Ibias[current]',
+             f'{wrapper}(xstage<0>.leaf)', f'{wrapper}(wrapped)', 'xstage[0].leaf']
+    plot = SimpleNamespace(vectors=[SimpleNamespace(name=name) for name in names], nvars=len(names))
+    requests = ['bare', 'wrapped', f'{wrapper}(wrapped)', '@Ibias[current]',
+                'xstage[0].leaf', 'missing']
+    expected = [[1], [2, 5], [2, 5], [3], [4, 6], []]
+    assert collect_vector_candidates(plot, '', kind, _requests=requests) == expected
+    assert [collect_vector_candidates(plot, request, kind) for request in requests] == expected

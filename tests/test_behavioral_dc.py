@@ -238,3 +238,29 @@ def test_emitted_source_name_selects_dc_sweep(tmp_path):
     tb = _bench(tmp_path, source=source, analysis=DC('Vdrive_input', 0, 1, 0.5))
     tb.netlist.simulate()
     np.testing.assert_allclose(tb.netlist.load_signal('vin').y, [0, 0.5, 1])
+
+
+@pytest.mark.parametrize('requested', [False, True])
+@pytest.mark.parametrize('route', ['run', 'run_all_tests'])
+def test_current_collision_warnings_belong_to_requests_not_run_inventory(tmp_path, requested, route):
+    import warnings
+    tb = _bench(tmp_path, analysis=DC('drive', 0, 1, .5))
+    tb.add_source(VoltageSource('Vdrive', positive='other', negative='gnd', dc=2))
+    tb.add_metric('level', lambda ckt: float(ckt.load_signal('other').y[-1]))
+    with warnings.catch_warnings(record=True) as declaration:
+        warnings.simplefilter('always')
+        if requested:
+            tb.probe('i(Vdrive)')
+    assert len(declaration) == int(requested)
+    if requested:
+        assert 'Current request i(vdrive)' in str(declaration[0].message)
+    with warnings.catch_warnings(record=True) as running:
+        warnings.simplefilter('always')
+        if route == 'run':
+            report = tb.run()
+        else:
+            reports = tb.module.run_all_tests()
+            assert len(reports) == 1
+            report = next(iter(reports.values()))
+        assert report.metrics['level'] == 2
+    assert not [w for w in running if str(w.message).startswith('Current request ')]

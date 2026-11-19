@@ -130,11 +130,16 @@ def test_every_analysis_word_table_agrees_with_the_vocabulary():
     now equals ``SILK_ANALYSES`` PLUS ``'op'``, not ``SILK_ANALYSES`` itself.
     """
     from silk.circuit.module_test import _SIM_KEY_ANALYSIS
-    from silk.signals.analysis_kind import SELECTABLE_ANALYSES
+    import silk.signals
+    from silk.signals import SELECTABLE_ANALYSES
+    from silk.signals import analysis_kind
     from silk.signals.kinds import SILK_ANALYSES
 
+    assert SELECTABLE_ANALYSES == ('tran', 'ac', 'dc', 'noise', 'op')
+    assert SELECTABLE_ANALYSES is analysis_kind.SELECTABLE_ANALYSES
+    assert 'SELECTABLE_ANALYSES' in silk.signals.__all__
     assert set(SELECTABLE_ANALYSES) == set(SILK_ANALYSES) | {'op'}
-    assert set(_SIM_KEY_ANALYSIS.values()) == set(SILK_ANALYSES) | {'op'}
+    assert set(_SIM_KEY_ANALYSIS.values()) == set(SELECTABLE_ANALYSES)
     # ...and the deck's own plot table covers exactly those five.
     from silk.circuit.spice_netlister import NGSPICE_PLOT_NAMES
     assert len(NGSPICE_PLOT_NAMES) == len(SILK_ANALYSES) + 1

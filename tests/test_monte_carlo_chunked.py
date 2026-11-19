@@ -216,6 +216,20 @@ def assert_same_campaign(a, b):
     for key in a.reports:
         assert a.reports[key].metrics == b.reports[key].metrics, key
         assert _raw(a.reports[key]) == _raw(b.reports[key]), key
+        from silk.signals.rawfile import read_rawfile
+        from silk.signals.analysis_kind import plot_silk_analysis
+        from silk.simulation.backend import RawResult
+        for report in (a.reports[key], b.reports[key]):
+            reader = report.sim_results
+            native = read_rawfile(report.rawfile_path)
+            raw = RawResult(native, report.rawfile_path)
+            for plot in native.plots:
+                if any(v.name.lower() in {'v(vout)', 'vout'} for v in plot.vectors):
+                    analysis = plot_silk_analysis(plot)
+                    expected = reader.backend.load_signal(raw, 'vout', analysis=analysis)
+                    np.testing.assert_array_equal(
+                        reader.load_signal('vout', analysis=analysis).y, expected.y)
+            assert all(v._data is None for p in reader.simResultsAll.plots for v in p.vectors)
     if a.draws is not None:
         assert a.draws.values.keys() == b.draws.values.keys()
         for key in a.draws.values:
@@ -838,3 +852,38 @@ def test_labelled_declared_both_campaign_retains_all_files(tmp_path):
     for key in first.draws.values:
         np.testing.assert_array_equal(first.draws.values[key], second.draws.values[key])
     assert all(p.read_bytes() == data for p, data in saved.items())
+
+
+@pytest.mark.slow
+@needs_ngspice
+@needs_pdk
+def test_resistor_and_mos_draws_keep_sample_ownership_with_workers_and_batching(tmp_path):
+    from tests.test_monte_carlo_ngspice import build_resistor_bench
+    from silk.simulation import Op
+    from silk.circuit.modules import Module
+    from silk.circuit.circuit_elements import PortDir
+    from silk import sources
+    def make(folder):
+        tb = build_resistor_bench(folder, mixed=True)
+        # Put the mixed block below another array placement.
+        mod = tb.module
+        parent = Module('sky130', str(folder), 'parent.cir', mod.pdk_details,
+                        module_name='parent')
+        parent.define_module_ports({'a': PortDir.INOUT, 'vss': PortDir.GROUND})
+        parent.add_module(mod, 'bank[0]', nets={'a': 'a', 'vss': 'vss'})
+        out = parent.create_test('draws')
+        out.add_module_under_test({'a': 'a', 'vss': '0'})
+        out.add(sources.vdc('bias', positive='a', negative='0', value=1))
+        out.add_sim_type(Op())
+        out.add_metric('current', lambda c: float(np.asarray(c.load_signal('i(vbias)').y).ravel()[-1]))
+        return out
+    per = _run(make(tmp_path / 'serial'), 2, spp=1, seed=13, record_draws=True)
+    workers = _run(make(tmp_path / 'workers'), 2, spp=1, workers=2, seed=13, record_draws=True)
+    batched = _run(make(tmp_path / 'batch'), 2, spp=2, seed=13, record_draws=True)
+    assert not per.failed and not workers.failed and not batched.failed
+    assert batched.rerun_samples == ()
+    assert_same_campaign(per, workers)
+    assert_same_campaign(per, batched)
+    assert set(per.draws.columns) >= {('dut.bank[0].r1', 'rbody.rsh'),
+                                     ('dut.bank[0].r[0]', 'rhead.rsh'),
+                                     ('dut.bank[0].m', 'vth0')}

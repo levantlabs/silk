@@ -221,6 +221,8 @@ def build_grid_section(mc) -> MonteCarloSection:
     """Tabulate recorded grid statistics, sample evidence and collection yields."""
     from copy import copy
     from silk.circuit.report import _pvt_number, _pvt_point
+    from silk.circuit.spec_report import metric_warning_text
+    from silk.specs.report import _single_line
 
     rows = mc.table()
     variables = mc._variable_names()
@@ -252,10 +254,13 @@ def build_grid_section(mc) -> MonteCarloSection:
     yield_rows = []
     for point, yields in points.items():
         point_rows = mc.point(point).table()
+        corner, temperature, supply, *coordinates = point if isinstance(point, tuple) else (point, None, None)
+        variable_values = dict(coordinates[0]) if coordinates else {}
         for name, (fraction, interval) in yields.items():
             missed, absent = failure_counts(point_rows, name)
-            yield_rows.append([point[0], _pvt_number(point[1]), _pvt_number(point[2]),
-                *(repr(dict(point[3])[label]) for label in variables), name,
+            yield_rows.append([corner, _pvt_number(temperature), _pvt_number(supply),
+                *(repr(variable_values[label]) if label in variable_values else '—'
+                  for label in variables), name,
                 len(point_rows), missed, absent, _num(fraction, '#.3g'),
                 '[' + ', '.join(_num(v, '#.3g') for v in interval) + ']',
                 'PASS' if fraction >= floor else 'FAIL'])
@@ -265,17 +270,23 @@ def build_grid_section(mc) -> MonteCarloSection:
             _num(fraction, '#.3g'), '[' + ', '.join(_num(v, '#.3g') for v in interval) + ']', '—'])
 
     metrics = mc._table_metric_names
-    extrema = {}
+    statistics = {}
     for metric in metrics:
         try:
-            extrema[metric] = [mc.stat(metric, how) for how in ('min', 'max')]
+            statistics[metric] = [mc.stat(metric, how) for how in ('min', 'max', 'mean', 'std')]
         except (TypeError, ValueError):
-            extrema[metric] = [None, None]
+            statistics[metric] = [None] * 4
     spec_rows = []
+    warning_cells = []
     checked = set()
     for declaration in mc._check_declarations:
         metric, key = declaration['metric'], declaration['key']
         checked.add(metric)
+        owner = declaration.get('owner_path')
+        label = declaration['name']
+        if owner not in (None, '$'):
+            label = _single_line(f'{label} (instance {owner.removeprefix("$/").replace("/", ".")})')
+        warning_notes = []
         # Restrict worst() to this check, preserving its stable identity and direction.
         view = copy(mc)
         view.reports = {}
@@ -286,6 +297,11 @@ def build_grid_section(mc) -> MonteCarloSection:
                 (declaration.get('owner_path') is None or
                  result.owner_path == declaration['owner_path'])]
             view.reports[run] = record
+            if any(result.owner_path == owner and not result.passed for result in record._results):
+                where = _single_line(_pvt_point(run[0]) + f', sample {run[1]}')
+                warning_notes.extend(f'{where}: {metric_warning_text(warning)}'
+                                     for warning in report.metric_warnings.get(metric, ()))
+        warning_cells.append(' / '.join(warning_notes))
         try:
             worst = view.worst(metric)
         except (TypeError, ValueError):
@@ -294,31 +310,47 @@ def build_grid_section(mc) -> MonteCarloSection:
         fractions = [yields[declaration['name']][0] for yields in points.values()
                      if declaration['name'] in yields]
         status = ('PASS' if fractions and all(f >= floor for f in fractions) else 'FAIL')
-        low, high = extrema.get(metric, (None, None))
-        spec_rows.append([status, declaration['name'], declaration['op'],
+        location = _pvt_point(worst.corner) if worst is not None else '—'
+        if worst is not None and worst.sample is not None:
+            location += f', sample {worst.sample}'
+        spec_rows.append([status, label, declaration['op'],
             _pvt_number(declaration['target']), _pvt_number(value),
-            _pvt_point(worst.corner) if worst is not None else '—',
-            _pvt_number(abs(value - declaration['target']) if value is not None else None),
-            _pvt_number(low), _pvt_number(high)])
+            location, _pvt_number(abs(value - declaration['target']) if value is not None else None),
+            *(_pvt_number(v) for v in statistics.get(metric, [None] * 4))])
     for metric in metrics:
         if metric not in checked:
             spec_rows.append(['—', metric, '—', '—', '—', '—', '—',
-                              *(_pvt_number(v) for v in extrema[metric])])
+                              *(_pvt_number(v) for v in statistics[metric])])
+    spec_columns = ['Status', 'Spec', 'Op', 'Target', 'Worst', 'Worst at', 'Margin', 'Min', 'Max',
+                    'Mean (pooled)', 'Sample std (pooled)']
+    if any(warning_cells):
+        spec_columns.append('Metric warnings')
+        for index, row in enumerate(spec_rows):
+            row.append(warning_cells[index] if index < len(warning_cells) else '')
     run_rows = [[row['run.corner'], _pvt_number(row['run.temperature']),
                  _pvt_number(row['run.supply']),
                  *(repr(row['run.' + label]) for label in variables), row['run.sample'],
                  'NO REPORT' if row['run.status'] == 'failed' else row['run.status'],
-                 *(_pvt_number(row['metric.' + metric], missing='') for metric in metrics)]
+                 *('' if value is None else _pvt_number(value, missing='not measured')
+                   for value in (row['metric.' + metric] for metric in metrics))]
                 for row in rows]
     errors = [_pvt_point((row['run.corner'], row['run.temperature'], row['run.supply'])
                          + ((tuple((label, row['run.' + label]) for label in variables),) if variables else ()))
               + f", sample {row['run.sample']}: "
               + (str(row['run.error'] or '').splitlines() or [''])[0]
               for row in rows if row['run.status'] == 'failed']
+    record = next(iter(mc.reports.values()), None)
+    test_name = None
+    if record is not None:
+        test_name = record.test_name
+        if record.owner_path not in (None, '$'):
+            placement = record.owner_path.removeprefix('$/').replace('/', '.')
+            test_name += f' (instance {placement})'
+        test_name = _single_line(test_name)
     return MonteCarloSection(data=dict(
         summary=summary, passed=bool(mc.passed), samples=len(rows),
-        test_name=next((r.test_name for r in mc.reports.values()), 'unnamed'),
-        spec_columns=['Status', 'Spec', 'Op', 'Target', 'Worst', 'Worst at', 'Margin', 'Min', 'Max'],
+        test_name=test_name,
+        spec_columns=spec_columns,
         spec_rows=spec_rows,
         yield_columns=['Corner', 'Temp (°C)', 'Supply (V)', *variable_columns, 'Spec', 'Samples', 'FAIL', 'No report',
                        'Yield', '95% interval', 'Status'], yield_rows=yield_rows,
@@ -330,7 +362,8 @@ def render_grid_section(section: MonteCarloSection, *, name='', mode='html') -> 
     """Render a grid's spec, yield and sample tables without rerunning analysis."""
     from silk.circuit.report import _pvt_table, _pvt_text
     d = section.data
-    heading = f"PVT Grid: {name or d['test_name']} — {'PASS' if d['passed'] else 'FAIL'}"
+    prefix = '' if d['samples'] == 1 else 'PVT Grid: '
+    heading = f"{prefix}{d['test_name'] or name or 'unnamed'} — {'PASS' if d['passed'] else 'FAIL'}"
     if mode == 'html':
         out = ['<section class="pvt-grid"><h2>' + html.escape(heading) + '</h2>',
                '<p>' + html.escape(d['summary']) + '</p>',

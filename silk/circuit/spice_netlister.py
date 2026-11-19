@@ -1082,14 +1082,39 @@ class PySpiceNetlister:
         device_probe_lines = list(probe_save_lines)
         # Current-source vectors are device parameters, not voltage branches.
         from silk.sources._layout import physical_source_card
-        for name in dict.fromkeys(current_probe_names or ()):
-            name = physical_source_card(name, source_instance_names or ()) or name
-            name = name.replace(':', '.')
-            leaf = name.rsplit('.', 1)[-1]
-            if save_list is None and not leaf.lower().startswith('i'):
-                continue  # Default save-all already includes voltage branches.
-            device_name = 'i.' + name if '.' in name else name
-            vector = f'@{device_name}[current]' if leaf.lower().startswith('i') else f'i({name})'
+        for request in dict.fromkeys(current_probe_names or ()):
+            name = physical_source_card(request, source_instance_names or ())
+            if name is None and save_list is not None and elem_dict:
+                from silk.circuit.emitted_names import emitted_instance_name
+                from silk.circuit.modules_results import _iter_all_device_paths
+                cards = [(prefix + '.' if prefix else '') + emitted_instance_name(device, key)
+                         for prefix, _, key, device in _iter_all_device_paths(elem_dict)]
+                name = physical_source_card(request, cards)
+            if name is None:
+                # Explicit native vectors stay native; never invent a device
+                # parameter from the first letter of an unresolved request.
+                if request.startswith('@') or request.lower().endswith('#branch'):
+                    if save_list is None:
+                        continue
+                    vector = request
+                elif save_list is None and not request.rsplit('.', 1)[-1].lower().startswith('i'):
+                    continue  # No extra capture is needed for a raw voltage branch.
+                elif request.lower().startswith(('v.', 'i(')):
+                    vector = request if request.lower().startswith('i(') else f'i({request})'
+                else:
+                    import difflib
+                    from silk.exceptions import CircuitError
+                    close = difflib.get_close_matches(request, list(source_instance_names or ()))
+                    raise CircuitError(
+                        f'Cannot capture current probe {request!r}: it names no source card. '
+                        f'Closest source cards: {close!r}. Use a source name or an explicit raw current vector.')
+            else:
+                name = name.replace(':', '.')
+                leaf = name.rsplit('.', 1)[-1]
+                if save_list is None and not leaf.lower().startswith('i'):
+                    continue
+                device_name = 'i.' + name if '.' in name else name
+                vector = f'@{device_name}[current]' if leaf.lower().startswith('i') else f'i({name})'
             if vector not in probe_save_lines:
                 probe_save_lines.append(vector)
         if save_list is not None and save_device_currents:
@@ -1480,13 +1505,13 @@ class PySpiceNetlister:
         from silk.sources._layout import source_instances
         netlist = ''
         if any(isinstance(a, AC) for a in sim_analysis_dict.values()):
-            from silk.sources._layout import current_source_for_request, refuse_ac_current
+            from silk.sources._layout import current_source_card, refuse_ac_current
             for index, request in enumerate(current_probe_names or ()):
                 selection = (current_probe_analyses[index]
                              if current_probe_analyses is not None else None)
                 if selection is not None and selection.lower() != 'ac':
                     continue
-                source = current_source_for_request(sig_sources_dict, request, elem_dict)
+                source, _ = current_source_card(sig_sources_dict, request, elem_dict, physical_only=True)
                 if source is not None:
                     refuse_ac_current(source)
         if mc_sample is not None:

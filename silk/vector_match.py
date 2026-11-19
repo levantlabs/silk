@@ -30,7 +30,7 @@ def _request_forms(signal_name, signal_type):
             to_spice_name(signal_name, kind=kind).lower().replace(':', '.')}
 
 
-def collect_vector_candidates(plot, signal_name, signal_type='V', *, first=1):
+def collect_vector_candidates(plot, signal_name, signal_type='V', *, first=1, _requests=None):
     """Indices (identity) of every vector of *plot* that *signal_name* names.
 
     THE one matcher behind ``NgspiceSignal.from_rawfile`` and so
@@ -42,6 +42,8 @@ def collect_vector_candidates(plot, signal_name, signal_type='V', *, first=1):
     its inner path equals a request form and its wrapper equals
     *signal_type*. The caller decides: zero is a missing signal, one is the
     result, several are ambiguous. Rows are counted by identity.
+    ``_requests`` batches ordinary string requests for one read, returning
+    their candidate lists in request order after a single pass over the rows.
     """
     if getattr(signal_name, '_literal_voltage', False):
         # Exact literal node syntax can itself contain selectors/colons. Keep
@@ -59,23 +61,42 @@ def collect_vector_candidates(plot, signal_name, signal_type='V', *, first=1):
                 # Match literally, without interpreting leaf punctuation.
                 found.append(i)
         return found
-    forms = _request_forms(signal_name, signal_type)
+    if _requests is None:
+        forms = _request_forms(signal_name, signal_type)
+        found = []
+    else:
+        # One read may need both the original spelling and its physical
+        # operands. Share row decoding, retaining each request's row identity.
+        forms = {}
+        for position, request in enumerate(_requests):
+            for form in _request_forms(request, signal_type):
+                forms.setdefault(form, []).append(position)
+        found = [[] for _ in _requests]
     wanted = str(signal_type).lower()
     nvars = getattr(plot, 'nvars', None)
     if nvars is None:
         nvars = len(plot.vectors)
-    found = []
     for i in range(first, nvars):
-        name = plot.vectors[i].name
-        if name.lower().replace(':', '.') in forms:
-            found.append(i)
-            continue
+        name = plot.vectors[i].name.lower().replace(':', '.')
+        if _requests is None:
+            if name in forms:
+                found.append(i)
+                continue
+        else:
+            direct = forms.get(name, ())
+            for position in direct:
+                found[position].append(i)
         head, paren, rest = name.partition('(')
         if not paren or '(' in rest:
             continue
-        if (rest.rstrip(')').lower().replace(':', '.') in forms
-                and head.lower() == wanted):
-            found.append(i)
+        if head == wanted:
+            inner = rest.rstrip(')')
+            if _requests is None:
+                if inner in forms:
+                    found.append(i)
+            else:
+                for position in forms.get(inner, ()):
+                    found[position].append(i)
     return found
 
 

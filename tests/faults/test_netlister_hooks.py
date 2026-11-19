@@ -13,6 +13,7 @@ import pytest
 from silk.circuit.circuit_elements import PortDir
 from silk.circuit.modules import Module
 from silk.faults import FaultSet, stuck_open
+from silk.utils import format_spice_value
 
 
 def _make_sub(pdk, tmp_path):
@@ -120,7 +121,7 @@ def test_w_variation_clamps_through_the_real_netlister_with_real_pdk(pdk, tmp_di
         bodies, _ = _definitions(f.read())
         line = next(ln for ln in bodies['__silk_fault_sub_787531'].splitlines()
                     if ln.startswith('XMmn1 '))
-    assert f'w={rp["w_new"]:g}' in line.split()
+    assert f'w={format_spice_value(rp["w_new"])}' in line.split()
 
 
 def test_subcircuit_instance_exposes_device_fault_target(pdk, tmp_dir):
@@ -379,7 +380,7 @@ def test_fixed_seed_selection_and_independent_shared_placements(pdk, tmp_path):
         assert first.netlist_comment in body
         local = target.split('.')[-1]
         line = next(l for l in body.splitlines() if l.startswith('XM' + local + ' '))
-        assert f'w={first.realized_params["w_new"]:g}' in line.split()
+        assert f'w={format_spice_value(first.realized_params["w_new"])}' in line.split()
     assert _authored_fault_state(mod)
 
 
@@ -462,7 +463,7 @@ def test_shared_placements_have_independent_faulted_definitions(
             assert record.fault_type == 'w_variation'
             line = next(l for l in body.splitlines() if l.startswith('XMmn1 '))
             assert line.split()[1:6] == ['d', 'g', 's', 'b', 'sky130_fd_pr__nfet_01v8']
-            assert f'w={record.realized_params["w_new"]:g}' in line.split()
+            assert f'w={format_spice_value(record.realized_params["w_new"])}' in line.split()
         else:
             assert instance[-1] == 'sub'
     assert _authored_fault_state(mod) == before
@@ -606,7 +607,7 @@ def test_multiple_targets_reuse_each_affected_containing_definition(pdk, tmp_pat
         record = next(r for r in manifest if r.target == target)
         assert record.netlist_comment in body
         line = next(l for l in body.splitlines() if l.startswith('XM' + local + ' '))
-        assert f'w={record.realized_params["w_new"]:g}' in line.split()
+        assert f'w={format_spice_value(record.realized_params["w_new"])}' in line.split()
     assert 'xother d g s b pair' in top
     assert 'FAULT:' not in bodies['sub']
 

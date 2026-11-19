@@ -1302,3 +1302,79 @@ def test_bad_source_names_owner_and_entry(owner, change, identity, reason):
     assert str(exc.value) == f"{owner} {name!r}: {identity}: {reason}"
     assert "{" not in str(exc.value)
     assert "invalid testbench source" not in str(exc.value)
+
+
+@pytest.mark.parametrize(("metric", "expected"), [
+    ({"name": "gm", "type": "final_value", "signal": "core.MN:GM"},
+     "tb.add_metric('gm', metrics.final_value, sig=tb.probe('core.MN:GM'))"),
+    ({"name": "delay", "type": "propagation_delay", "analysis": "tran",
+      "signals": {"sig_in": "vin", "sig_out": "MN:gm"}, "params": {"in_edge": "any"}},
+     "tb.add_metric('delay', metrics.propagation_delay, "
+     "sig_in=tb.probe('vin', analysis='tran'), "
+     "sig_out=tb.probe('MN:gm', analysis='tran'), in_edge='any')"),
+])
+def test_device_parameter_metric_registers_probe(metric, expected):
+    code = generate_testbenches(_base(analyses=_TRAN, metrics=[metric]))
+    assert "from silk import metrics" in code
+    assert expected in code
+
+
+@pytest.mark.parametrize("path", ["xdut.m1:d", "v(MN:gm)"])
+def test_other_metric_paths_keep_declarative_emission(path):
+    metric = {"name": "m", "type": "final_value", "signal": path}
+    code = generate_testbenches(_base(analyses=_TRAN, metrics=[metric]))
+    assert f"tb.add_metric('m', type='final_value', signal={path!r})" in code
+    assert "from silk import metrics" not in code
+
+
+def test_plot_only_probe_emits_after_analysis():
+    code = generate_testbenches(_base(analyses=_TRAN, probes=[
+        {"signal": "core.MN:gm", "analysis": "tran"},
+    ]))
+    assert code.index("tb.add_sim_type(") < code.index(
+        "tb.probe('core.MN:gm', analysis='tran')")
+
+
+def test_plot_only_net_probes_emit_nothing():
+    expected = generate_testbenches(_base(analyses=_TRAN))
+    assert generate_testbenches(_base(analyses=_TRAN, probes=[
+        {"signal": "vout"}, {"signal": "xdut.internal", "analysis": "tran"},
+        {"signal": "v(MN:gm)"},
+    ])) == expected
+
+
+@pytest.mark.parametrize("probes", [
+    None, {}, ["MN:gm"], [{}], [{"signal": " "}], [{"signal": ["MN:gm"]}],
+    [{"signal": "MN:gm", "type": "device"}],
+    [{"signal": "MN:gm", "analysis": "transient"}],
+    [{"signal": "MN:gm", "analysis": "dc"}],
+    [{"signal": "MN:gm", "analysis": None}],
+    [{"signal": "MN:unknown"}], [{"signal": "xdut.MN:gm"}],
+    [{"signal": "xdut.m1:d"}], [{"signal": "i(vsense)"}],
+    [{"signal": "vvs#branch"}], [{"signal": "vvs#BRANCH"}],
+    [{"signal": ":gm"}], [{"signal": "@m.xdut.mn[gm]"}],
+])
+def test_malformed_plot_only_probe_names_test_and_entry(probes):
+    with pytest.raises(TestbenchSpecError, match=r"test 't': probes"
+                       + (r"\[0\]" if isinstance(probes, list) else "")):
+        generate_testbenches(_base(analyses=_TRAN, probes=probes))
+
+
+def test_device_parameter_metric_requires_an_exported_function(monkeypatch):
+    from silk.metrics import final_value
+    from silk.signals.schema import _REGISTRY
+
+    monkeypatch.setitem(_REGISTRY, "sidecar_value", final_value)
+    spec = _base(analyses=_TRAN, metrics=[
+        {"name": "gm", "type": "sidecar_value", "signal": "MN:gm"},
+    ])
+    with pytest.raises(TestbenchSpecError, match=r"test 't' metric 'gm'.*function form"):
+        generate_testbenches(spec)
+
+
+def test_device_parameter_metric_requires_dut_relative_path():
+    spec = _base(analyses=_TRAN, metrics=[
+        {"name": "gm", "type": "final_value", "signal": "xdut.MN:gm"},
+    ])
+    with pytest.raises(TestbenchSpecError, match=r"test 't' metric 'gm'.*DUT-relative"):
+        generate_testbenches(spec)

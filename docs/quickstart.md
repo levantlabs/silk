@@ -367,9 +367,8 @@ print(vout.y)      # value array (numpy)
 vout.plot()        # single signal matplotlib plot
 ```
 
-Branch currents come from voltage sources: a `VoltageSource('vsupply', ...)`
-emits as `Vvsupply`, and ngspice saves its current as `i(vvsupply)`, so the
-signal name is the source name with a `v` prefix, loaded with `signalType='I'`.
+For the DC/AC-only `VoltageSource('vsupply', ...)` used above, the card is `Vvsupply`,
+read with `load_signal('vvsupply', 'I')`.
 There is no current vector for a bare node — insert a 0 V source where you want
 an ammeter. A testbench reads a branch current with `tb.probe('i(vs)')`
 for a source named `vs`; see [current probes](probes.md).
@@ -571,6 +570,16 @@ deck_path = tb.prepare(corner='tt')   # apply bench settings; return the deck pa
 # ... run it elsewhere with the simulator the deck was generated for ...
 report = tb.evaluate('tt', rawfile='rawfile.raw')   # metrics + specs, no simulator
 ```
+
+For a corner plan, call `prepare(corner=...)` for each corner. With Monte Carlo
+declared, add `sample=<zero-based index>` to prepare one sample's deck, then
+use the same `evaluate(corner, rawfile=...)` route. Keep `(corner, sample)` keys
+in your own dictionary. These are ordinary external reports, with no campaign
+import; successive evaluations may replace an attached Spec's live measurement.
+For Xyce, run `Xyce -randseed <seed> <deck>` with
+`seed = silk.circuit.monte_carlo.derive_sample_seed(tb.monte_carlo.seed, sample)`;
+the deck does not carry the Xyce seed. See the
+[full external-runner recipe](api-reference.md#simulate-elsewhere-evaluate-here).
 
 Make the referenced models and output directories available remotely. The
 deck may write a prepared rawfile path; pass the actual returned rawfile to

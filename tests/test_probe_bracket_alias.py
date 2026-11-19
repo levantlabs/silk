@@ -9,7 +9,6 @@ import pytest
 from silk import sources
 from silk.circuit.modules import Module
 from silk.elements import elements
-from silk.exceptions import AmbiguousBranchCurrentError
 from silk.simulation import Transient
 from tests._env import HAVE_XYCE, needs_ngspice
 from tests.test_metric_branch_current_paths import _build, _avg
@@ -30,11 +29,11 @@ def test_vs0_beside_vvs0_is_ambiguous_and_v_vv_unchanged():
     from silk.circuit.module_test import _branch_vector_name
     src = lambda n: sources.VoltageSource(n, positive='a', negative='0', dc=1)
     both = {'vs[0]': src('vs[0]'), 'vvs[0]': src('vvs[0]')}
-    with pytest.raises(AmbiguousBranchCurrentError):
-        _branch_vector_name(both, 'vvs[0]')
+    with pytest.warns(UserWarning, match='emitted reading'):
+        assert _branch_vector_name(both, 'vvs[0]') == 'vvs[0]'
     two = {'v': src('v'), 'vv': src('vv')}
-    with pytest.raises(AmbiguousBranchCurrentError):
-        _branch_vector_name(two, 'vv')
+    with pytest.warns(UserWarning, match='emitted reading'):
+        assert _branch_vector_name(two, 'vv') == 'vv'
 
 
 def test_same_entity_reached_two_ways_is_deduplicated():

@@ -773,12 +773,16 @@ class CornerResults:
     def _check_cell(result):
         if result is None:
             return 'UNAVAILABLE'
+        if not result.passed:
+            return 'FAIL'
+        # A pass counts only on real-number evidence; Monte Carlo yield
+        # uses this cell too.
         value = result.value
         if isinstance(value, (str, bool)) or not isinstance(value, Real):
             return 'UNAVAILABLE'
         if math.isnan(float(value)):
             return 'UNAVAILABLE'
-        return 'PASS' if result.passed else 'FAIL'
+        return 'PASS'
 
     def _variable_names(self):
         for key in self._ordered_keys():

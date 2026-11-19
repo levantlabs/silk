@@ -640,7 +640,9 @@ def test_public_probe_readiness_and_explicit_selection(tmp_path, selection, monk
         assert s.__dict__ == state
     selected = expressions[-1].resolve()
     keys = ['tt', 'ff'] if selection == 'corner' else [('tt', None, 1.), ('tt', None, 2.)]
+    state = next(iter(tb._sweep_states.values()))
     tb._sweep_table = dict.fromkeys(keys, str(path))
+    tb._sweep_states = dict.fromkeys(keys, state)
     assert [s.bound for s in expressions] == [False] * 4
     assert selected.bound is True
     chosen = getattr(expressions[-1], selection)(keys[0])

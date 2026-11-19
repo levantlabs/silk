@@ -104,7 +104,7 @@ class RawVector:
         ``float64`` for a real plot, ``complex128`` for a complex one.
     """
 
-    __slots__ = ('name', 'type', 'attrs', '_data', '_store', '_slot', '_length')
+    __slots__ = ('name', 'type', 'attrs', '_data', '_store', '_slot', '_length', '_cache_data')
 
     def __init__(self, name, type='', attrs=(), data=None):  # noqa: A002
         self.name = name
@@ -118,7 +118,10 @@ class RawVector:
     def data(self):
         """Writable samples, copied from a lazy backing file on first access."""
         if self._data is None:
-            self._data = self._store.materialize(self._slot, self.name)
+            data = self._store.materialize(self._slot, self.name)
+            if not getattr(self, '_cache_data', True):
+                return data
+            self._data = data
         return self._data
 
     @data.setter

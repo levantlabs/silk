@@ -41,7 +41,7 @@ class TestbenchSpec:
         becomes an ``_apply_<name>_rig`` helper.
     tests : list of dict
         One entry per testbench, with ``'name'``, ``'dut_portmap'``,
-        ``'applied_rigs'``, optional ``sources``, ``analyses``, ``metrics``,
+        ``'applied_rigs'``, optional ``sources``, ``analyses``, ``probes``, ``metrics``,
         ``specs``, ``corner`` and ``temperature_c`` (degrees Celsius), among
         others. Each becomes an ``_attach_<name>`` function.
     save_device_params : bool
@@ -492,6 +492,7 @@ def _validate(spec: TestbenchSpec) -> None:
             declared_analyses.add(a['kind'].lower())
             declared_order.append(a['kind'].lower())
 
+        _validate_plot_probes(t, declared_analyses)
         derived = _validate_derived_signals(spec, t, declared_order)
         widths = _derived_widths(t)
         bus_metrics = {}               # metric name -> its element count
@@ -513,6 +514,17 @@ def _validate(spec: TestbenchSpec) -> None:
             slots = _metric_signal_slots(fn)
             bound = _metric_binding(where, m, slots)
             bus_width = _validate_metric_bus(where, m, bound, widths, derived)
+            device_paths = [p for p in _flatten_paths(bound.values())
+                            if _device_parameter_prefix(p) is not None]
+            if device_paths:
+                from silk import metrics
+
+                for path in device_paths:
+                    _validate_device_parameter_path(where, path)
+                if getattr(metrics, mtype, None) is not fn:
+                    raise TestbenchSpecError(
+                        f"{where}: device-parameter inputs require function form; "
+                        f"{mtype!r} is not exported by silk.metrics")
             if bus_width is not None:
                 bus_metrics[m['name']] = bus_width
             _refuse_unproducible_kinds(where, slots)
@@ -749,12 +761,66 @@ def _refuse_bus_name_collisions(tname: str, t: dict, bus_metrics: dict) -> None:
                 f"metric of that name; rename one of them")
 
 
+def _device_parameter_prefix(path):
+    """Return the designer-name portion of a device-parameter path."""
+    from silk.circuit.module_test import _split_spice_selector
+    from silk.simulation.backend import DEVICE_OP_PARAMS
+
+    if isinstance(path, str):
+        head, inner = _split_spice_selector(path)
+        prefix, colon, suffix = inner.rpartition(':')
+        if head is None and colon and suffix.strip().lower() in DEVICE_OP_PARAMS:
+            return prefix.strip()
+    return None
+
+
+def _validate_device_parameter_path(where: str, path: str) -> None:
+    prefix = _device_parameter_prefix(path)
+    if not prefix or prefix.lower().startswith('xdut.'):
+        raise TestbenchSpecError(
+            f"{where}: {path!r} needs a DUT-relative device name such as 'MN:gm'")
+
+
+def _validate_plot_probes(t: dict, declared_analyses: set) -> None:
+    from silk.circuit.module_test import _split_spice_selector
+
+    entries = t.get('probes', [])
+    if not isinstance(entries, list):
+        raise TestbenchSpecError(f"test {t['name']!r}: probes must be a list")
+    declared = {_ANALYSIS_WORD[kind] for kind in declared_analyses
+                if kind in _ANALYSIS_WORD}
+    for index, entry in enumerate(entries):
+        where = f"test {t['name']!r}: probes[{index}]"
+        if not isinstance(entry, dict) or entry.keys() - {'signal', 'analysis'}:
+            raise TestbenchSpecError(
+                f"{where}: expected an object with 'signal' and optional 'analysis'")
+        path = entry.get('signal')
+        if not isinstance(path, str) or not path.strip():
+            raise TestbenchSpecError(f"{where}: signal must be a non-empty path string")
+        if _device_parameter_prefix(path) is not None:
+            _validate_device_parameter_path(where, path)
+        else:
+            head, inner = _split_spice_selector(path)
+            if (head == 'i' or not inner or inner.startswith('@')
+                    or (head is None and inner.lower().endswith('#branch'))
+                    or (head is None and any(c in inner for c in ':()'))):
+                raise TestbenchSpecError(
+                    f"{where}: expected a net or a device-parameter path; got {path!r}")
+        if 'analysis' in entry:
+            word = entry['analysis']
+            if not isinstance(word, str) or word not in declared:
+                raise TestbenchSpecError(
+                    f"{where}: analysis {word!r} must name a declared plot "
+                    f"(available: {sorted(declared)})")
+
+
 def _metric_function_form(m: dict, derived_names) -> bool:
     """True if metric dict *m* is emitted in add_metric's function form: it
-    binds a derived signal by name, or a bus list."""
+    binds a derived signal by name, a bus list or a device parameter."""
     values = ([m['signal']] if m.get('signal') is not None
               else list((m.get('signals') or {}).values()))
-    return any(isinstance(v, list) or (isinstance(v, str) and v in derived_names)
+    return any(isinstance(v, list) or (isinstance(v, str) and
+               (v in derived_names or _device_parameter_prefix(v) is not None))
                for v in values)
 
 
@@ -803,7 +869,7 @@ def _validate_derived_signals(spec: 'TestbenchSpec', t: dict,
     """Refuse a malformed ``derived_signals`` list; return ``{name: analysis
     word or None}`` — the plot each derived signal reads, as far as the spec
     pins it — for the metric checks that follow."""
-    from silk.circuit.module_test import _SIM_KEY_ANALYSIS
+    from silk.signals.analysis_kind import SELECTABLE_ANALYSES
     from silk.signals.operations import export_signal_operations
 
     tname = t['name']
@@ -928,7 +994,7 @@ def _validate_derived_signals(spec: 'TestbenchSpec', t: dict,
 
         own = d.get('analysis')
         if own is not None:
-            words = sorted(set(_SIM_KEY_ANALYSIS.values()))
+            words = sorted(SELECTABLE_ANALYSES)
             if own not in words:
                 raise TestbenchSpecError(
                     f"{where}: analysis={own!r} is not a silk analysis; "
@@ -1037,7 +1103,8 @@ def _bus_metric_name_fstring(name: str, counter: str) -> str:
 
 def _derived_metric_lines(m: dict, derived_names, widths=None, bound_names=()) -> list:
     """Emit add_metric's function form for a metric that binds a derived
-    signal or a bus list: ``tb.add_metric('name', metrics.<type>, <slot>=<signal>, ...)``.
+    signal, a bus list or a device parameter:
+    ``tb.add_metric('name', metrics.<type>, <slot>=<signal>, ...)``.
     Derived inputs bind their local; path inputs bind ``tb.probe(path)``,
     pinned to the metric's ``analysis`` when it has one (the function form
     names the analysis on the probe).
@@ -1649,7 +1716,13 @@ def _attach_fn(t: dict, helpers: list, helper_aliases: dict,
     lines.extend(f"    {line}" for line in _element_lines(t, 'test'))
     lines.extend(f"    {line}" for line in _module_add_lines(helpers, helper_aliases))
     for a in t.get('analyses', []):
-        lines.append(f"    {_analysis_line(a)}")
+        try:
+            lines.append(f"    {_analysis_line(a)}")
+        except ValueError as exc:
+            raise TestbenchSpecError(f"test {name!r}: {exc}") from None
+    lines.extend(f"    {_probe_call(p['signal'], p.get('analysis'))}"
+                 for p in t.get('probes', [])
+                 if _device_parameter_prefix(p['signal']) is not None)
     lines.extend(f"    {line}" for line in _derived_signal_lines(t))
     derived_names = {d['name'] for d in _derived_entries(t)}
     widths = _derived_widths(t)

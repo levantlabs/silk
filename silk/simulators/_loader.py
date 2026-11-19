@@ -10,6 +10,8 @@ import warnings
 
 import yaml
 
+from silk.utils._compat import yaml_safe_loader
+
 
 _CACHE: dict = {}
 
@@ -162,7 +164,7 @@ def load_simulator_config(name: str) -> SimulatorConfig:
         data = {'name': name}
     else:
         with open(path) as f:
-            data = yaml.safe_load(f) or {}
+            data = yaml.load(f, Loader=yaml_safe_loader) or {}
 
     cfg = SimulatorConfig(data)
     _CACHE[name] = cfg

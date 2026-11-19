@@ -316,11 +316,16 @@ makes `tb.probe` read **the same vector**:
 | complex `v(out)` part `phase` | `transform: "phase_deg_unwrapped"` | `tb.probe('out').phase_deg_unwrapped()` |
 
 A branch current may be written `tb.probe('vvs', 'I')` (raw vector) or
-`tb.probe('i(vs)')` (source name; also valid as a metric's signal path). `i(x)`
-reads source `x` if the bench has one, else the raw vector `x`. When `x` is
-both a source name and another source's emitted instance (sources `vs` and
-`vvs`), `i(vvs)` raises `AmbiguousBranchCurrentError` rather than guess which
-branch you meant. Names are lower-cased, which
+`tb.probe('i(vs)')` (source name; also valid as a metric's signal path).
+With a circuit, designer source paths such as `i(dut.core.vs)` use the shared
+source lookup, including checked viewer selections. An emitted reading or
+registered card wins over a different source target with a warning naming
+the physical alternative; ambiguous raw rows still raise `AmbiguousSignalError`.
+Bare-I reads remain physical. Copy as code may produce a bare-I spelling
+that probe declaration refuses because it names only a source alias to
+different physical operands; the error names `i(name)` and the physical cards.
+Direct `load_signal(name, 'I')` retains raw-row reads. A rawfile-only viewer
+cannot reconstruct source aliases. Names are lower-cased, which
 does not change what they match, because SPICE names are case-insensitive.
 When the payload holds more than one plot, `probe.analysis` names the plot.
 `tb.probe` cannot read a multi-plot rawfile without it.
@@ -558,6 +563,18 @@ the logical probe name rather than a simulator vector. Forward `name` and
 `type` when constructing a probe. Every contributing current card must be
 saved; default selection omits incomplete logical currents, while explicitly
 requesting one raises `ViewError` naming the cards to save before rerunning.
+A device-parameter vector that the run explicitly requested with
+`tb.probe('MN:gm')` gets the label `dut.MN:gm` (bench-rooted, like net labels)
+and a path entry with `"kind": "device"`; entries without `kind` are voltage
+paths. Its checked probe is `node_probe: {"name": "MN:gm", "type": "D"}`, the
+designer-relative spelling that `tb.probe` takes (for example `core.MN:gm` or
+`M1[0]:gm`), never a `v(...)` argument. Selectors accept the full label and DUT-relative probe spelling through the existing selector grammar, including globs and literal array brackets; no `v(...)` wrapper is accepted. Only
+requested probes qualify: vectors saved in bulk stay under their raw names, and
+an ambiguous, empty, warned or refused vector is never labelled. Where the copied
+probe would return different samples from the displayed row (ngspice
+alternating-current rows, which `tb.probe` reads as the real part, and a Xyce
+PMOS `id`, whose sign `tb.probe` flips), the label stays and `node_probe` is
+`null`.
 `node_probe: null` refuses copy; an absent field retains legacy copy.
 `address` still means the emitted/bracket spelling. Never derive a probe from
 `label`, lowercase a checked argument, or rewrite its punctuation. The browser

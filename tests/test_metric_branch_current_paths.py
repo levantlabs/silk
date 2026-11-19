@@ -76,8 +76,8 @@ def test_function_form_str_slot_ambiguous_raises(tmp_path):
     from silk.metrics import average
     test = _build(tmp_path, TWO, [])
     test.add_metric('f', average, sig='i(vvs)')
-    with pytest.raises(AmbiguousBranchCurrentError):
-        test.run('tt')
+    with pytest.warns(UserWarning, match='emitted reading'):
+        assert test.run('tt').metrics['f'] == pytest.approx(-7e-4, rel=1e-3)
 
 
 @needs
@@ -92,11 +92,11 @@ def test_unknown_current_lists_accepted_spellings(tmp_path):
 @needs
 def test_ambiguous_current_raises_in_metric_and_probe(tmp_path):
     test = _build(tmp_path, TWO, [_avg('m', 'i(vvs)')])
-    with pytest.raises(AmbiguousBranchCurrentError) as ei:
-        test.run('tt')
-    assert "'vs'" in str(ei.value) and "'vvs'" in str(ei.value)
-    with pytest.raises(AmbiguousBranchCurrentError):
-        test.probe('i(vvs)')
+    with pytest.warns(UserWarning, match='emitted reading') as caught:
+        assert test.run('tt').metrics['m'] == pytest.approx(-7e-4, rel=1e-3)
+    assert 'i(vvs)' in str(caught[0].message) and 'Vvvs' in str(caught[0].message)
+    with pytest.warns(UserWarning, match='emitted reading'):
+        assert test.probe('i(vvs)').y == pytest.approx(test.netlist.load_signal('vvs', 'I').y)
     # the unambiguous one on the same bench still reads its own source
     test.probe('i(vs)')
 

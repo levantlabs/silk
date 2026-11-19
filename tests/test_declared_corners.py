@@ -68,6 +68,17 @@ def fake_sim(monkeypatch):
         conditions = OperatingConditions(
             'silk', netlist.simulator, **_launched_corner(spec.corner_str, False))
         netlist.operating_conditions = conditions
+        from pathlib import Path
+        from tests._mock_rawfile import write_complete_rawfile
+        Path(spec.tb_dir).mkdir(parents=True, exist_ok=True)
+        path = str(Path(spec.tb_dir) / 'mock.raw')
+        write_complete_rawfile(path, 'test\n.op\n.end\n',
+                               values={'v(vd)': GAIN[spec.corner_str]
+                                       + netlist.simulator_options.get('temp', 0.) / 1000
+                                       + float(netlist.sig_sources_dict['vd'].dc) / 100})
+        netlist._raw = netlist.backend.load_raw(path)
+        netlist.simResultsAll = netlist._raw.native
+        netlist.results_file = path
         netlist.sim_results_loaded = True
         return _RunSimResult(netlist=netlist, corner_str=spec.corner_str,
                              conditions=conditions, invocation=spec.invocation,
@@ -390,6 +401,12 @@ def test_grid_run_all_parity(sky130_tb, fake_sim, n_workers):
     assert not isinstance(cr, dict), cr
     assert list(cr.reports) == [(c,t,v) for c in ['ss','tt']
                                 for t in [125.0,-40.0] for v in [1.62,1.98]]
+    for point, report in cr.items():
+        expected = GAIN[point[0]] + point[1] / 1000 + point[2] / 100
+        assert report.sim_results.load_signal('vd').y[-1] == pytest.approx(expected)
+        assert tb.probe('vd').point(point).y[-1] == pytest.approx(expected)
+        raw = report.sim_results.backend.load_raw(report.rawfile_path)
+        assert report.sim_results.backend.load_signal(raw, 'vd').y[-1] == pytest.approx(expected)
     assert tb.netlist.simulator_options == {}
     assert tb.netlist.sig_sources_dict['vd'].dc == 1.0
 
@@ -544,6 +561,14 @@ def test_axis_inheritance_is_scoped_to_selected_placement(sky130_tb, tmp_path):
         assert [r.key for r in high._plan_runs()]==[('tt',85.0,1.98),('tt',125.0,1.98)]
         assert [r.key for r in low._plan_runs()]==[('tt',-40.0,1.62),('tt',27.0,1.62)]
         assert tb._plan_runs() is None
+        for handle in (tb, low, high):
+            assert handle.temperatures is handle.supply_voltages is None
+        low.set_temperatures([10, 20])
+        for handle in (tb, low, high):
+            assert handle.temperatures == (10., 20.)
+            assert handle.supply_voltages is None
+        assert [r.supply for r in low._plan_runs()] == [1.62, 1.62]
+        assert [r.supply for r in high._plan_runs()] == [1.98, 1.98]
     finally:
         top.close()
         for parent in parents:
@@ -809,8 +834,9 @@ def test_variable_stimulus_decks_follow_each_point_and_restore(sky130_tb):
     assert decks[0] != decks[1]
 
 
+@pytest.mark.parametrize('workers', [None, 2])
 @pytest.mark.parametrize('stage', ['prepare', 'simulate', 'evaluate'])
-def test_swept_values_restore_after_each_failure_stage(sky130_tb, fake_sim, monkeypatch, stage):
+def test_swept_values_restore_after_each_failure_stage(sky130_tb, fake_sim, monkeypatch, stage, workers):
     from silk import Variable
     from silk.circuit.module_test import ModuleTestbench
     knob = Variable('rail', value=1.8)
@@ -827,7 +853,7 @@ def test_swept_values_restore_after_each_failure_stage(sky130_tb, fake_sim, monk
     else:
         monkeypatch.setattr(tb, name, refuse)
     with pytest.raises(SimulationError, match='injected failure'):
-        tb.run()
+        tb.run(n_workers=workers)
     assert knob.value == 1.8
     assert tb.netlist.sig_sources_dict['vd'].dc is knob
     assert tb.netlist.sig_sources_dict['vg'].dc is expression
@@ -983,3 +1009,292 @@ def test_public_grouped_corner_selection_keeps_complete_rows(sky130_tb, fake_sim
         else:
             getattr(tb, route)(corner='tt')
     assert fake_sim.calls == before and knob.value == 7
+
+
+def test_memory_only_collection_failure_does_not_publish_live_reports(sky130_tb, fake_sim, monkeypatch):
+    from silk.circuit.module_test import ModuleTestbench
+    from silk.simulation.backend import RawResult
+    tb = sky130_tb
+    original = ModuleTestbench._simulate_run
+    def memory_only(spec):
+        result = original(spec)
+        result.netlist._raw = RawResult(object(), '<memory-only>')
+        result.netlist.simResultsAll = result.netlist._raw.native
+        return result
+    monkeypatch.setattr(ModuleTestbench, '_simulate_run', staticmethod(memory_only))
+    from silk.exceptions import NotSupportedError
+    from silk.circuit.spec_report import CornerRunError
+    tb.set_corners(['tt', 'ss'])
+    with pytest.raises(NotSupportedError, match='ngspice.*rereadable'):
+        tb.run()
+    with pytest.raises(CornerRunError) as error:
+        tb.run_corners(['tt', 'ss'])
+    assert set(error.value.errors) == {'tt', 'ss'}
+    assert not error.value.results.reports
+    assert all('ngspice' in text and 'rereadable' in text for text in error.value.errors.values())
+    assert tb.sweep_corners == tb._sweep_states == {}
+    tb.set_corners(None)
+    report = tb.run(corner='tt')
+    assert report.sim_results is tb.netlist
+    assert report.metrics['gain'] == GAIN['tt']
+
+
+def test_fresh_declaration_readers_are_local_read_only_and_do_not_wire(tmp_path):
+    from silk import Module, Variable
+    mod = Module(None, str(tmp_path), 'fresh.cir', None, module_name='fresh')
+    try:
+        tb = mod.create_test('fresh')
+        mod.set_temperatures([85]).set_supply_voltages([1.8], source='rail')
+        assert tb.netlist is None
+        assert tb.temperatures is tb.supply_voltages is None
+        assert tb.variable_values == tb.groups == ()
+        knob = Variable('knob', value=0)
+        tb.set_variable_values(knob, [1, 2]).set_groups([[knob, 'temperature']])
+        assert tb.variable_values == ((knob, (1, 2)),)
+        assert tb.variable_values[0][0] is knob
+        assert tb.groups == ((knob, 'temperature'),)
+        assert tb.groups[0][0] is knob
+        for name in ('temperatures', 'supply_voltages', 'variable_values', 'groups'):
+            with pytest.raises(AttributeError):
+                setattr(tb, name, ())
+            assert name not in tb.__dict__
+        with pytest.raises(TypeError):
+            tb.variable_values[0][1][0] = 99
+        with pytest.raises(TypeError):
+            tb.groups[0][0] = 'supply'
+        assert tb.netlist is None
+        assert not list(tmp_path.rglob('*.cir'))
+    finally:
+        mod.close()
+
+
+@pytest.mark.parametrize('reader,plural,scalar,values,kwargs', [
+    ('temperatures', 'set_temperatures', 'set_temperature', [125, -40, 125], {}),
+    ('supply_voltages', 'set_supply_voltages', 'set_supply_voltage', [1.98, 1.62, 1.98], {'source': 'vd'}),
+])
+def test_condition_readers_normalization_clear_and_scalar(sky130_tb, reader, plural, scalar, values, kwargs):
+    tb = sky130_tb
+    getattr(tb.module, plural)(values, **kwargs)
+    assert getattr(tb, reader) is None
+    getattr(tb, plural)(values, **kwargs)
+    held = getattr(tb, reader)
+    assert held == tuple(float(v) for v in values)
+    assert all(type(v) is float for v in held)
+    with pytest.raises(TypeError):
+        held[0] = 0
+    getattr(tb, plural)([values[0]], **kwargs)
+    assert getattr(tb, reader) == (float(values[0]),)
+    getattr(tb, plural)(None)
+    assert getattr(tb, reader) is None
+    getattr(tb, plural)(values, **kwargs)
+    getattr(tb, scalar)(values[0], **kwargs)
+    assert getattr(tb, reader) is None
+    assert held == tuple(float(v) for v in values)
+    if reader == 'temperatures':
+        tb.set_temperatures([27])
+        tb.set_simulator_options(temp=85)
+        assert tb.temperatures is None
+
+
+def test_variable_and_group_readers_keep_stored_values_identity_order_and_snapshots(sky130_tb):
+    from silk import Variable
+    tb = sky130_tb
+    knob = Variable('knob', value=0.5, bounds=(0, 1), resolution=0.1)
+    mode = Variable('mode', value='a', var_type='categorical', categories=['a', 'b'])
+    with pytest.warns(UserWarning, match='off its resolution grid'):
+        tb.set_variable_values(knob, [0.24, 0.76])
+    tb.set_variable_values(mode, ['b', 'a'])
+    held = tb.variable_values
+    assert held == ((knob, (0.2, 0.8)), (mode, ('b', 'a')))
+    assert held[0][0] is knob and held[1][0] is mode
+    knob.resolution = 0.5
+    assert tb.variable_values == held  # reading does not snap again
+    tb.set_variable_values(mode, ['a'])
+    assert tb.variable_values == ((knob, (0.2, 0.8)), (mode, ('a',)))
+    assert held[1][1] == ('b', 'a')
+    tb.set_variable_values(knob, None).set_variable_values(knob, [1])
+    assert tb.variable_values == ((mode, ('a',)), (knob, (1.,)))
+    tb.set_groups([[knob, 'temperature'], ['supply', mode, 'corner']])
+    groups = tb.groups
+    assert groups == ((knob, 'temperature'), ('supply', mode, 'corner'))
+    assert groups[0][0] is knob and groups[1][1] is mode
+    with pytest.raises(ConfigurationError, match='declared'):
+        tb._plan_runs()
+    tb.set_groups(None)
+    assert tb.groups == ()
+    assert groups == ((knob, 'temperature'), ('supply', mode, 'corner'))
+    tb.set_variable_values(knob, None).set_variable_values(mode, None)
+    assert tb.variable_values == ()
+    assert knob.value == 0.5 and mode.value == 'a'
+
+
+@pytest.mark.parametrize('entry', ['direct', 'module'])
+@pytest.mark.parametrize('shape', ['corner', 'one', 'temperature', 'supply', 'grid', 'grouped'])
+def test_single_test_workers_preserve_declared_results(sky130_tb, fake_sim, entry, shape):
+    from silk import Variable
+    tb = sky130_tb
+    knob = Variable('rail', value=1.8)
+    if shape in ('corner', 'grid', 'grouped'):
+        tb.set_corners(['ss', 'tt', 'ff'])
+    elif shape == 'one':
+        tb.set_corners(['tt'])
+    if shape in ('temperature', 'grid', 'grouped'):
+        tb.set_temperatures([-40, 27, 125])
+    if shape in ('supply', 'grid'):
+        tb.set_supply_voltages([1.62, 1.98], source='vd')
+    if shape == 'grouped':
+        tb.netlist.sig_sources_dict['vd'].dc = knob
+        tb.set_variable_values(knob, [1.62, 1.8, 1.98])
+        tb.set_groups([['corner', 'temperature', knob]])
+    fake_sim.fail_on('ss')
+    baseline = tb.run(run_label='serial')
+    run = tb.run if entry == 'direct' else lambda **kw: tb.module.run_test('op', **kw)
+    result = run(n_workers=2, run_label='parallel')
+    assert type(result) is type(baseline)
+    assert list(result.reports) == list(baseline.reports)
+    assert result.failed == baseline.failed
+    assert _flat(result) == _flat(baseline)
+    for key, report in result.items():
+        expected = baseline[key].sim_results.load_signal('vd').y[-1]
+        assert report.sim_results.load_signal('vd').y[-1] == expected
+        assert tb.probe('vd').point(key).y[-1] == expected
+    assert knob.value == 1.8
+    if shape == 'grouped':
+        assert tb.netlist.sig_sources_dict['vd'].dc is knob
+    else:
+        assert tb.netlist.sig_sources_dict['vd'].dc == 1.0
+    assert tb.netlist.simulator_options == {}
+
+
+@pytest.mark.parametrize('workers', [None, 1, 2, 'all', 100])
+def test_single_test_workers_batch_order_and_release(sky130_tb, fake_sim, monkeypatch, workers):
+    import gc
+    import weakref
+    from silk.simulation import executor
+    tb = sky130_tb.set_corners(['tt', 'ss', 'ff', 'sf', 'fs'])
+    monkeypatch.setattr(executor.os, 'cpu_count', lambda: 2)
+    prepare = tb._prepare_plan
+    evaluate = tb._evaluate_plan
+    refs, events = [], []
+
+    def preparing(batch, **config):
+        gc.collect()
+        assert not any(ref() is not None for ref in refs)
+        events.append(('prepare', [run.key for run in batch]))
+        prepared, errors = prepare(batch, **config)
+        refs.extend(weakref.ref(obj) for spec in prepared.values()
+                    for obj in (spec, spec.netlist))
+        return prepared, errors
+
+    def evaluating(batch, *args):
+        events.append(('evaluate', [run.key for run in batch]))
+        refs.extend(weakref.ref(outcome.result.netlist)
+                    for outcome in args[1].values() if outcome.result is not None)
+        return evaluate(batch, *args)
+
+    monkeypatch.setattr(tb, '_prepare_plan', preparing)
+    monkeypatch.setattr(tb, '_evaluate_plan', evaluating)
+    result = tb.run(n_workers=workers)
+    assert list(result.reports) == ['tt', 'ss', 'ff', 'sf', 'fs']
+    batches = ([['tt', 'ss', 'ff', 'sf', 'fs']] if workers in (None, 1)
+               else [['tt', 'ss'], ['ff', 'sf'], ['fs']])
+    assert events == [(stage, batch) for batch in batches for stage in ('prepare', 'evaluate')]
+
+
+@pytest.mark.parametrize('workers', [None, 1, 2])
+def test_single_test_later_preparation_refusal_restores_values(sky130_tb, fake_sim, monkeypatch, workers):
+    from silk import Variable
+    monkeypatch.setattr('silk.simulation.executor.os.cpu_count', lambda: 2)
+    tb = sky130_tb
+    knob = Variable('rail', value=1.8)
+    tb.netlist.sig_sources_dict['vd'].dc = knob
+    tb.set_variable_values(knob, [1.6, 1.7, 1.9])
+    prepare = tb._prepare_run
+    evaluated = []
+    evaluate = tb._evaluate_run
+
+    def preparing(*args, **kwargs):
+        if knob.value == 1.9:
+            raise ConfigurationError('later point refused')
+        return prepare(*args, **kwargs)
+
+    def evaluating(*args, **kwargs):
+        evaluated.append(knob.value)
+        return evaluate(*args, **kwargs)
+
+    monkeypatch.setattr(tb, '_prepare_run', preparing)
+    monkeypatch.setattr(tb, '_evaluate_run', evaluating)
+    with pytest.raises(ConfigurationError, match='later point refused'):
+        tb.run(n_workers=workers)
+    assert len(evaluated) == (2 if workers == 2 else 0)
+    assert knob.value == 1.8
+    assert tb.netlist.sig_sources_dict['vd'].dc is knob
+    assert tb.netlist.simulator_options == {}
+
+
+@pytest.mark.parametrize('workers', [0, -1, True, 'bad', 1.5])
+def test_invalid_single_test_workers_refused_before_planning(sky130_tb, monkeypatch, workers):
+    def forbidden(*args, **kwargs):
+        pytest.fail('planning must not allocate output for an invalid worker request')
+    monkeypatch.setattr(sky130_tb, '_plan_runs', forbidden)
+    with pytest.raises(ValueError, match='n_workers'):
+        sky130_tb.run(n_workers=workers)
+
+
+def test_single_test_workers_filter_and_all_failed(sky130_tb, fake_sim):
+    tb = sky130_tb.set_corners(['ss', 'tt', 'ff'])
+    result = tb.run(corner='ff', n_workers=2)
+    assert list(result.reports) == ['ff']
+    fake_sim.fail_on('tt', 'ss', 'ff')
+    with pytest.raises(SimulationError, match='every declared run failed'):
+        tb.run(n_workers=2)
+
+
+def test_behavioral_declared_workers_keep_whole_plan_in_process(tmp_path, monkeypatch):
+    import os
+    from silk import load_pdk, Variable
+    from tests._variation_bench import chip
+    top, tb = chip(load_pdk('sky130'), tmp_path, {'offset': 0.25})
+    knob = Variable('input', value=0.0)
+    tb.netlist.sig_sources_dict['input'].dc = knob
+    tb.set_variable_values(knob, [1.0, 2.0, 3.0])
+    prepare, evaluate = tb._prepare_run, tb._evaluate_run
+    events = []
+
+    def preparing(*args, **kwargs):
+        events.append(('prepare', knob.value, os.getpid()))
+        return prepare(*args, **kwargs)
+
+    def evaluating(*args, **kwargs):
+        events.append(('evaluate', knob.value, os.getpid()))
+        return evaluate(*args, **kwargs)
+
+    monkeypatch.setattr(tb, '_prepare_run', preparing)
+    monkeypatch.setattr(tb, '_evaluate_run', evaluating)
+    try:
+        result = tb.run(n_workers='all')
+        assert [r.metrics['y0'] for r in result.values()] == [1.25, 2.25, 3.25]
+        assert events == [(stage, value, os.getpid()) for stage in ('prepare', 'evaluate')
+                          for value in (1.0, 2.0, 3.0)]
+        assert knob.value == 0.0
+        assert tb.netlist.sig_sources_dict['input'].dc is knob
+    finally:
+        top.close()
+
+
+def test_single_test_workers_keep_arguments_and_labels(sky130_tb, fake_sim):
+    from pathlib import Path
+    tb = sky130_tb.set_corners(['tt', 'ff'])
+    tb.set_temperature(27).set_supply_voltage(1.8, source='vd')
+    first = tb.run(n_workers=2, temperature=27, voltage=1.8, run_label='check')
+    second = tb.run(n_workers=2, temperature=27, voltage=1.8, run_label='other')
+    for key in first.reports:
+        assert 'run~check' in first[key].rawfile_path
+        assert Path(first[key].rawfile_path).is_file()
+        assert first[key].rawfile_path != second[key].rawfile_path
+    with pytest.raises(ConfigurationError, match='temperature|TEMP'):
+        tb.run(n_workers=2, temperature=85)
+    with pytest.raises(ConfigurationError, match='voltage|supply'):
+        tb.run(n_workers=2, voltage=1.6)
+    with pytest.raises(ConfigurationError, match='store=True'):
+        tb.module.run_test('op', n_workers=2, store=True)

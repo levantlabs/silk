@@ -738,3 +738,19 @@ def test_bound_does_not_prevalidate_transform_arguments():
     assert derived.bound is True
     with pytest.raises(ValueError):
         _ = derived.y
+
+
+def test_abs_difference_defers_refuses_before_run_and_reads_fresh_results():
+    a = make_bound('a', x=[0., 1.], y=[3+4j, -3.])
+    b = make_bound('b', x=[0., 1.], y=[0., 1.])
+    bench = bench_with(a, b)
+    result = abs(probe(bench, 'a') - probe(bench, 'b'))
+    assert bench.netlist.calls == []
+    from silk.exceptions import UnboundSignalError
+    with pytest.raises(UnboundSignalError, match='has not run yet'):
+        _ = result.y
+    assert bench.netlist.calls == []
+    run(bench)
+    np.testing.assert_array_equal(result.y, [5., 4.])
+    bench.netlist._signals['a'] = make_bound('a', x=[0., 1.], y=[0., 13.])
+    np.testing.assert_array_equal(result.y, [0., 12.])

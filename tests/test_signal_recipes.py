@@ -522,3 +522,15 @@ def test_arithmetic_accepts_exact_copied_grids(operation, expected, axis, label,
         result = operation(left, right)
     np.testing.assert_array_equal(result.y, expected[:len(axis)])
     np.testing.assert_array_equal(result.x, axis)
+
+
+def test_unary_plus_preserves_bound_probe_and_expression_identity_without_reads():
+    bound = make_bound('a')
+    bench = bench_with(bound)
+    unbound = probe(bench, 'a')
+    expression = unbound - 2
+    for sig in (bound, unbound, expression):
+        assert +sig is sig
+        with pytest.raises(TypeError):
+            _ = 2 ** sig
+    assert bench.netlist.calls == []

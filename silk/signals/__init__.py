@@ -1,4 +1,5 @@
 """silk.signals — waveform signal objects, kinds and schema."""
+from silk.signals.analysis_kind import SELECTABLE_ANALYSES
 from silk.signals.base import Signal
 from silk.signals.spice import NgspiceSignal
 from silk.signals.schema import (
@@ -10,7 +11,7 @@ from silk.signals.operations import export_signal_operations
 from silk.signals.assemble import codes_from_bits, power_sweep
 
 __all__ = [
-    "Signal", "NgspiceSignal",
+    "Signal", "NgspiceSignal", "SELECTABLE_ANALYSES",
     "metric", "metric_schema", "export_metric_schema",
     "export_signal_operations",
     "codes_from_bits", "power_sweep",

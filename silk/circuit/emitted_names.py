@@ -308,3 +308,41 @@ def validate_net_name(name: str) -> None:
     """
     from silk.elements.base import validate_net_token
     validate_net_token(name, who='add_net', kind='net')
+
+
+def validate_port_name(name: str) -> None:
+    """Validate a formal port name using declaration-time rules.
+
+    Parameters
+    ----------
+    name : str
+        ASCII identifier with an optional trailing numeric index. Names
+        starting with the case-insensitive ``__silk_`` prefix are reserved.
+
+    Returns
+    -------
+    None
+        The name passes the same check as ``Module.define_module_ports``.
+
+    Raises
+    ------
+    ValueError
+        The name is invalid, reserved, or the global ground name ``0``.
+    TypeError
+        The value is not a string or a Net-like object with a string name.
+
+    Notes
+    -----
+    This checks declaration-time names; lint, emission and simulation setup
+    also reject a formal port named ``gnd``, in any case.
+    Errors retain the declaration context; the global-ground diagnostic uses
+    ``<unnamed>`` because no block identity is available. Indexed names are
+    checked as names, without checking bus widths or interface collisions.
+    """
+    from silk.circuit.ground_port import (
+        _is_global_ground_port, unportable_ground_port_message,
+    )
+    from silk.elements.base import validate_net_token
+    if _is_global_ground_port(name):
+        raise ValueError(unportable_ground_port_message('<unnamed>', name))
+    validate_net_token(name, who='define_module_ports', kind='port')

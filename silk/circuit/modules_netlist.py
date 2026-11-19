@@ -661,8 +661,7 @@ class _NetlistMethods(_Base):
                     raise NotSupportedError(
                         f'set_save_list selector {s!r}: a save list can name '
                         f'node voltages only for now — branch/device currents '
-                        f'are not yet supported (backlog '
-                        f'2026-08-12-simulator-save-list.md).')
+                        f'are not yet supported.')
             return v
 
         self._save_list = {

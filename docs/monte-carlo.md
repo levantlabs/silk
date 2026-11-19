@@ -189,9 +189,14 @@ report.save_html('mc.html')
 
 `tb.run_monte_carlo(n, ...)` runs once with the arguments you give and leaves
 the declared setting alone. `tb.run()` on a declared test returns the same
-`MonteCarloResults`, running serially; `run_all_tests(n_workers=N)`
-can run up to N SPICE samples (or chunks, below) concurrently. Behavioral
-samples always run in-process.
+`MonteCarloResults`. Pass `n_workers=N` to `tb.run()`,
+`mod.run_test(...)` or `run_all_tests(...)` to run up to N SPICE samples
+(or chunks, below) concurrently. None or 1 keeps serial execution. An integer
+is capped at the CPU count; 'all' uses the CPU count. Preparation and evaluation
+remain in the calling process and results retain plan order. Behavioral
+simulations always run in-process. A test with no declared plan still performs
+only one run in-process. Each worker has its own simulator memory, so choose a
+count that fits available memory.
 
 ## Operating grids
 
@@ -541,9 +546,25 @@ samples, it falls back to correlation only: effects, shares and R squared
 are `None`. Use more samples than varying parameters for the fit. Each row gives the parameter's effect per sigma, its normalized
 squared-coefficient share (`b² / sum(b²)`) and its correlation, sorted by share,
 with the fit's R squared. `by='device'` sums shares and combines effects by
-root-sum-square. Only devices
-whose type has a `record` entry in the manifest are recorded;
-`mc.draws.skipped_types` lists the others. On ngspice, `record_draws=True`
+root-sum-square. Each recorded `res_hpo` adds two columns. Use more usable samples
+than varying columns across all recorded devices; constant columns do not count.
+More samples do not remove correlation between process-driven columns.
+
+On ngspice and Xyce, the manifest records supported MOS parameters and sky130
+`res_hpo` head/body sheet-resistance draws. A resistor named `dut.r1` contributes
+`('dut.r1', 'rbody.rsh')` and `('dut.r1', 'rhead.rsh')`; `by='device'` groups both
+under `dut.r1`. Ngspice records realised RSH values; Xyce records normalised
+draws, not resistance in ohms/square. `mc.draws.skipped_types` lists the other
+PDK device types present; they may still vary.
+
+For process/both variation, Xyce's sampled inputs do not reconstruct the realised
+parameter or prove complete process attribution. The installed model multiplies
+process and mismatch terms, so standardisation does not establish equivalent
+combined-process rankings or independent contributions across the backends.
+The [high-poly process advisory](known_issues.md#monte-carlo) still applies:
+recording the draws does not validate their physical distribution.
+
+On ngspice, `record_draws=True`
 conflicts with `save_device_currents`; recording requires at least one device
 type listed by the manifest's `record` entries. Ranking `correlate=` quantities is
 not implemented and raises `NotSupportedError`.
@@ -551,6 +572,8 @@ not implemented and raises `NotSupportedError`.
 ## Limitations
 
 See also [known issues](known_issues.md#monte-carlo).
+
+- sky130 high-poly process variation. For `res_hpo` or `res_xhpo` with `variation='process'` or `'both'`, see the [installed-model limitation and campaign advisory](known_issues.md#monte-carlo).
 
 - **Loop engine limits.** `samples_per_process` is ngspice only; see
   [Several samples in one ngspice process](#several-samples-in-one-ngspice-process).

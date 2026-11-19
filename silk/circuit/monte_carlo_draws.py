@@ -9,9 +9,9 @@ Pure functions, no run wiring. Two halves:
   (:func:`parse_xyce_res`). Both return values keyed by
   ``(designer device name, parameter)``.
 * **Ranking a metric against them.** :func:`rank_sensitivity` standardises
-  every drawn column across the samples, so ngspice's actual values and
-  Xyce's normalised draws rank alike, and fits the metric by least squares
-  on the standardised draws .
+  every drawn column across the samples and fits the metric by least squares
+  on the standardised draws. This does not reconstruct realised parameters
+  from sampled inputs or establish equivalent combined-process rankings.
 
 Which parameters are recorded per device type comes from the PDK manifest,
 never from this module; nothing here names a PDK.
@@ -35,9 +35,9 @@ from silk.metrics.diagnostics import emit
 def showmod_lines(devices: list[tuple[str, str, tuple[str, ...]]]) -> list[str]:
     """Build one ngspice ``showmod`` control line per device.
 
-    ``devices`` holds ``(emitted instance path, model name, params)``.
+    ``devices`` holds ``(emitted instance path, internal instance, params)``.
     Single-quote the complete selector so angle brackets remain literal:
-    ``showmod 'm.<path>.m<model>' : <params>``. Unlike ``save``, ``showmod``
+    ``showmod '<kind>.<path>.<internal>' : <params>``. Unlike ``save``, ``showmod``
     retains double quotes in its lookup. Refuse single quotes in a selector
     rather than producing an ambiguous command. The returned order is the
     order :func:`parse_showmod` matches blocks in.
@@ -50,7 +50,10 @@ def showmod_lines(devices: list[tuple[str, str, tuple[str, ...]]]) -> list[str]:
         from silk.utils.deck_text import card_text
         # Instance path, internal model name and record names are written
         # into a control-block command (TASK-593).
-        selector = card_text(f'm.{path}.m{model}', who='showmod selector')
+        internal = card_text(model, who='showmod internal instance')
+        if not internal:
+            raise ValueError('showmod_lines: empty internal instance')
+        selector = card_text(f'{internal[0].lower()}.{path}.{internal}', who='showmod selector')
         params = [card_text(p, who=f'showmod record parameter of {path!r}')
                   for p in params]
         if "'" in selector:
@@ -67,11 +70,11 @@ _SHOWMOD_VALUE = re.compile(r'^\s*(\S+)\s+(\S+)\s*$')
 
 
 def parse_showmod(log_text: str,
-                  requested: list[tuple[str, tuple[str, ...]]],
+                  requested: list[tuple[str, tuple[str, ...]] | tuple[str, tuple[str, ...], str]],
                   ) -> dict[tuple[str, str], float]:
     """Read ``showmod`` blocks from an ngspice log.
 
-    ``requested`` holds ``(designer name, params)`` in the order
+    ``requested`` holds ``(designer name, params[, label_prefix])`` in the order
     :func:`showmod_lines` emitted the lines. ngspice truncates the model
     name it prints (``model xm1:sky130_fd_pr__nfe``), so blocks are matched
     to requests by **order**, never by the printed name.
@@ -102,7 +105,9 @@ def parse_showmod(log_text: str,
             f'{len(requested)} were requested; the control block did not run '
             f'every showmod line, or the log is from a different deck')
     out: dict[tuple[str, str], float] = {}
-    for block, (name, params) in zip(blocks, requested):
+    for block, request in zip(blocks, requested):
+        name, params = request[:2]
+        prefix = request[2] if len(request) == 3 else ''
         for param in params:
             text = block.get(param.lower())
             if text is None:
@@ -110,7 +115,10 @@ def parse_showmod(log_text: str,
                     f'parse_showmod: device {name!r} has no {param!r} in its '
                     f'showmod block (printed: {sorted(block)})')
             try:
-                out[(name, param)] = float(text)
+                key = (name, f'{prefix}.{param}' if prefix else param)
+                if key in out:
+                    raise SimulationError(f'parse_showmod: duplicate output key {key!r}')
+                out[key] = float(text)
             except ValueError:
                 raise SimulationError(
                     f'parse_showmod: device {name!r} parameter {param!r} '
@@ -122,13 +130,14 @@ def parse_showmod(log_text: str,
 # Xyce: .res
 # ---------------------------------------------------------------------------
 
-def parse_xyce_res(path: str, name_map: dict[str, str],
+def parse_xyce_res(path: str, name_map: dict[str, str | tuple[str, str]],
                    ) -> dict[tuple[str, str], float]:
     """Read one sample's normalised draws from a Xyce ``.res`` file.
 
     Columns look like ``XOFF:XM1:SKY130_FD_PR__NFET_01V8__MODEL.12:VTH0``:
     an instance prefix, the model, the parameter. ``name_map`` maps the
-    instance prefix (``'XOFF:XM1'``, case-insensitive) to the designer name;
+    instance prefix (``'XOFF:XM1'``, case-insensitive) to the designer name,
+    or an exact full column to a final (designer, dotted parameter) pair;
     the result is keyed ``(designer name, lower-case parameter)``.
 
     Columns whose prefix is not in ``name_map`` are left out (the caller
@@ -156,11 +165,22 @@ def parse_xyce_res(path: str, name_map: dict[str, str],
     out: dict[tuple[str, str], float] = {}
     seen: set[str] = set()
     for column, text in zip(header, row):
+        full = column.upper()
+        if full in upper_map and isinstance(upper_map[full], tuple):
+            key = upper_map[full]
+            if full in seen or key in out:
+                raise SimulationError(f'parse_xyce_res: {path} duplicate target {column} / {key}')
+            try:
+                out[key] = float(text)
+            except ValueError:
+                raise SimulationError(f'parse_xyce_res: {path} target {column} has nonnumeric value {text!r}') from None
+            seen.add(full)
+            continue
         parts = column.split(':')
         if len(parts) < 3:
             continue
         prefix = ':'.join(parts[:-2]).upper()
-        if prefix not in upper_map:
+        if prefix not in upper_map or isinstance(upper_map[prefix], tuple):
             continue
         seen.add(prefix)
         out[(upper_map[prefix], parts[-1].lower())] = float(text)
@@ -183,8 +203,8 @@ class DrawTable:
     ``columns`` are ``(designer device name, param)``; ``values`` maps a
     sample key to an array aligned to ``columns``. ``raw`` is True for
     actual parameter values (ngspice), False for normalised draws (Xyce).
-    ``skipped_types`` names device types that had no manifest ``record``
-    entry and so were not recorded.
+    For PDK simulations, ``skipped_types`` names each PDK device type present
+    but not recorded; those devices may still vary.
     """
     columns: tuple[tuple[str, str], ...]
     values: dict

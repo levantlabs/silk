@@ -43,10 +43,9 @@ AC_GAIN_SPEC = {
                       "positive": "vin", "negative": "gnd", "dc": 0.9, "ac": 1.0}],
          "analyses": [{"kind": "ac", "variation": "dec", "points": 20,
                        "fstart": 1.0, "fstop": 1e9}],
-         # Declarative metric: ``type`` is a registered single-signal metric,
-         # ``signal`` a rawfile signal name. The DUT is instanced as ``dut``,
-         # so a DUT-internal node is ``xdut.<net>``; a DUT *port* aliases to
-         # the testbench net it is mapped to above, so read that net.
+         # Declarative metric: ``type`` names a registered metric and ``signal``
+         # supplies its signal path. ``vout`` reads the connected bench net;
+         # DUT-internal nodes also accept ``dut.<net>`` or ``xdut.<net>``.
          "metrics": [{"name": "gain_dB", "type": "dc_gain_dB",
                       "signal": "vout", "params": {}}],
          "specs": [{"name": "DC gain > 20 dB", "metric": "gain_dB",

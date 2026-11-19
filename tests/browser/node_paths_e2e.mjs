@@ -2,7 +2,7 @@ import puppeteer from 'puppeteer-core';
 import assert from 'node:assert/strict';
 import {pathToFileURL} from 'node:url';
 import fs from 'node:fs';
-const [html,payloadFile,raw,chrome]=process.argv.slice(2);
+const [html,payloadFile,raw,chrome,deviceHtml,deviceVector]=process.argv.slice(2);
 const browser=await puppeteer.launch({executablePath:chrome,headless:true,args:['--no-sandbox','--allow-file-access-from-files']});
 try {
  const page=await browser.newPage(),errors=[];
@@ -48,5 +48,27 @@ try {
  await (await chooserPromise).accept([raw]);
  await page.waitForFunction(()=>!document.getElementById('open-raw-btn').disabled);
  assert.equal(await page.evaluate(()=>SILK_VIEW_DATA.plots.some(p=>'node_paths' in p || p.signals.some(s=>'node_probe' in s || 'source_row' in s))),false);
- assert.deepEqual(errors,[]);console.log('PASS checked copy, state refresh and local-file metadata removal');
+ assert.deepEqual(errors,[]);
+ // A requested device-parameter vector shows its designer name and copies the probe spelling.
+ const dev=await browser.newPage(),devErrors=[];
+ await dev.setViewport({width:1400,height:1000});
+ dev.on('pageerror',e=>devErrors.push(String(e)));
+ await dev.evaluateOnNewDocument(()=>{
+   window.copied=[];
+   Object.defineProperty(navigator,'clipboard',{value:{writeText:async text=>copied.push(text)}});
+ });
+ await dev.goto(pathToFileURL(deviceHtml).href);await dev.waitForSelector('.u-over');
+ await dev.evaluate(async ()=>{const r=await silkView.run([{cmd:'setTreeMode',args:{on:false}}]);if(!r.ok) throw new Error(JSON.stringify(r));});
+ const devRow='[data-silk="picker-list"] .picker-row[data-name="'+deviceVector+'"]';
+ await dev.waitForSelector(devRow);
+ // The picker shows the label's leaf as primary text and carries the whole label in the tooltip.
+ assert.equal(await dev.$eval(devRow,e=>e.querySelector('.pname').textContent),'gm');
+ assert.ok((await dev.$eval(devRow,e=>e.title)).startsWith('dut.MN:gm'),'designer label shown for the device vector');
+ await dev.click(devRow,{button:'right'});
+ await dev.waitForSelector('[data-silk="derive-menu"]:not([hidden])');
+ await dev.click('[data-silk="derive-menu"] button[data-item="copy-silk-code"]');
+ await dev.waitForFunction(()=>copied.length===1);
+ assert.equal(await dev.evaluate(()=>copied[0]),"tb.probe('MN:gm')");
+ assert.deepEqual(devErrors,[]);
+ console.log('PASS checked copy, state refresh, local-file metadata removal and device label/copy');
 } finally {await browser.close();}

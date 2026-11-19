@@ -21,6 +21,7 @@ import time
 from uuid import uuid4
 from urllib.parse import quote
 
+from silk.signals.analysis_kind import SELECTABLE_ANALYSES
 from silk.circuit.variable import Variable
 from silk.circuit.emitted_names import emitted_submodule_name
 from silk.circuit.test_placement import ResultAttribute, current_placement
@@ -275,10 +276,10 @@ def _resolve_metric_analysis(where, slots, declared, analysis, signals=None,
     the same call and the wording stays identical.
     """
     if analysis is not None:
-        if analysis not in _SIM_KEY_ANALYSIS.values():
+        if analysis not in SELECTABLE_ANALYSES:
             raise ValueError(
                 f"{where}: analysis={analysis!r} is not a silk analysis; "
-                f"expected one of {sorted(set(_SIM_KEY_ANALYSIS.values()))}.")
+                f"expected one of {sorted(SELECTABLE_ANALYSES)}.")
         # Checked BEFORE the one-analysis short-circuit below: naming an
         # analysis the test does not declare is a caller error whether or not
         # the choice would have mattered. An EMPTY declared list is not that
@@ -366,60 +367,118 @@ def _split_spice_selector(text):
     return None, stripped
 
 
-def _branch_vector_name(sources, inner, elements=None):
-    """THE ``i(x)`` lookup shared by ``tb.probe`` and a metric's string path.
+def _branch_vector_name(sources, inner, elements=None, *, module=None, raw=None,
+                        analysis=None, declared_source=None, details=False, _read=None):
+    """Resolve a source address to physical current terms, preserving raw reads.
 
-    *sources* maps silk source names to source objects. A source NAME ``x``
-    reads that source's branch current under its emitted instance (``vs`` ->
-    ``vvs``). Otherwise ``x`` is a raw vector name and passes through
-    verbatim. When ``x`` is both a source name and the emitted instance of a
-    DIFFERENT source, ``i(x)`` has two readings and raises
-    :class:`~silk.exceptions.AmbiguousBranchCurrentError` naming both -- never a silent pick.
+    Node and source requests share the structural placement inventory and
+    emitted-reading precedence. Only physical acquisition belongs to the backend.
     """
-    from silk.circuit.emitted_names import emitted_instance_name
-    from silk.exceptions import AmbiguousBranchCurrentError
-    from silk.spice_names import to_spice_name
+    from types import SimpleNamespace
+    from silk.circuit.node_paths import node_candidates, resolve_node_inventory
     from silk.sources._layout import source_instances
-    instances = {name: (source, prefix) for name, source, prefix
-                 in source_instances(sources, elements)}
-    sources = {name: source for name, (source, _) in instances.items()}
-    want = inner.replace(':', '.').lower()
-    want_emitted = to_spice_name(inner, kind='branch').replace(':', '.').lower()
-    emitted = {name: prefix + emitted_instance_name(src, str(src.name))
-               for name, (src, prefix) in instances.items()}
-    physical = {name: [(prefix + p).lower() for p in src.physical_instance_names()]
-                for name, (src, prefix) in instances.items()}
-    by_name = next((n for n in emitted if n.lower() == want), None)
-    by_instance = [n for n, cards in physical.items()
-                   if n != by_name and (want in cards or want_emitted in cards)]
-    if by_name is not None and by_instance:
-        other = by_instance[0]
-        card = next(c for c in physical[other] if c in (want, want_emitted))
-        # A one-card source is reached by its designer name; a multi-card one
-        # (a dedicated PWL) has no default card, so the remedy is the matched
-        # physical card itself, in its emitted spelling.
-        remedy = other if len(physical[other]) == 1 else next(
-            instances[other][1] + c for c in sources[other].physical_instance_names()
-            if (instances[other][1] + c).lower() == card)
-        raise AmbiguousBranchCurrentError(
-            f"i({inner}) is ambiguous: it names source {by_name!r} (emitted "
-            f"as {emitted[by_name]!r}, vector i({emitted[by_name].lower()})) "
-            f"and it is also the emitted instance of source {other!r} "
-            f"(vector i({card})). Write i({remedy}) for "
-            f"source {other!r}'s current, or rename a source."
-        )
-    if by_name is not None:
-        source = sources[by_name]
-        layout = getattr(source, 'physical_layout', None)
-        if layout is not None:
-            prefix = instances[by_name][1]
-            terms = tuple((prefix + card, sign) for card, sign in layout().current_terms)
-            return terms[0][0] if len(terms) == 1 else terms
-        return emitted[by_name]
-    # No designer source selected: a raw vector name passes through with its
-    # ORIGINAL spelling; the one collector considers it and its simulator
-    # spelling together (never a retry or a precedence here).
-    return inner
+    from silk.spice_names import spice_component, to_spice_name
+    root = module if module is not None else SimpleNamespace(
+        sig_sources_dict=sources or {}, elem_dict=elements or {})
+    candidates = node_candidates(root, sources=True, request=inner)
+    if not candidates and declared_source is None:
+        return (inner, False) if details else inner
+
+    physical = []
+    owner = root
+    parts = to_spice_name(inner, kind='branch').replace(':', '.').lower().split('.')
+    if hasattr(owner, '_element_mgr'):
+        from silk.circuit.circuit_elements import ElementType
+        for part in parts[:-1]:
+            graph = owner._element_mgr
+            entry = graph._instance_names.get(spice_component(part))
+            if entry is None or entry[0] != 'elem_dict':
+                break
+            placement = graph.elem_dict[entry[1]]
+            if placement['type'] != ElementType.MODULE:
+                break
+            owner = placement['device']
+        else:
+            if spice_component(parts[-1]) in owner._element_mgr._instance_names:
+                physical = [inner]
+    else:
+        physical = [prefix + card for _, source, prefix in source_instances(sources, getattr(root, 'elem_dict', elements))
+                    for card in source.physical_instance_names()]
+
+    if raw is not None:
+        from silk.simulation.backend import select_plot
+        plot = select_plot(raw.native, analysis)
+        if plot is None:
+            plot = getattr(raw.native, 'current_plot', raw.native)
+        if _read is not None:
+            from silk.signals.analysis_kind import ANALYSIS_OP, rawfile_analysis_kind
+            _read[0] = plot
+            _read[2] = rawfile_analysis_kind(plot) == ANALYSIS_OP
+    else:
+        plot = SimpleNamespace(vectors=[], real=True, npoints=1)
+    matches = _read[1] if _read is not None and raw is not None else None
+    records = [SimpleNamespace(designer=inner, address=candidate.address)
+               for candidate in candidates]
+    if _read is not None and raw is not None:
+        # Match this read's original spelling and all physical alternatives
+        # together. Acquisition consumes these rows instead of searching again.
+        from silk.vector_match import collect_vector_candidates
+        from silk.circuit.modules_results import _source_current_probe_name
+        read_plot, read_matches, is_op = _read
+        first = 0 if is_op else 1
+        addresses = [record.address for record in records]
+        if not addresses and declared_source is not None:
+            addresses = [declared_source if isinstance(declared_source, tuple)
+                         else ((declared_source, 1),)]
+        cards = list(dict.fromkeys([card for terms in addresses for card, _ in terms] + physical))
+        requests = [inner]
+        for card in cards:
+            requests.append(card)
+            requests.append(_source_current_probe_name(
+                root, raw, card, 'I', analysis, declared_card=card,
+                _plot=read_plot, _check_ac=False))
+        requests = tuple(dict.fromkeys(requests))
+        found = collect_vector_candidates(read_plot, '', 'I', first=first, _requests=requests)
+        read_matches.update(((name, first), rows) for name, rows in zip(requests, found))
+    if not candidates and declared_source is not None and raw is not None:
+        # A declared probe keeps its physical address for an old result even
+        # after its source is removed. Never infer an address from its name.
+        from silk.vector_match import collect_vector_candidates, first_row
+        terms = declared_source if isinstance(declared_source, tuple) else ((declared_source, 1),)
+        from silk.circuit.modules_results import _source_current_probe_name
+        retained = []
+        first = first_row(plot)
+        for card, sign in terms:
+            key = (card, first)
+            rows = (matches[key] if matches is not None and key in matches else
+                    collect_vector_candidates(plot, card, 'I', first=first))
+            if matches is not None:
+                matches[key] = rows
+            if not rows:
+                card = _source_current_probe_name(root, raw, card, 'I', analysis,
+                                                  declared_card=card, _plot=plot, _check_ac=False)
+                key = (card, first)
+                rows = (matches[key] if matches is not None and key in matches else
+                        collect_vector_candidates(plot, card, 'I', first=first))
+                if matches is not None:
+                    matches[key] = rows
+            if not rows:
+                break
+            retained.append((card, sign))
+        else:
+            records = [SimpleNamespace(designer=inner, address=tuple(retained))]
+    resolved = resolve_node_inventory(plot, inner, records, physical,
+                                      signal_type='I', known_designer=declared_source is not None, _matches=matches)
+    if (not candidates and declared_source is not None and raw is not None
+            and isinstance(resolved, tuple)):
+        from silk.signals.analysis_kind import plot_silk_analysis
+        if (any(card.rsplit('.', 1)[-1].lower().startswith('i') for card, _ in terms)
+                and plot_silk_analysis(plot) == 'ac'):
+            from silk.sources._layout import refuse_ac_current
+            refuse_ac_current(SimpleNamespace(name=inner))
+    if isinstance(resolved, tuple) and len(resolved) == 1 and resolved[0][1] == 1:
+        resolved = resolved[0][0]
+    return (resolved, bool(candidates)) if details else resolved
 
 
 def _metric_node_request(path):
@@ -453,7 +512,7 @@ def _metric_node_requests(metrics, declared):
                 yield request, f"Xyce metric {metric['name']!r} signal {path!r}"
 
 
-def _load_metric_path(ckt, path, **select):
+def _load_metric_path(ckt, path, *, _declared_source=None, _direct=False, **select):
     """Read a metric's string signal path from *ckt*'s results.
 
     A ``i(x)`` path goes through :func:`_branch_vector_name`, so ``i(vs)``
@@ -468,14 +527,31 @@ def _load_metric_path(ckt, path, **select):
         request = _metric_node_request(path)
         return ckt.load_signal(path if request is None else request, **select)
     sources = getattr(ckt, 'sig_sources_dict', None) or {}
-    vector = _branch_vector_name(sources, inner, getattr(ckt, 'elem_dict', None))
+    raw = getattr(ckt, '_raw', None)
+    resolution = None
+    from silk.circuit.modules_results import _ResultsMethods, _load_signal
+    from silk.simulation.backend import SpiceBackend
+    if (not select.keys() - {'analysis'}
+            and getattr(ckt.load_signal, '__func__', None) is _ResultsMethods.load_signal
+            and getattr(ckt.backend.load_signal, '__func__', None) is SpiceBackend.load_signal
+            and raw is not None and getattr(raw.native, 'plots', None)
+            and ckt.sim_results_loaded
+            and (select.get('analysis') is not None or not ckt.save_device_params)):
+        resolution = [None, {}, None]
+    vector = _branch_vector_name(sources, inner, module=ckt, raw=None if _direct else raw,
+                                 analysis=select.get('analysis'), declared_source=_declared_source,
+                                 _read=resolution)
     try:
         if isinstance(vector, tuple):
-            signals = [ckt.load_signal(name, 'I', **select) * sign for name, sign in vector]
+            signals = [(_load_signal(ckt, raw, name, 'I', select.get('analysis'), resolution=resolution)
+                        if resolution is not None else ckt.load_signal(name, 'I', **select)) * sign
+                       for name, sign in vector]
             result = signals[0]
             for signal in signals[1:]:
                 result = result + signal
             return result
+        if resolution is not None:
+            return _load_signal(ckt, raw, vector, 'I', select.get('analysis'), resolution=resolution)
         return ckt.load_signal(vector, 'I', **select)
     except AmbiguousSignalError:
         raise                  # an ambiguity is not a missing current
@@ -573,7 +649,7 @@ def _device_probe_requests(probe_registry):
     return tuple(out)
 
 
-def _current_probe_requests(probe_registry, metrics=(), declared=()):
+def _current_probe_requests(probe_registry, metrics=(), declared=(), netlist=None):
     """Emitted source-instance names and analysis selectors for current probes,
     in registry order. Ammeter-vector probes
     (``'xdut.m1:d'``, an ngspice-only construction) are not source branches
@@ -602,9 +678,24 @@ def _current_probe_requests(probe_registry, metrics=(), declared=()):
         if '.vamm_' in raw:
             continue
         for analysis in selections.get(id(sig), [getattr(sig, '_analysis', None)]):
-            request = (raw, analysis)
-            if request not in out:
-                out.append(request)
+            terms = ((raw, 1),)
+            source_request = sig.__dict__.get('_source_request')
+            if source_request is not None:
+                original, declared = source_request
+                owner = netlist
+                if owner is None:
+                    bench = sig._bench() if sig._bench is not None else None
+                    owner = bench.netlist if bench is not None else None
+                if owner is not None:
+                    # Refresh capture without repeating a declaration/read warning.
+                    with warnings.catch_warnings():
+                        warnings.simplefilter('ignore', UserWarning)
+                        resolved = _branch_vector_name(owner.sig_sources_dict, original, module=owner, declared_source=declared)
+                    terms = resolved if isinstance(resolved, tuple) else ((resolved, 1),)
+            for card, _ in terms:
+                request = (card, analysis)
+                if request not in out:
+                    out.append(request)
     return tuple(out)
 
 
@@ -1362,14 +1453,15 @@ def _spec_attempt_scope(test):
     return owner_scope(evidence_index(test.module), '$')
 
 
-#: Exactly what ``Module.run_simulator``/``read_raw_file`` set on a
-#: successful simulate (``_evaluate_run`` copies these,
-#: and only these, from a corner's deep-copied netlist onto the LIVE one —
-#: see ``_evaluate_run``'s docstring for why not the whole ``__dict__``).
+#: Result state and run configuration captured for execution and retained
+#: readers. Evaluation restores result state onto the live netlist;
+#: configuration remains on the authored netlist.
 _SIMULATED_STATE_ATTRS = (
     '_raw', 'simResultsAll', 'sim_results_loaded', 'results_file',
     'dataFile', '_last_sim_corner', '_last_sim_label', '_behavioral_mode',
     'operating_conditions',
+    'sim_analysis_dict', 'simulator_options', 'save_device_params',
+    'save_device_currents', 'terminal_current_method', '_pending_device_probes',
     # TASK-306 provenance facts, recorded wherever the simulate step ran.
     '_launch_record', '_prepared_deck_record',
     # The Monte Carlo sample the results are from (TASK-427), or None.
@@ -1690,103 +1782,6 @@ def _planned_outcome(outcome, prepared=None):
                        attempt_context=_attempt_context(prepared) if prepared is not None else None)
 
 
-class _CornerRawfile:
-    """One corner's rawfile, read as a stand-in for a bench's netlist.
-
-    ``Signal.resolve()`` asks whatever it is given for
-    ``load_signal(name, selector, analysis=...)``; that is the whole contract,
-    and this class implements exactly it for a file on disk. It is what makes
-    ``vcm.corner('ff')`` possible after ``run_corners()`` has moved on: the
-    reports' ``sim_results`` all reference the ONE live netlist Module, whose
-    results are the last corner's, but each corner's file is still there and
-    its path is in the bench's sweep table.
-
-    The live Module is never touched — no ``load_file``, no ``read_raw_file``,
-    no write to ``_raw``/``simResultsAll``/``results_file``. The file is read
-    through ``backend.load_raw`` into a private
-    :class:`~silk.simulation.backend.RawResult` and signals come off it
-    through ``backend.load_signal``, the same two calls the live path makes.
-
-    Nothing is cached beyond one instance. A derived expression resolves each
-    of its leaves against the same reader, so ``(vp + vm).corner('ff')`` opens
-    ff's file once; the reader is then dropped, and the next ``.corner('ff')``
-    reads the file again. Corner waveforms are deliberately not kept in
-    memory — a sweep over many corners on a large rawfile would otherwise
-    accumulate every one of them.
-    """
-
-    __slots__ = ('corner', 'path', '_backend', '_simulator', '_raw', '_source_context', '_generation')
-
-    def __init__(self, corner, path, backend, simulator=None, source_context=None, generation=None):
-        self.corner = corner
-        self.path = path
-        self._backend = backend
-        self._simulator = simulator
-        self._source_context = source_context
-        self._generation = generation
-        self._raw = None
-
-    def __repr__(self):
-        return f'<corner {self.corner!r} results: {self.path}>'
-
-    def _raw_result(self):
-        """Read the file on first use; reuse it for the rest of this call."""
-        if self._raw is None:
-            if self._generation is None:
-                self._raw = self._backend.load_raw(self.path, simulator=self._simulator)
-            else:
-                from silk.simulation.generation import attach
-                with self._generation.read():
-                    raw = self._backend.load_raw(self._generation.resolve('rawfile_path'),
-                                                 simulator=self._simulator)
-                    self._raw = attach(raw, self._generation)
-        return self._raw
-
-    def load_signal(self, signalName, signalType='V', *, analysis=None):
-        """The one method ``Signal.resolve()`` calls — same shape as
-        :meth:`~silk.circuit.modules.Module.load_signal`, reading this
-        corner's file instead of the live results.
-
-        Device-parameter probes (``'<name>:<param>'``) are not supported
-        here: this reader uses source identity only to translate current
-        cards; device metadata still requires the live DUT result context.
-        Raises naming the
-        gap rather than mis-reading the colon spelling as a raw vector
-        name (never found, so it would otherwise surface as a confusing
-        "vector not found"). The suffix-membership check is the same
-        closed-set test ``probe()`` itself applies (never a DUT-tree
-        lookup) — a terminal-
-        current probe's stored name never reaches here with a ``':'`` at
-        all (already resolved to its ammeter vector at registration time),
-        so this can only ever match a genuine device-parameter probe.
-        """
-        from silk.circuit.node_paths import NodeVoltageRequest, resolve_node_request
-        if (':' in signalName and not isinstance(signalName, NodeVoltageRequest)
-                and not getattr(signalName, '_literal_voltage', False)):
-            from silk.simulation.backend import DEVICE_OP_PARAMS
-            _prefix, _, _suffix = signalName.rpartition(':')
-            device_probe = _suffix in DEVICE_OP_PARAMS
-        else:
-            device_probe = False
-        if device_probe:
-            raise SimulationError(
-                f"probe({signalName!r}).corner({self.corner!r}): "
-                f"device-parameter probes are not supported for a retained "
-                f"corner — only the live testbench's current results can "
-                f"resolve a device by its designer name. Read this probe "
-                f"without .corner(), or read {signalName!r}'s op_table() "
-                f"cell instead."
-            )
-        raw = self._raw_result()
-        signalName = resolve_node_request(self._source_context, raw, signalName, analysis)
-        if self._source_context is not None:
-            from silk.circuit.modules_results import _source_current_probe_name
-            signalName = _source_current_probe_name(
-                self._source_context, raw, signalName, signalType, analysis)
-        return self._backend.load_signal(raw, signalName,
-                                         type=signalType, analysis=analysis)
-
-
 def _metric_output_declarations(entries):
     """Resolve declared output names/types without evaluating any metrics."""
     output_declarations = []
@@ -1895,7 +1890,7 @@ def _configure_capture(test, netlist):
         test._probe_registry)
     # Save physical operands while retaining each probe's analysis selection.
     current_requests = _current_probe_requests(
-        test._probe_registry, test._metrics, _declared_analyses(netlist))
+        test._probe_registry, test._metrics, _declared_analyses(netlist), netlist)
     netlist._pending_current_probes = tuple(
         name for name, _ in current_requests)
     netlist._pending_current_probe_analyses = tuple(
@@ -1972,6 +1967,7 @@ class ModuleTestbench:
 
     _sweep_table = ResultAttribute()
     _sweep_generations = ResultAttribute()
+    _sweep_states = ResultAttribute()
     _mc_samples = ResultAttribute()
     _metric_values = ResultAttribute()
     _record_measurements = ResultAttribute()
@@ -2017,6 +2013,7 @@ class ModuleTestbench:
         # completed. Read through the `sweep_corners` property.
         self._sweep_table = {}
         self._sweep_generations = {}
+        self._sweep_states = {}
         # The report cache is disabled for 0.2.0 (TASK-284): _cache_enabled
         # is forced False regardless of what the caller passed, so every
         # run() simulates. cache=True only earns a warning explaining why
@@ -2153,8 +2150,9 @@ class ModuleTestbench:
         those files later. New mode preserves each
         run in its own persistent child. In default overwrite mode, another
         label preserves that directory; the same label replaces its outputs.
-        Selected hierarchy reports retain their own result reader; direct
-        unselected reports keep the authored Module reader.
+        Selected hierarchy reports and collection members retain their own
+        result reader; ordinary direct scalar reports keep the authored
+        Module reader.
 
         Reads the selected evidence (or authored netlist), populated by simulation or
         a successful explicit rawfile evaluation. Returns ``None``,
@@ -2173,22 +2171,20 @@ class ModuleTestbench:
 
     @property
     def sweep_corners(self):
-        """This bench's LATEST sweep — ``{corner name: rawfile path}``.
+        """This bench's latest retained runs and their result-file paths.
 
-        A copy, in the order the corners ran. Three things write it:
+        A copy, in run order. Three things write it:
 
-        * ``run()`` and ``evaluate()`` (including ``evaluate(rawfile=...)``)
-          leave exactly ONE entry — the corner they just evaluated, mapped to
-          the file they read;
+        * a scalar ``run()`` or ``evaluate()`` (including ``evaluate(rawfile=...)``) leaves
+          one entry, mapped to the file it read, or none when it has no result file; a
+          collection run leaves one entry per retained member;
         * ``run_corners()`` replaces it with every corner it ran, once they
           have all completed;
         * a bench that has never produced results has an empty table.
 
-        **Every corner of a ``run_corners()`` sweep is always retained**: each corner writes to its own
-        ``<testbench dir>/<corner>/`` folder unconditionally, so the output
-        mode no longer determines how many corners survive a sweep the way
-        it did before this task — overwrite mode (the default) and
-        ``module.set_output_options(mode='new')`` behave identically here.
+        Each successful ``run_corners()`` member retains its result file under
+        its own ``<testbench dir>/<corner>/`` folder in both output modes:
+        ``mode='new'`` (the default) and ``mode='overwrite'``.
         A corner is missing from this table only when ``run_corners()``
         itself was given fewer corners, or when that specific corner's run
         failed (see :class:`silk.circuit.spec_report.CornerRunError`).
@@ -2198,7 +2194,7 @@ class ModuleTestbench:
 
         The report cache (``cache=True`` on the constructor) is disabled in
         this release: a cache hit can no longer occur, so this
-        table is always the corner(s) actually just simulated. See docs/known_issues.md for the report-cache limitation.
+        table describes the latest retained results. See docs/known_issues.md for the report-cache limitation.
         """
         return dict(self._sweep_table)
 
@@ -2206,9 +2202,10 @@ class ModuleTestbench:
         """A read-only stand-in for this bench's netlist serving *corner*'s file.
 
         The resolution seam behind :meth:`~silk.signals.base.Signal.corner`.
-        *readers* is an optional dict shared across the leaves of ONE
-        expression so a derived Signal opens each corner's file once; it is
-        not a cache that outlives the call (see :class:`_CornerRawfile`).
+        *readers* is an optional dict shared across the leaves of one
+        expression, so those leaves reuse the reader for each bench, placement
+        and retained key. The dict does not outlive the call; retained readers
+        reread vectors without caching their arrays.
 
         Raises
         ------
@@ -2251,14 +2248,23 @@ class ModuleTestbench:
                 if readers is not None:
                     readers[cache_key] = retained
                 return retained
-        netlist = self.netlist
-        reader = _CornerRawfile(
-            name, table[name],
-            backend=netlist.backend,
-            simulator=getattr(netlist, 'simulator', None),
-            source_context=netlist,
-            generation=(getattr(self, '_sweep_generations', {}) or {}).get(name),
-        )
+        from silk.circuit.test_placement import EvidenceResults, latest_record
+        if selection is None:
+            tracked, record = latest_record(self)
+            if tracked and record is not None:
+                retained = record.corners.get(name)
+                if retained is not None:
+                    if readers is not None:
+                        readers[cache_key] = retained
+                    return retained
+        state = (getattr(self, '_sweep_states', {}) or {}).get(name)
+        if not state:
+            from silk.exceptions import ConfigurationError
+            raise ConfigurationError(
+                f"Test {self.test_name!r}, retained key {name!r} is missing its "
+                "recorded run state. Rerun the test or reevaluate the external "
+                "file with evaluate(rawfile=...).")
+        reader = EvidenceResults(self.netlist, _state=state)
         if readers is not None:
             readers[cache_key] = reader
         return reader
@@ -2268,8 +2274,8 @@ class ModuleTestbench:
         table = getattr(self, '_sweep_table', {}) or {}
         if getattr(self, '_mc_samples', None):
             raise UnboundSignalError('This grid has Monte Carlo samples; use .sample((point, index)).')
-        if not isinstance(key, tuple) or len(key) not in (3, 4) or key not in table:
-            raise UnboundSignalError(f'No retained point {key!r}; available points: {list(table)!r}')
+        if not isinstance(key, (str, tuple)) or key not in table:
+            raise UnboundSignalError(f'No retained deterministic point for key {key!r}; available keys: {list(table)!r}.')
         return key
 
     def _sample_corner(self, key):
@@ -2495,6 +2501,8 @@ class ModuleTestbench:
         new = cls.__new__(cls)
         memo[id(self)] = new
         for key, value in self.__dict__.items():
+            if key in {'_sweep_states', '_sweep_generations'}:
+                continue
             new.__dict__[key] = copy.deepcopy(value, memo)
         new.__dict__.pop('_metric_values', None)
         metrics = new.__dict__.get('_metrics')
@@ -2513,15 +2521,17 @@ class ModuleTestbench:
         # differs: an unpickled bench is the same bench, and the files its
         # table names are still on disk.)
         new._sweep_table = {}
+        new._sweep_states = {}
+        new._sweep_generations = {}
         new._mc_samples = None
         return new
 
     # ------------------------------------------------------------------
     # Pickling (TASK-215.8)
     #
-    # ``FaultCampaign`` pickles the whole Module, testbenches included
-    # (``silk/faults/campaign.py`` -> ``silk/faults/runner.py``), so a probe
-    # must not be the thing that stops it. Two problems, one hook each:
+    # Ordinary Module and ModuleTestbench pickles preserve test definitions
+    # and restore probe bindings. Simulation-worker circuit pickles omit
+    # testbenches. Two problems, one hook each:
     #
     # * A ``weakref`` cannot be pickled. ``Signal.__getstate__`` (TASK-215.2)
     #   already drops it and leaves a detached marker, so the probe survives
@@ -2593,6 +2603,7 @@ class ModuleTestbench:
         """
         from silk.signals.base import _DETACHED_BENCH
         self.__dict__.update(state)
+        self.__dict__.setdefault('_sweep_states', {})
         metrics = self.__dict__.get('_metrics')
         for metric in metrics or ():
             if not _is_function_form_metric(metric):
@@ -3448,6 +3459,19 @@ class ModuleTestbench:
                                    conditions.scalar('temperature'),
                                    conditions.scalar('supply'))
 
+    @property
+    def analyses(self):
+        """Deep copies of the currently declared analyses, in declaration order.
+
+        Replacing an analysis of the same class keeps its position. Returns
+        ``()`` when none are declared, without creating a netlist. The tuple
+        is read-only; editing its copied analysis settings does not change
+        this testbench. Use :meth:`add_sim_type` to change declarations.
+        """
+        if self.netlist is None:
+            return ()
+        return copy.deepcopy(tuple(self.netlist.sim_analysis_dict.values()))
+
     def add_sim_type(self, simType):
         """Set the simulation analysis.
 
@@ -3522,12 +3546,19 @@ class ModuleTestbench:
                 raw rows still raise AmbiguousSignalError. A known node need
                 not have been saved; missing vectors still raise on read.
             ``'i(vs)'``
-                The branch current of source ``vs``. The emitted-instance
-                mapping is applied for you — a ``VoltageSource('vs', …)`` is
-                emitted as ``Vvs`` and its vector is ``i(vvs)``, so this is
-                the same probe as ``probe('vvs', 'I')``. A name inside
-                ``i(…)`` that matches no source of this bench is passed
-                through verbatim, which is what makes the raw spelling work.
+                The current of source ``vs``; circuit-backed lookup maps its
+                name or designer path (``i(dut.core.vs)``) to physical operands.
+                Reads require saved operands and backend support. An emitted
+                reading or registered card wins over a different source target
+                with a warning naming the physical alternative; capture uses
+                the same winning card. Ambiguous raw rows still raise
+                AmbiguousSignalError. A previously declared logical probe can
+                read its retained physical operands after source removal;
+                new declarations and metric strings do not inherit that binding.
+                Removed sources cannot be captured in a new deck. Unmatched
+                names retain raw meaning, but unsafe unresolved current capture
+                is refused before launch. For a DC/AC-only voltage source
+                ``vs``, this is also ``probe('vvs', 'I')``.
             ``'xdut.m1:d'`` / ``'st1.MN:gm'``
                 A colon splits on its LAST occurrence; the suffix, case-
                 insensitive, decides which of two probes this is. A bracket suffix would collide with a net name ending the
@@ -3586,7 +3617,11 @@ class ModuleTestbench:
             The low-level loader selector, what ``Module.load_signal`` takes.
             It is the escape hatch for a raw vector name
             (``probe('v.xdut.xmm1.vamm_d', 'I')``) and is not the taught
-            form. When *name* carries its own SPICE selector (``i(…)``,
+            form. A bare name with ``'I'`` names a physical card; if it
+            resolves only as a source alias to different physical operands,
+            declaration raises ``ValueError``
+            with the ``i(name)`` spelling and physical cards to use.
+            When *name* carries its own SPICE selector (``i(…)``,
             ``v(…)``, ``…:port``) the spelling wins.
         analysis : {'tran', 'ac', 'dc', 'noise', 'op'}, optional
             WHICH analysis's plot this probe reads, in a test that declares
@@ -3625,7 +3660,9 @@ class ModuleTestbench:
             time, since a hand-built test may add its sim types after its
             probes); if *name* is a plain net name this testbench's netlist
             does not have (the message names the net and the available nets); if the
-            selector is not ``'V'``/``'I'``; if a ``…:d``/``…:g``/``…:s``/
+            selector is not ``'V'``/``'I'``; if a bare-I name resolves only
+            as a source alias to different physical operands (use ``i(name)``
+            or the physical cards named in the error); if a ``…:d``/``…:g``/``…:s``/
             ``…:b`` terminal spelling names a device this testbench does
             not contain, or is used without the ammeter opt-in —
             ``save_device_currents = True`` on the DUT,
@@ -3691,7 +3728,7 @@ class ModuleTestbench:
         if isinstance(name, LiteralVoltageName):
             if type is not None and str(type).upper() != 'V':
                 raise CircuitError('A literal net reference is voltage; use a source or terminal-current probe.')
-            if analysis is not None and analysis not in _SIM_KEY_ANALYSIS.values():
+            if analysis is not None and analysis not in SELECTABLE_ANALYSES:
                 raise ValueError(f'Unknown analysis {analysis!r}.')
             if self._effective_simulator() == 'behavioral' or getattr(self.netlist, '_behavioral_mode', False):
                 from silk.simulation.behavioral_backend import refuse_behavioral_probe
@@ -3700,11 +3737,11 @@ class ModuleTestbench:
                 self._check_probe_net(name)
             return self._register_probe(Signal._unbound(name, 'V', self, analysis=analysis))
 
-        if analysis is not None and analysis not in _SIM_KEY_ANALYSIS.values():
+        if analysis is not None and analysis not in SELECTABLE_ANALYSES:
             raise ValueError(
                 f"probe({name!r}, analysis={analysis!r}): not a silk "
                 f"analysis; expected one of "
-                f"{sorted(set(_SIM_KEY_ANALYSIS.values()))}.")
+                f"{sorted(SELECTABLE_ANALYSES)}.")
         if not isinstance(name, str) or not name.strip():
             raise TypeError(
                 f"probe() needs a non-empty signal name as a string; got "
@@ -3784,17 +3821,24 @@ class ModuleTestbench:
                 )
             raise _unrecognized_probe_colon_suffix_error(raw, prefix, suffix_norm)
 
-        if head == 'i':
+        if head == 'i' or (head is None and selector == 'I'):
             selector = 'I'
-            resolved = self._emitted_branch_name(inner)
-            if isinstance(resolved, tuple):
-                operands = [Signal._unbound(name, 'I', self, analysis=analysis) * sign
-                            for name, sign in resolved]
-                result = operands[0]
-                for operand in operands[1:]:
-                    result = result + operand
-                result._logical_probe = True
-                return self._register_probe(result)
+            resolved, known = _branch_vector_name(
+                getattr(self.netlist, 'sig_sources_dict', {}), inner,
+                module=self.netlist, details=True)
+            if head is None:
+                if known and resolved != inner:
+                    terms = resolved if isinstance(resolved, tuple) else ((resolved, 1),)
+                    cards = ', '.join(repr(card) for card, _ in terms)
+                    raise ValueError(
+                        f"probe({raw!r}, 'I') names a physical current card, not a source. "
+                        f"Use probe('i({inner})') for the source or these physical cards: {cards}.")
+                return self._register_probe(Signal._unbound(inner, 'I', self, analysis=analysis))
+            result = Signal._unbound(raw if isinstance(resolved, tuple) else resolved,
+                                     'I', self, analysis=analysis)
+            if known:
+                result._source_request = (inner, resolved)
+            return self._register_probe(result)
         elif head == 'v':
             if selector == 'I':
                 raise ValueError(
@@ -3817,6 +3861,95 @@ class ModuleTestbench:
 
         return self._register_probe(
             Signal._unbound(resolved, selector, self, analysis=analysis))
+
+    def device_probe_address(self, path):
+        """Return the raw vector address and label of a device-parameter path.
+
+        ``tb.device_probe_address('MN:gm')`` names what ``tb.probe('MN:gm')``
+        asks the simulator to save, without simulating. Declare this exact
+        path with :meth:`probe`, then successfully :meth:`prepare` or
+        :meth:`run` the same unchanged test and backend before relying on the
+        address.
+
+        Parameters
+        ----------
+        path : str
+            ``'<designer-name>:<param>'`` as :meth:`probe` accepts it:
+            designer name relative to the DUT (``'MN'``, ``'core.MN'``,
+            ``'M1[3]'``, ``'X1[0].MA'``) and one of the
+            :data:`~silk.simulation.backend.DEVICE_OP_PARAMS` names.
+
+        Returns
+        -------
+        dict
+            ``{'address': str, 'label': str}``. ``address`` is the vector the
+            deck requests, resolved by the same code that writes the save line:
+            for ngspice ``'@m.xdut.XMMN.<model>[gm]'``, for Xyce
+            ``'N(XDUT:XMMN:<MODEL>:GM)'``; array indices keep the deck's
+            ``<k>`` spelling. ``label`` is the bench-rooted designer spelling,
+            e.g. ``'dut.MN:gm'``.
+
+        Raises
+        ------
+        TypeError
+            *path* is not a string.
+        ValueError
+            *path* is not a device-parameter path (no colon, a terminal or
+            derived-column suffix, an unknown suffix, a ``v()``/``i()``
+            wrapper), or the device cannot be addressed: unknown name, not a
+            MOS-shaped device, outside the DUT, no operating-point address.
+            These are the errors :meth:`probe` and :meth:`prepare` give.
+
+        Notes
+        -----
+        The lookup registers no probe, prepares nothing, runs nothing and
+        reads no results. It neither validates capture support nor promises
+        that a vector was saved: Noise-only tests and ammeter-wrapper mode are
+        refused by prepare()/run(). prepare() also refuses parameters needing
+        auxiliary ngspice preflight; run() performs that preflight. The lookup
+        may therefore return an address for a configuration preparation would
+        refuse. Nor does it
+        promise that an external raw file contains the vector.
+
+        The address follows the test's effective backend and device
+        hierarchy, does not depend on the corner, and is the same before or
+        after :meth:`prepare`, :meth:`run` or ``evaluate(rawfile=...)`` for an
+        unchanged test. Silk's selectors select the returned address per plot,
+        case-insensitively and through ``v()``/``i()`` wrapping.
+        """
+        if not isinstance(path, str):
+            raise TypeError(
+                f"device_probe_address() needs a device-parameter path as a "
+                f"string such as 'MN:gm'; got {path!r}.")
+        raw = path.strip()
+        head, _ = _split_spice_selector(raw)
+        if head is not None or ':' not in raw:
+            raise ValueError(
+                f"device_probe_address({path!r}): not a device-parameter path; "
+                f"write '<device>:<param>', e.g. 'MN:gm'.")
+        prefix, _, suffix = raw.rpartition(':')
+        prefix = prefix.strip()
+        param = suffix.strip().lower()
+        if not prefix:
+            raise ValueError(
+                f"device_probe_address({path!r}): no device name before ':'.")
+        if param in _TERMINAL_PORTS:
+            raise ValueError(
+                f"device_probe_address({path!r}): ':{param}' is a terminal "
+                f"current, not a device parameter.")
+        if param in NON_PROBEABLE_OP_COLUMNS:
+            raise derived_column_probe_error(f'{prefix}:{param}', prefix, param)
+        from silk.simulation.backend import DEVICE_OP_PARAMS
+        if param not in DEVICE_OP_PARAMS:
+            raise _unrecognized_probe_colon_suffix_error(raw, prefix, param)
+        from silk.circuit.modules_results import (
+            dut_module_from_elem_dict, resolve_probe_device_lines)
+        (address,) = resolve_probe_device_lines(
+            dut_module_from_elem_dict(self.netlist.elem_dict),
+            [(prefix, param)], simulator=self._effective_simulator(),
+            ammeter_wrapped=False)
+        return {'address': address,
+                'label': f'{DUT_ELEMENT_NAME}.{prefix}:{param}'}
 
     def bus(self, name):
         """Return a reference to a bus net of this test bench itself.
@@ -3956,19 +4089,6 @@ class ModuleTestbench:
             f"(A hierarchical path such as '{DUT_ELEMENT_NAME_PREFIX}.{net_name}' is not checked "
             f"here — pass the full SPICE path for a node inside the DUT.){hint}"
         )
-
-    def _emitted_branch_name(self, inner):
-        """Map the name inside ``i(…)`` to a rawfile vector name.
-
-        Delegates to :func:`_branch_vector_name`, the lookup a metric's
-        string path shares: a source NAME maps to its emitted instance, any
-        other name is a raw vector verbatim, and a name that is both raises
-        :class:`~silk.exceptions.AmbiguousBranchCurrentError`.
-        """
-        netlist = self.netlist
-        sources = {} if netlist is None else (
-            getattr(netlist, 'sig_sources_dict', None) or {})
-        return _branch_vector_name(sources, inner, getattr(netlist, 'elem_dict', None))
 
     def _ammeter_vector(self, spelling):
         """``'xdut.m1:d'`` -> ``'v.xdut.xmm1.vamm_d'``.
@@ -4328,10 +4448,11 @@ class ModuleTestbench:
             tb.run()
             vcm.plot()
 
-        A derived-signal metric — ``sig=`` bound to an expression built from
-        probes rather than a single one — is a Python-only capability:
-        codegen still emits the declarative ``type=``/``signal=`` form,
-        which is unchanged. Underneath every form, the primitive that
+        A derived-signal metric binds ``sig=`` to an expression built from
+        probes rather than a single probe. Codegen supports the
+        ``derived_signals`` operations listed in ``docs/codegen-contract.md``
+        under "Derived signals (waveform math)" and emits metrics using them in
+        function form. Underneath every form, the primitive that
         actually reads a signal off the run is
         :meth:`load_signal <silk.circuit.Module.load_signal>`; ``probe``/
         ``add_metric``/``resolve()`` are all built on it, and it stays public
@@ -4358,8 +4479,7 @@ class ModuleTestbench:
             tb.add_metric('p_avg', average_power, sig_v=tb.probe('vout'),
                           sig_i=tb.probe('i(vs)'))
 
-        A slot value may be a signal path (a ``str``, resolved through
-        ``ckt.load_signal`` exactly as the declarative form does) or a
+        A slot value may be a signal path (a ``str``, resolved like the declarative form) or a
         ``Signal`` — bound or unbound (a probe, or an expression built on
         probes); an unbound one is resolved at evaluation time. ``fn`` is
         recognised as a registered metric only by the ``@metric`` decoration
@@ -4416,7 +4536,7 @@ class ModuleTestbench:
             Name of a metric registered via silk.signals.schema.get_metric
             (e.g. 'dc_gain_dB'). Mutually exclusive with extractor_func.
         signal : str, optional
-            Signal path passed to ckt.load_signal(), for a metric with
+            Signal path for a metric with
             exactly one signal input. Mutually exclusive with signals=.
         signals : dict, optional
             ``{slot_name: signal path}`` binding every signal input of
@@ -4528,11 +4648,11 @@ class ModuleTestbench:
             bound = _bind_signal_inputs(name, type, fn, signal, signals, params)
             slots = _metric_signal_slots(fn)
             where = f"add_metric({name!r}, type={type!r})"
-            if analysis is not None and analysis not in _SIM_KEY_ANALYSIS.values():
+            if analysis is not None and analysis not in SELECTABLE_ANALYSES:
                 raise ValueError(
                     f"{where}: analysis={analysis!r} is not a silk analysis; "
                     f"expected one of "
-                    f"{sorted(set(_SIM_KEY_ANALYSIS.values()))}.")
+                    f"{sorted(SELECTABLE_ANALYSES)}.")
 
             # Resolved per evaluation, not here: a hand-built test may call
             # add_sim_type AFTER its metrics, so the declared analyses are not
@@ -4749,6 +4869,8 @@ class ModuleTestbench:
             Target value.
         key : str, optional
             Stable local identity. When omitted, the exact ``name`` is used.
+            Keys are unique across the owning module and all its testbenches;
+            use a distinct ``key=`` to keep the same display name.
 
         Returns
         -------
@@ -4866,6 +4988,11 @@ class ModuleTestbench:
         from silk.simulation.launch_fact import _tracker
         tracked = _tracker.get()
         run = capture_run_record(netlist, files=tracked['files'] if tracked else None)
+        raw = getattr(netlist, '_raw', None)
+        if raw is not None:
+            raw._preflight_unavailable_params = dict(
+                getattr(getattr(netlist, 'netlister', None),
+                        '_preflight_unavailable_params', None) or {})
         result = _RunSimResult(netlist=netlist, corner_str=spec.corner_str,
                                conditions=conditions, invocation=spec.invocation,
                                cache_key=spec.cache_key, run_id=run.launch_id, run=run)
@@ -4952,6 +5079,12 @@ class ModuleTestbench:
             netlist = self.netlist
             if result.netlist is not netlist:
                 for attr in _SIMULATED_STATE_ATTRS:
+                    # Configuration stays authored. Shared execution snapshots
+                    # carry these facts for readers, not for reconfiguration.
+                    if attr in {'sim_analysis_dict', 'simulator_options',
+                                'save_device_params', 'save_device_currents',
+                                'terminal_current_method', '_pending_device_probes'}:
+                        continue
                     value = getattr(result.netlist, attr, _UNSET)
                     if value is not _UNSET:
                         setattr(netlist, attr, value)
@@ -5159,6 +5292,12 @@ class ModuleTestbench:
                 from silk.circuit.modules_sim import _invalidate_current_results
                 _invalidate_current_results(netlist)
                 raise
+            # Refresh only the device-probe request snapshot: the file was
+            # produced by a deck that requested what is declared now. Do
+            # not rebuild capture state, since external evidence need not
+            # be re-emittable by the current circuit.
+            netlist._pending_device_probes = _device_probe_requests(
+                self._probe_registry)
             netlist.results_file = netlist.dataFile
         else:
             if not netlist.sim_results_loaded:
@@ -5217,6 +5356,12 @@ class ModuleTestbench:
                              else {corner_str: rawfile_path})
         generation = getattr(getattr(netlist, '_raw', None), '_generation', None)
         self._sweep_generations = {corner_str: generation} if generation is not None else {}
+        from silk.circuit.test_placement import EvidenceResults
+        execution_reader = EvidenceResults(netlist, authored=self.netlist)
+        self._sweep_states = {
+            key: {name: value for name, value in vars(execution_reader).items()
+                  if name not in {'_module', '_evidence_owner', 'backend'}}
+            for key in self._sweep_table}
         self._mc_samples = None
         # Plot selection is settled BEFORE the loop below, against the
         # finally-declared analyses (TASK-212). It has to be: the loop catches
@@ -5248,49 +5393,60 @@ class ModuleTestbench:
                 # filters already gave it (an 'ignore'd warning is never
                 # captured here either, exactly as before this loop
                 # existed).
-                with warnings.catch_warnings(record=True) as caught:
-                    warnings.simplefilter('always', MetricWarning)
-                    value = (_evaluate_expression(metric['expression'], metrics)
-                             if 'expression' in metric
-                             else metric['extractor'](netlist))
-                # The 'with' block above has already exited (restoring the
-                # caller's filters and showwarning), so every re-emission
-                # below is dispatched exactly as it would be from ordinary
-                # code -- not re-captured by the now-closed recorder, and
-                # exactly one MetricWarning surfaces per occurrence.
-                own_warnings = []
-                reemit = []
-                for w in caught:
-                    if isinstance(w.message, MetricWarning):
-                        original = w.message
-                        attributed = MetricWarning(
-                            metric=original.metric, code=original.code,
-                            message=original.message, details=original.details,
-                            suggestion=original.suggestion, output=name,
-                        )
-                        own_warnings.append(MetricWarningRecord.from_warning(attributed))
-                        reemit.append(attributed)
-                    else:
-                        reemit.append(w)
-                if own_warnings:
-                    # Recorded BEFORE any re-emission below, which may raise
-                    # under the caller's own filterwarnings('error',
-                    # MetricWarning) policy -- the ruling requires the
-                    # record to survive on the report either way, and a
-                    # raise from inside the loop must not skip this.
-                    metric_warnings[name] = tuple(own_warnings)
-                for item in reemit:
-                    if isinstance(item, MetricWarning):
-                        # Re-emitted under the CALLER's ordinary filters: a
-                        # filterwarnings('error', MetricWarning) raises here
-                        # exactly as it would have from inside the extractor
-                        # (falling to the 'Error: ...' branch below), and
-                        # 'ignore' silences it -- the record above is kept
-                        # on the report either way.
-                        warnings.warn(item, stacklevel=2)
-                    else:
-                        warnings.warn_explicit(
-                            item.message, item.category, item.filename, item.lineno)
+                caught = []
+                extractor_returned = False
+                try:
+                    with warnings.catch_warnings(record=True) as caught:
+                        warnings.simplefilter('always', MetricWarning)
+                        value = (_evaluate_expression(metric['expression'], metrics)
+                                 if 'expression' in metric
+                                 else metric['extractor'](netlist))
+                    extractor_returned = True
+                finally:
+                    # The 'with' block above has already exited (restoring the
+                    # caller's filters and showwarning), so every re-emission
+                    # below is dispatched exactly as it would be from ordinary
+                    # code -- not re-captured by the now-closed recorder, and
+                    # exactly one MetricWarning surfaces per occurrence.
+                    own_warnings = []
+                    reemit = []
+                    for w in caught:
+                        if isinstance(w.message, MetricWarning):
+                            original = w.message
+                            attributed = MetricWarning(
+                                metric=original.metric, code=original.code,
+                                message=original.message, details=original.details,
+                                suggestion=original.suggestion, output=name,
+                            )
+                            own_warnings.append(MetricWarningRecord.from_warning(attributed))
+                            reemit.append(attributed)
+                        else:
+                            reemit.append(w)
+                    if own_warnings:
+                        # Recorded BEFORE any re-emission below, which may raise
+                        # under the caller's own filterwarnings('error',
+                        # MetricWarning) policy -- the ruling requires the
+                        # record to survive on the report either way, and a
+                        # raise from inside the loop must not skip this.
+                        metric_warnings[name] = tuple(own_warnings)
+                    for item in reemit:
+                        try:
+                            if isinstance(item, MetricWarning):
+                                # Re-emitted under the CALLER's ordinary filters: a
+                                # filterwarnings('error', MetricWarning) raises here
+                                # exactly as it would have from inside the extractor
+                                # (falling to the 'Error: ...' branch below), and
+                                # 'ignore' silences it -- the record above is kept
+                                # on the report either way.
+                                warnings.warn(item, stacklevel=2)
+                            else:
+                                warnings.warn_explicit(
+                                    item.message, item.category, item.filename, item.lineno)
+                        except Warning:
+                            if extractor_returned:
+                                raise
+                            # Preserve the pending extractor exception and still
+                            # offer subsequent warnings to the caller's filters.
                 # Build all fields before publishing any, so a bad result
                 # cannot leave a mixture of stale values and errors.
                 expanded = {}
@@ -5447,7 +5603,7 @@ class ModuleTestbench:
         publish_report(self, report, netlist)
         return report
 
-    def prepare(self, corner=None, *, temperature=None, voltage=None,
+    def prepare(self, corner=None, *, sample=None, temperature=None, voltage=None,
                 run_label=None, ngspice_version=None):
         """Write one simulation deck and return its concrete path as a string.
 
@@ -5461,19 +5617,30 @@ class ModuleTestbench:
 
         A declared plan must resolve to one deterministic point (pass
         ``corner`` to select one corner); its point subdirectory is retained.
-        One-element temperature and supply lists are supported. Behavioral benches,
-        Monte Carlo and multi-deck plans raise ``NotSupportedError`` before
-        writing. This includes ngspice parameter probes outside the device's
-        declared operating-point parameters: emission needs an auxiliary
+        One-element temperature and supply lists are supported. With Monte Carlo
+        declared, pass ``sample`` to select one original zero-based index; its
+        seed, section and folder match the managed planner. Separate calls in
+        Monte Carlo new mode may allocate separate campaign directories.
+        Behavioral benches and ambiguous multi-deck plans raise
+        ``NotSupportedError`` before writing. This includes ngspice parameter
+        probes outside the device's declared operating-point parameters: emission needs an auxiliary
         preflight simulation, which this method never runs or caches.
         New output mode allocates a fresh directory on each call;
         the returned path includes it. Existing simulation outputs survive.
         Use :meth:`evaluate` to score results produced by an external runner.
+        These are ordinary external reports, not imported campaign samples;
+        successive evaluations may replace an attached Spec's live measurement.
+        On Xyce the seed is not encoded in the deck: pass ``-randseed`` with
+        ``derive_sample_seed(self.monte_carlo.seed, sample)`` to the external
+        command. Dependencies and output relocation remain the caller's concern.
 
         Parameters
         ----------
         corner : str or Corner, optional
             Process corner, as for :meth:`run`.
+        sample : int, optional
+            Original zero-based index in the declared Monte Carlo plan.
+            Required for Monte Carlo; refused without an expandable declaration.
         temperature : float, optional
             Deprecated assertion of the configured TEMP, as for :meth:`run`.
         voltage : float, optional
@@ -5496,9 +5663,10 @@ class ModuleTestbench:
         Raises
         ------
         silk.exceptions.NotSupportedError
-            For a behavioral bench, a Monte Carlo setting, a multi-deck
-            corner plan without ``corner``, or a probe that needs an
-            auxiliary preflight simulation.
+            For a behavioral bench, Monte Carlo without ``sample``, an
+            ambiguous multi-deck plan, or a probe needing preflight simulation.
+        silk.exceptions.MonteCarloError
+            Invalid sample index or no expandable Monte Carlo declaration.
         silk.exceptions.OutputPathError
             Invalid ``run_label``, as for :meth:`run`.
         """
@@ -5510,15 +5678,16 @@ class ModuleTestbench:
             raise NotSupportedError(
                 'prepare() cannot write a behavioral deck: behavioral benches '
                 'have no SPICE deck. Use run().')
-        if self.monte_carlo is not None:
+        if self.monte_carlo is not None and sample is None:
             raise NotSupportedError(
-                'prepare() does not support Monte Carlo runs. Use run().')
+                'prepare() of Monte Carlo requires sample=... (zero-based index).')
         if corner is None and self.corners is not None and len(self.corners) > 1:
             raise NotSupportedError(
                 'prepare() does not support a multi-deck corner run. '
                 'Pass corner=... to prepare one corner.')
         _require_no_probe_preflight(self, simulator)
-        planned = self._plan_runs(corner=corner)
+        planned = self._plan_runs(corner=corner, run_label=run_label,
+                                  _sample=sample)
         corner_subdir = None
         if planned is not None:
             if len(planned) != 1:
@@ -5529,7 +5698,10 @@ class ModuleTestbench:
         with _planned_conditions(self, planned[0] if planned else None):
             spec = self._prepare_run(
                 corner, temperature=temperature, voltage=voltage,
-                run_label=run_label, corner_subdir=corner_subdir, use_cache=False)
+                run_label=run_label, corner_subdir=corner_subdir,
+                sample=planned[0].sample if planned else None, use_cache=False)
+            if planned and planned[0].sample and planned[0].sample.wrapper_path:
+                _write_wrapper(self.pdk_details, planned[0].sample.wrapper_path)
             if ngspice_version is None:
                 spec.netlist.generate_netlist(corner=spec.corner_str)
             else:
@@ -5598,7 +5770,7 @@ class ModuleTestbench:
         return check_view(view)
 
     def run(self, corner=None, *, temperature=None, voltage=None,
-            run_label=None):
+            run_label=None, n_workers=None):
         """Run the test: simulate and extract metrics.
 
         Equivalent to ``self.netlist.simulate(corner)`` followed by
@@ -5660,15 +5832,31 @@ class ModuleTestbench:
             are unchanged. The report cache is disabled in this release, so every ``run()`` simulates and writes
             labeled output.
 
+        n_workers : int or 'all', optional
+            None or 1 keeps serial execution. An integer runs up to that
+            many declared conditions or Monte Carlo samples concurrently,
+            capped at the CPU count; 'all' uses the CPU count. Preparation
+            and evaluation remain in the calling process and results retain
+            plan order. Behavioral simulations always run in-process. A test
+            with no declared plan still performs only one run in-process.
+            Each worker has its own simulator memory, so choose a count that
+            fits available memory. For a deterministic plan, a
+            ConfigurationError discovered while preparing a later parallel
+            batch can occur after earlier batches have run; serial
+            deterministic preparation completes before simulation starts.
+            The ConfigurationError propagates without returning a collection,
+            and completed work is not rolled back. Monte Carlo preparation
+            is batched even in serial execution.
+
         Returns
         -------
         SpecReport or CornerResults or MonteCarloResults
-            A :class:`~silk.circuit.spec_report.SpecReport`; a
-            :class:`~silk.circuit.spec_report.CornerResults` when
-            :meth:`set_corners` declared a list (every declared corner, or
-            only *corner* when one is passed), simulated one at a time; a
-            :class:`~silk.circuit.monte_carlo.MonteCarloResults` when
-            :meth:`set_monte_carlo` declared a sampling plan.
+            A :class:`~silk.circuit.spec_report.SpecReport` without a declared
+            plan, :class:`~silk.circuit.spec_report.CornerResults` for a
+            deterministic declared plan, or
+            :class:`~silk.circuit.monte_carlo.MonteCarloResults` for a Monte
+            Carlo declaration. An explicit corner restricts a declared
+            corner plan.
 
         Raises
         ------
@@ -5683,13 +5871,18 @@ class ModuleTestbench:
             backend's ``run()``, before the shared evaluation tail, so no
             Measurement is recorded.
         """
+        if n_workers is not None:
+            from silk.simulation.executor import resolve_n_workers
+            n_workers = resolve_n_workers(
+                n_workers, backend=self._effective_simulator())
         if self.monte_carlo is not None:
             from silk.circuit.modules_testbench import _check_process_sources
             _check_process_sources((), standalone=self, corner=corner)
         planned = self._plan_runs(corner=corner, temperature=temperature, voltage=voltage, run_label=run_label)
         if planned is not None:
             return self._run_plan(planned, temperature=temperature,
-                                  voltage=voltage, run_label=run_label)
+                                  voltage=voltage, run_label=run_label,
+                                  n_workers=n_workers)
         prepared = self._prepare_run(corner, temperature=temperature,
                                      voltage=voltage, run_label=run_label)
         if not isinstance(prepared, _RunSpec):
@@ -5708,12 +5901,28 @@ class ModuleTestbench:
     # the parent, simulate through the shared executor, then evaluate in plan
     # order and collect with _collect_runs.
 
+    @property
+    def temperatures(self):
+        """This test's declared Celsius points as a tuple, or None.
+
+        Reads this test's own declaration, excluding inherited owner lists.
+        """
+        return getattr(self.netlist, '_temperature_list', (None, None))[0]
+
     def set_temperatures(self, temperatures: list[float] | tuple[float, ...] | None) -> 'ModuleTestbench':
         """Declare ambient Celsius points, or explicitly clear with None."""
         if self.netlist is None:
             self._create_netlist()
         self.netlist.set_temperatures(temperatures)
         return self
+
+    @property
+    def supply_voltages(self):
+        """This test's declared supply points in volts as a tuple, or None.
+
+        Reads this test's own declaration, excluding inherited owner lists.
+        """
+        return getattr(self.netlist, '_supply_list', (None, None))[0]
 
     def set_supply_voltages(self, voltages: list[float] | tuple[float, ...] | None,
                             *, source: str | None = None) -> 'ModuleTestbench':
@@ -5722,6 +5931,15 @@ class ModuleTestbench:
             self._create_netlist()
         self.netlist.set_supply_voltages(voltages, source=source)
         return self
+
+    @property
+    def variable_values(self):
+        """This test's variable sweeps as ordered (Variable, values) pairs.
+
+        The outer container and value sequences are tuples. Variables retain
+        their shared identity; an empty tuple means no variable sweeps.
+        """
+        return tuple(self._variable_lists)
 
     def set_variable_values(self, var: Variable, values: Optional[list | tuple]) -> 'ModuleTestbench':
         """Declare the ordered values of one shared Variable, or clear with None.
@@ -5803,6 +6021,15 @@ class ModuleTestbench:
             return effective
         finally:
             var._value = saved
+
+    @property
+    def groups(self):
+        """This test's groups as ordered tuples of Variables or axis names.
+
+        An empty tuple means no grouping. Variable members retain their
+        shared identity; relationships are validated when planning runs.
+        """
+        return self._groups
 
     def set_groups(self, groups: Optional[list | tuple]) -> 'ModuleTestbench':
         """Step each group's lists together; cross groups and remaining lists.
@@ -5965,7 +6192,8 @@ class ModuleTestbench:
         return self._prepare_run(corner=corner, run_label=run_label)
 
     def _plan_runs(self, *, corner=None, temperature=None, voltage=None,
-                   run_label=None, _monte_carlo=None, _deterministic=False):
+                   run_label=None, _monte_carlo=None, _deterministic=False,
+                   _sample=None):
         """This test's declared runs as a list of :class:`_PlannedRun`, or
         ``None`` when it declares nothing (today's single-run path).
 
@@ -5980,7 +6208,9 @@ class ModuleTestbench:
         into its samples, keyed ``(corner, index)``, each with its
         ``_SampleSpec`` and its own sample folder below the corner (inside
         the campaign folder in new mode). Every Monte Carlo refusal (:meth:`_check_monte_carlo`) is raised here,
-        before any deck is written.
+        before any deck is written. The private ``_sample`` selector requires
+        one resolved point before allocating a campaign directory and expands
+        only that original sample index (public ``prepare(sample=...)``).
 
         A subclass that overrides ``run()`` gets ``None`` too: its override
         decides what a run is (the parallel walk already runs it in-process
@@ -5988,6 +6218,17 @@ class ModuleTestbench:
         keep returning one ``SpecReport`` each.
         """
         declared, settings = self._run_declarations(_monte_carlo)
+        if _sample is not None:
+            from silk.exceptions import MonteCarloError
+            if settings is None:
+                raise MonteCarloError(
+                    'prepare(sample=...) requires a declared Monte Carlo plan '
+                    'that supports sample expansion.')
+            if (isinstance(_sample, bool) or not isinstance(_sample, int)
+                    or not 0 <= _sample < settings.n):
+                raise MonteCarloError(
+                    f'prepare(): sample must be an integer in 0..{settings.n - 1}; '
+                    f'got {_sample!r}.')
         if _deterministic:
             settings = None
         axes = self._condition_axes()
@@ -6029,6 +6270,11 @@ class ModuleTestbench:
         if len({point[4] for point in points}) != len(points):
             from silk.exceptions import SimulationConfigurationError
             raise SimulationConfigurationError(f'Repeated whole run in {names!r}')
+        if _sample is not None and len(points) != 1:
+            from silk.exceptions import NotSupportedError
+            raise NotSupportedError(
+                'prepare(sample=...) requires one resolved condition point; '
+                'multi-deck runs are unsupported.')
         if settings is None:
             if len(names) >= 2:
                 self._warn_identical_corners(names, stacklevel=4)
@@ -6046,10 +6292,36 @@ class ModuleTestbench:
                 with _planned_conditions(self, run):
                     self._check_monte_carlo(settings, [name])
                     point_records[key] = getattr(self, '_behavioral_mc_records', ())
+        if (settings.variation in ('process', 'both')
+                and self._effective_simulator() != 'behavioral'
+                and self.pdk_details.statistical.process_warnings):
+            from silk.circuit.modules_results import _iter_all_device_paths
+            from silk.pdk.basepdk import PDKDevice
+            from silk.elements.base import AnalogElement
+            import warnings
+            kinds = set()
+            for path, dpath, leaf, device in _iter_all_device_paths(self.netlist.elem_dict):
+                kind = getattr(device, 'device_name', None)
+                if (isinstance(device, PDKDevice) or
+                        (isinstance(device, AnalogElement) and
+                         getattr(device, '_is_pdk_device', False) and
+                         getattr(device, '_pdk_device', None) and kind)):
+                    kinds.add(kind)
+            pdk = self.pdk_details
+            pdk_name = (getattr(pdk, 'pdk_name', None) or getattr(pdk, 'name', None)
+                        or self.module.pdk_name)
+            for devices, message in pdk.statistical.process_warnings:
+                matched = sorted(kinds.intersection(devices))
+                if matched:
+                    warnings.warn(
+                        f"Monte Carlo process-model advisory for PDK {pdk_name!r}, "
+                        f"test {self.report_key!r}, device types {', '.join(matched)}: {message}",
+                        UserWarning, stacklevel=3)
+        indices = range(settings.n) if _sample is None else (_sample,)
         count = (f"{len(points)} point{'s' if len(points) != 1 else ''}" if grid else
                  f"{len(names)} corner{'s' if len(names) != 1 else ''}")
-        print(f'Monte Carlo: {count} × {settings.n} samples = '
-              f'{len(points) * settings.n} simulations')
+        print(f'Monte Carlo: {count} × {len(indices)} samples = '
+              f'{len(points) * len(indices)} simulations')
         planned = []
         for name, temp, supply, source, point, folder, basis, option in points:
             campaign_subdir = folder if isinstance(folder, tuple) else (folder,)
@@ -6064,7 +6336,7 @@ class ModuleTestbench:
                 wrapper = os.path.join(tb_dir, 'mc_both.lib.spice')
             if point in point_records:
                 self._behavioral_mc_records = point_records[point]
-            for index in range(settings.n):
+            for index in indices:
                 planned.append(_PlannedRun(
                     key=(point, index), corner=name,
                     corner_subdir=campaign_subdir + (f'mc_{index:04d}',),
@@ -6449,7 +6721,12 @@ class ModuleTestbench:
                 with _planned_conditions(self, run):
                     if run.grid:
                         _configure_conditions(self, self.netlist)
-                    reports[run.key] = self._consume_run_outcome(outcome)
+                    report = self._consume_run_outcome(outcome)
+                    from silk.circuit.test_placement import EvidenceResults
+                    if not getattr(report.sim_results, '_retained', False):
+                        report.sim_results = EvidenceResults(
+                            report.sim_results, authored=self.netlist, _retained=True)
+                    reports[run.key] = report
                     if run.variable_values:
                         reports[run.key].parameters['silk_run_variables'] = {
                             var.name: value for var, value in spec.variable_values}
@@ -6507,6 +6784,8 @@ class ModuleTestbench:
         if not reports:
             if current_placement(self) is None:
                 self._sweep_table = {}
+                self._sweep_states = {}
+                self._sweep_generations = {}
             first = next(iter(failed))
             raise SimulationError(
                 f"test {self.test_name!r}: every declared run failed "
@@ -6675,12 +6954,14 @@ class ModuleTestbench:
         """Run a declared plan: prepare, simulate through the shared
         executor, evaluate in plan order, collect.
 
-        A corner plan simulates one run at a time (``run()``). Monte Carlo
-        samples go in batches of the resolved worker count (one for
-        ``run()``): each batch is prepared, and its netlists deep-copied,
-        only when it is next, so memory holds one batch of netlists rather
-        than one per sample. The both-variation wrapper is written once per
-        corner folder before the first batch.
+        Deterministic plans with more than one worker prepare, dispatch and
+        evaluate successive worker-sized batches. None or 1, and behavioral
+        execution, prepare the whole deterministic plan before simulation.
+        Monte Carlo samples always use worker-sized batches. Each batch's
+        prepared netlists and outcomes are released before the next batch;
+        evaluation and collection retain plan order in the calling process.
+        The both-variation wrapper is written once per corner folder before
+        the first batch.
         """
         from silk.simulation.executor import resolve_n_workers, run_tasks
         config = {'temperature': temperature, 'voltage': voltage,
@@ -6706,15 +6987,14 @@ class ModuleTestbench:
                     f"running one ngspice process per sample.",
                     RuntimeWarning, stacklevel=2)
                 per_process = 1
-        workers = size = 1
+        workers = size = resolve_n_workers(
+            n_workers, backend=self._effective_simulator())
         if samples:
-            workers = size = resolve_n_workers(
-                n_workers, backend=self._effective_simulator())
             for path in dict.fromkeys(run.sample.wrapper_path
                                       for run in planned
                                       if run.sample.wrapper_path):
                 _write_wrapper(self.pdk_details, path)
-        else:
+        elif workers == 1:
             size = max(len(planned), 1)
         reports, errors = {}, {}
         if per_process > 1:
@@ -6729,6 +7009,7 @@ class ModuleTestbench:
             reports.update(self._evaluate_plan(batch, prepared, outcomes,
                                                batch_errors))
             errors.update(batch_errors)
+            del prepared, keys, tasks, outcomes
         return self._collect_runs(planned, reports, errors,
                                   rerun_config=config, replay_signature=replay_signature,
                                   campaign_source=campaign_source, draw_scheme=draw_scheme)
@@ -6909,6 +7190,18 @@ class ModuleTestbench:
                 cached_path = getattr(cached, 'rawfile_path', None)
                 self._sweep_table = ({} if cached_path is None
                                      else {corner_str: cached_path})
+                from silk.circuit.test_placement import EvidenceResults
+                associated = cached.sim_results
+                if isinstance(associated, EvidenceResults):
+                    self._sweep_states = {
+                        key: {name: value for name, value in vars(associated).items()
+                              if name not in {'_module', '_evidence_owner', 'backend'}}
+                        for key in self._sweep_table}
+                else:
+                    self._sweep_states = {}
+                self._sweep_generations = {
+                    key: getattr(cached, '_raw_generation', None)
+                    for key in self._sweep_table}
                 self._metric_values = dict(cached.metrics)
                 return cached
 
@@ -7086,7 +7379,12 @@ class ModuleTestbench:
                 continue
             outcome = _planned_outcome(outcome_by_corner[corner], spec_or_report)
             try:
-                reports[corner] = self._consume_run_outcome(outcome)
+                report = self._consume_run_outcome(outcome)
+                from silk.circuit.test_placement import EvidenceResults
+                if not getattr(report.sim_results, '_retained', False):
+                    report.sim_results = EvidenceResults(
+                        report.sim_results, authored=self.netlist, _retained=True)
+                reports[corner] = report
             except Exception as exc:
                 errors[corner] = outcome.error_text or (
                     f'{type(exc).__name__}: {exc}\n{traceback.format_exc()}')

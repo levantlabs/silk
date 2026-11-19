@@ -24,6 +24,7 @@ import os
 
 import yaml
 
+from silk.utils._compat import yaml_safe_loader
 from silk._json_codec import encode_json
 from silk.exceptions import CircuitError
 from silk.utils import require_python_identifier
@@ -36,7 +37,7 @@ _META_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 
 def _load_metadata() -> dict:
     with open(_META_PATH) as fh:
-        meta = yaml.safe_load(fh)
+        meta = yaml.load(fh, Loader=yaml_safe_loader)
     try:
         for name, spec in meta.get('sources', {}).items():
             context = f"{_META_PATH}: source {name!r}"

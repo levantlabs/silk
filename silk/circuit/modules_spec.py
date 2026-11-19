@@ -133,7 +133,9 @@ class _SpecMethods(_Base):
         if any(existing.key == candidate_key for existing in self._specs):
             raise DuplicateNameError(
                 f"Spec key {candidate_key!r} is already declared on module "
-                f"{self.module_name!r}"
+                f"{self.module_name!r}. Spec keys are module-wide, including all "
+                "testbenches; pass a distinct key= for another spec. "
+                "The display name can stay the same."
             )
         frame = inspect.stack()[1]
         declared_at = f'{os.path.basename(frame.filename)}:{frame.lineno}'

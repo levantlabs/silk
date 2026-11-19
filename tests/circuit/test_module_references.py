@@ -358,7 +358,7 @@ def test_selected_handles_match_runner_results(tmp_path, workers):
         assert report.owner_path == entry.owner_path
         assert report.metrics == previous.metrics
         assert entry.test.probe('out').y[-1] == 1.0
-    assert entries[0].test.netlist is entries[1].test.netlist is tb.netlist
+    assert entries[0].test.netlist.sim_analysis_dict is entries[1].test.netlist.sim_analysis_dict is tb.netlist.sim_analysis_dict
 
 
 def test_selected_external_evaluation_preserves_each_owner(tmp_path):

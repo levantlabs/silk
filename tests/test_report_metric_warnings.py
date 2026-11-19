@@ -5,7 +5,7 @@ import math
 
 from silk.circuit.report import CircuitReport, generate_report
 from silk.circuit.spec_report import SpecReport, SpecResult
-from silk.metrics.diagnostics import MetricWarningRecord
+from silk.metrics.diagnostics import MetricWarning, MetricWarningRecord
 from silk.specs import Measurement, Spec, SpecOutcome, SpecReconciliationReport
 from tests.test_circuit_report import _top_with_instances
 
@@ -199,19 +199,38 @@ def test_shared_placement_warning_identity(tmp_path, restored, collection):
             if loaded:
                 report.save_json(tmp_path / 'placement.json')
                 report = CircuitReport.load_json(tmp_path / 'placement.json')
-            # Test attribution before the new fields, so the old failure is visible.
-            html = report._render_spec_reconciliation_html()
+            html = (report._render_grid('html') if collection
+                    else report._render_spec_reconciliation_html())
+            assert '<tr class="spec-fail">' in html, 'the recorded failing check needs a FAIL row'
             fail_row = html.split('<tr class="spec-fail">')[1].split('</tr>')[0]
             pass_row = html.split('<tr class="spec-pass">')[1].split('</tr>')[0]
+            if collection:
+                assert '<h2>step (instance x1) — FAIL</h2>' in html
+                assert '<h2>step (instance x2) — PASS</h2>' in html
+                assert '$/' not in html and 'PVT Grid:' not in html
+                assert '<td>audit_missing:' in fail_row
+                assert '<td>nan</td>' not in fail_row
+                assert '<td>&gt;=</td>' in fail_row
             assert 'audit_missing' in fail_row
             assert 'audit_missing' not in pass_row
             assert '(instance x1)' in fail_row and '(instance x2)' in pass_row
-            md = report._render_spec_reconciliation_md()
+            md = (report._render_grid('markdown') if collection
+                  else report._render_spec_reconciliation_md())
             fail_md = next(line for line in md.splitlines() if '| FAIL |' in line)
             pass_md = next(line for line in md.splitlines() if '| PASS |' in line)
+            if collection:
+                assert '## step (instance x1) — FAIL' in md
+                assert '$/' not in md and 'PVT Grid:' not in md
+                assert '| >= |' in fail_md and '| audit_missing:' in fail_md
+                assert '| nan |' not in fail_md
             assert '(instance x1)' in fail_md and 'audit_missing' in fail_md
             assert '(instance x2)' in pass_md and 'audit_missing' not in pass_md
-            terminal = report._render_metrics_terminal()
+            terminal = (report._render_grid('terminal') if collection
+                        else report._render_metrics_terminal())
+            if collection:
+                assert 'step (instance x1) — FAIL' in terminal
+                assert '$/' not in terminal and 'PVT Grid:' not in terminal
+                assert '| audit_missing:' in terminal and '| nan |' not in terminal
             assert terminal.count('audit_missing') == 1
             assert '(instance x1)' in terminal and '(instance x2)' in terminal
             rows = report.spec_reconciliation.as_dict()['outcomes']
@@ -329,3 +348,44 @@ def test_unavailable_decoded_zero_cannot_pass_spec(tmp_path, weighting):
     finally:
         top.close()
         child.close()
+
+
+@pytest.mark.parametrize('missing_check', [False, True])
+def test_temperature_summary_nan_warning_and_missing_check(tmp_path, missing_check):
+    from silk.circuit.spec_report import CornerResults
+    good = SpecReport('ac', 'top', {'gain': 70.})
+    good.check('Gain limit', 'gain', '>=', 60., spec_key='gain', owner_path='$')
+    bad = SpecReport('ac', 'top', {'gain': math.nan}, metric_warnings={
+        'gain': (_rec(code='audit_missing', message='cannot measure gain'),),
+    })
+    if not missing_check:
+        bad.check('Gain limit', 'gain', '>=', 60., spec_key='gain', owner_path='$')
+    point = ('tt', 85., 1.8)
+    results = CornerResults({('tt', 27., 1.8): good, point: bad}, skip_unavailable=True)
+    report = generate_report(_top_with_instances(tmp_path), test_results={'ac': results})
+    status = 'UNAVAILABLE' if missing_check else 'FAIL'
+    assert results.table()[1]['check.gain'] == status, 'a recorded NaN check has a failing verdict'
+    for mode in ('html', 'markdown', 'terminal'):
+        with pytest.warns(MetricWarning):
+            output = report._render_grid(mode)
+        row, = [line for line in output.splitlines() if 'Gain limit' in line]
+        assert status in row
+        if missing_check:
+            assert 'audit_missing' not in row
+        else:
+            assert 'tt, 27 °C, 1.8 V' in row  # Numeric worst is the other run.
+            assert 'tt, 85 °C, 1.8 V: audit_missing: cannot measure gain' in row
+
+
+def test_nested_single_run_uses_silk_placement_path(tmp_path):
+    owner = '$/amp/bias'
+    key = f'{owner}:leaf.step'
+    evidence = SpecReport('step', 'leaf', {'gain': 70.}, owner_path=owner, report_key=key)
+    evidence.check('Gain limit', 'gain', '>=', 60., spec_key='gain', owner_path=owner)
+    report = generate_report(_top_with_instances(tmp_path), test_results={key: evidence})
+    for mode in ('html', 'markdown', 'terminal'):
+        summary = report._render_grid(mode)
+        assert 'step (instance amp.bias) — PASS' in summary
+        assert 'Gain limit (instance amp.bias)' in summary
+        assert '$/' not in summary and 'PVT Grid:' not in summary
+    assert key in report.test_results

@@ -1091,3 +1091,26 @@ def test_simulate_devices_reads_run_log_after_returning_data(monkeypatch):
     issues = V._simulate_devices(pdk)
     assert [(i.device, i.kind) for i in issues] == [('res_generic_nd', 'sim_failed')]
     assert 'unknown subckt frobnicator' in issues[0].detail
+
+
+@pytest.mark.parametrize('warning', [
+    {'devices': ['unknown_type'], 'message': 'reason'},
+    {'devices': [], 'message': 'reason'},
+    None,
+])
+def test_cli_rejects_invalid_manifest_process_warning(monkeypatch, capsys, warning):
+    import copy
+    from silk.pdk import _loader, registry
+    from silk.pdk.validate import main
+    manifest = copy.deepcopy(registry.manifest('sky130'))
+    if warning is None:
+        manifest['library']['statistical']['process'] = None
+    else:
+        manifest['library']['statistical']['process']['warnings'] = [warning]
+    monkeypatch.setattr(_loader._registry, 'manifest', lambda name: manifest)
+    assert main(['--pdk', 'sky130']) == 1
+    out = capsys.readouterr().out
+    assert 'sky130' in out
+    diagnostic = ('library.statistical.process must be a mapping' if warning is None
+                  else 'library.statistical.process.warnings[0]')
+    assert diagnostic in out

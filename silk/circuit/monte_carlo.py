@@ -949,34 +949,60 @@ class DrawDevice(NamedTuple):
 
     ``path`` is the emitted instance path (``'xdut.XMm1'``), ``internal``
     the model's own element-instance name inside that device
-    (``op_internal_name``), ``name`` the designer name (``'dut.m1'``) and
-    ``params`` the manifest's ``record`` entry for its device type.
+    (a manifest target or catalog ``op_internal_name``), ``name`` the designer name (``'dut.m1'``) and
+    ``params`` the recorded model parameters. ``label_prefix`` is the explicit
+    target name, or empty for legacy MOS records.
     """
     path: str
     internal: str
     name: str
     params: tuple
+    label_prefix: str = ''
 
 
 def draw_devices(elem_dict, statistical: StatisticalModels,
                  ) -> tuple[list[DrawDevice], tuple[str, ...]]:
     """The devices a ``record_draws`` sample records, and the skipped types.
 
-    Walks every MOS-shaped device below *elem_dict* in emission order (the
-    order the ``showmod`` lines are emitted and parsed in). A device whose
-    catalog type has a manifest ``record`` entry is recorded; the other
-    types are returned, sorted, as skipped.
+    Walks devices below *elem_dict* in emission order. Explicit internal targets
+    and supported MOS parameter lists are recorded in manifest order.
+    Other PDK device types are returned once, sorted, as skipped.
 
-    Raises :class:`MonteCarloError` for a recorded device whose catalog
-    entry declares no ``op_internal_name``: the drawn values are read
-    through that name, and it is not derivable from the model name.
+    Raises :class:`MonteCarloError` when a device recorded through a legacy MOS
+    parameter list has no ``op_internal_name`` in its catalog entry. Explicit
+    target mappings supply their own internal instance names.
     """
+    from collections.abc import Mapping
     from silk.circuit.emitted_names import emitted_instance_name
     from silk.circuit.modules_results import (
-        _device_op_internal_name, _device_op_prefix, _iter_mos_device_paths)
+        _device_op_internal_name, _device_op_prefix, _iter_all_device_paths,
+        _device_pin_names, _is_ideal_passive, _MOS_TERMINALS)
+    from silk.pdk.basepdk import PDKDevice
+    from silk.elements.base import AnalogElement
     devices, skipped = [], set()
-    for path, dpath, leaf, device in _iter_mos_device_paths(elem_dict):
+    for path, dpath, leaf, device in _iter_all_device_paths(elem_dict):
         kind = getattr(device, 'device_name', None)
+        entry = statistical.record.get(kind)
+        genuine = (isinstance(device, PDKDevice) or
+                   (isinstance(device, AnalogElement) and
+                    getattr(device, '_is_pdk_device', False) and
+                    getattr(device, '_pdk_device', None) and kind))
+        if isinstance(entry, Mapping):
+            if not genuine:
+                continue
+            name = f'{dpath}.{leaf}' if dpath else leaf
+            prefix = _device_op_prefix(path, emitted_instance_name(device, leaf))
+            for internal, target in entry.items():
+                devices.append(DrawDevice(prefix, internal, name,
+                                          tuple(target['params']), internal))
+            continue
+        if _is_ideal_passive(device) or not (_device_pin_names(device) >= _MOS_TERMINALS):
+            if (isinstance(device, PDKDevice) or
+                    (isinstance(device, AnalogElement) and
+                     getattr(device, '_is_pdk_device', False) and
+                     getattr(device, '_pdk_device', None) and kind)):
+                skipped.add(kind)
+            continue
         params = statistical.record.get(kind) if kind else None
         if not params:
             skipped.add(str(kind))
@@ -1006,14 +1032,16 @@ def showmod_requests(devices: list[DrawDevice]) -> tuple[list[str], list]:
     # A MOS element's name starts with 'm' in SPICE, and showmod's address
     # spells that letter itself: 'm.<path>.m<rest>'.
     for d in devices:
-        if not d.internal.lower().startswith('m'):
+        if not d.label_prefix and not d.internal.lower().startswith('m'):
             raise MonteCarloError(
                 f"record_draws: device {d.name!r} has internal instance "
                 f"name {d.internal!r}, which is not a MOS element name "
                 f"(it must start with 'm').")
-    lines = showmod_lines([(d.path, d.internal[1:], d.params)
+    lines = showmod_lines([(d.path, d.internal if d.label_prefix
+                            else 'm' + d.internal[1:], d.params)
                            for d in devices])
-    return lines, [(d.name, d.params) for d in devices]
+    return lines, [(d.name, d.params, d.label_prefix) if d.label_prefix
+                   else (d.name, d.params) for d in devices]
 
 
 def build_draw_table(draws: dict, skipped_types=(), *, raw: bool = True):
