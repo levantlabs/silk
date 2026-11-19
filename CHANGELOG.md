@@ -3,7 +3,7 @@
 Notable changes to **circuitsilk** (`import silk`). Pre-1.0: minor versions may
 change APIs.
 
-## 0.4.0 — unreleased
+## 0.4.0 — 2026-11-19
 
 - Generated testbenches save device parameters such as `gm` and `vth` for metrics and, through a new per-test `probes` list, for plotting.
 - Device-parameter probes declared on a testbench read back after `evaluate(rawfile=...)`, and the waveform viewer labels them by designer name (`dut.MN:gm`) in results silk produced.

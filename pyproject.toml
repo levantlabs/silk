@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "circuitsilk"
-version = "0.4.0rc1"
+version = "0.4.0"
 description = "Custom circuit design in Python, from specs to layout"
 readme = "README.md"
 license = {text = "MIT"}
